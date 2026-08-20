@@ -1,0 +1,51 @@
+# Dependencies & Builds
+node_modules/
+dist/
+dist-ssr/
+
+# Environment & Sensitive Credentials
+.env
+.env.local
+.env.*.local
+*.env
+
+# AI Assistant, Scratch Scripts & Screenshots
+.agents/
+.gemini/
+scratch/
+*.png
+!public/*.png
+!public/**/*.png
+!src/assets/*.png
+!src/assets/**/*.png
+*.jpg
+!public/*.jpg
+!public/**/*.jpg
+!src/assets/*.jpg
+!src/assets/**/*.jpg
+test-backend.cjs
+take-admin-screenshot.cjs
+
+# Database Files & Uploads
+*.db-journal
+*.db-shm
+*.db-wal
+server/*.db
+server/*.sqlite*
+server/uploads/
+
+# Logs & System Files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
