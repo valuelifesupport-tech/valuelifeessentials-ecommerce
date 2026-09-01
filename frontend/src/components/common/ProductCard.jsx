@@ -98,7 +98,7 @@ export default function ProductCard({
 
             <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
               <span>★★★★★</span>
-              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
+              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
               <span className="text-gray-400 font-medium">| {p.review_count || 56}</span>
             </div>
 
@@ -182,7 +182,7 @@ export default function ProductCard({
 
           <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
             <span>★★★★★</span>
-            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
+            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
             <span className="text-gray-400 font-medium">| {p.review_count || 24}</span>
           </div>
 

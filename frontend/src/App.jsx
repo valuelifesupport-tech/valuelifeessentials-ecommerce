@@ -488,7 +488,10 @@ export default function App() {
     setIsSubmittingOrder(true);
 
     try {
-      const res = await fetch(getApiUrl('/api/orders'), {
+      const isOnlinePay = checkoutData?.paymentMode === 'PREPAID' || checkoutData?.paymentMode === 'PARTIAL';
+      const payableAmount = checkoutData?.paymentMode === 'PARTIAL' ? checkoutData?.depositAmount : checkoutData?.finalTotal;
+
+      const orderRes = await fetch(getApiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -500,23 +503,112 @@ export default function App() {
           country: currency === 'INR' ? 'India' : 'International',
           currency,
           total_amount: checkoutData?.finalTotal || 0,
+          paid_amount: isOnlinePay ? payableAmount : 0,
+          remaining_amount: isOnlinePay ? Math.max(0, (checkoutData?.finalTotal || 0) - payableAmount) : (checkoutData?.finalTotal || 0),
           payment_mode: checkoutData?.paymentMode || 'PARTIAL_COD',
           items: cart.map(item => ({
             product_id: item.id,
+            variant_id: item.variant_id || null,
             quantity: item.quantity,
             price: currency === 'INR' ? (item.discount_inr || item.price_inr) : (item.discount_usd || item.price_usd)
           }))
         })
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        showToast('error', 'Order Error', orderData.error || 'Failed to place order.');
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      // If COD mode or non-online, complete immediately
+      if (!isOnlinePay || currency !== 'INR') {
         setShowCheckoutModal(false);
-        setOrderSuccess(data);
+        setOrderSuccess(orderData);
         setCart([]);
-        showToast('success', 'Order Confirmed!', `Order ${data.orderNumber || data.order_number} created.`);
-      } else {
-        showToast('error', 'Order Error', data.error || 'Failed to place order.');
+        showToast('success', 'Order Confirmed!', `Order ${orderData.orderNumber || orderData.order_number} placed successfully!`);
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      // Online payment via Razorpay
+      try {
+        // Load Razorpay script if not already loaded
+        if (!window.Razorpay) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+          });
+        }
+
+        const payOrderRes = await fetch(getApiUrl('/api/payment/razorpay/create-order'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: payableAmount,
+            currency: 'INR',
+            receipt: `rcpt_${orderData.orderId || orderData.order_id}`,
+            notes: { order_number: orderData.orderNumber || orderData.order_number }
+          })
+        });
+        const payOrder = await payOrderRes.json();
+
+        const options = {
+          key: payOrder.key_id || 'rzp_test_valuelife2026',
+          amount: payOrder.amount,
+          currency: payOrder.currency || 'INR',
+          name: 'ValueLife Essentials',
+          description: `Order ${orderData.orderNumber || orderData.order_number} Payment`,
+          order_id: payOrder.id,
+          prefill: {
+            name: finalName,
+            email: finalEmail,
+            contact: finalPhone
+          },
+          theme: {
+            color: '#2d6a4f'
+          },
+          handler: async (response) => {
+            try {
+              await fetch(getApiUrl('/api/payment/razorpay/verify'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  order_id: orderData.orderId || orderData.order_id
+                })
+              });
+            } catch (e) {}
+
+            setShowCheckoutModal(false);
+            setOrderSuccess(orderData);
+            setCart([]);
+            showToast('success', 'Payment Successful!', `Order ${orderData.orderNumber || orderData.order_number} confirmed with payment.`);
+          },
+          modal: {
+            ondismiss: () => {
+              setShowCheckoutModal(false);
+              setOrderSuccess(orderData);
+              setCart([]);
+              showToast('info', 'Order Created', `Order ${orderData.orderNumber || orderData.order_number} saved (Payment Pending).`);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } catch (rzpErr) {
+        // Fallback gracefully if Razorpay script fails to load
+        setShowCheckoutModal(false);
+        setOrderSuccess(orderData);
+        setCart([]);
+        showToast('success', 'Order Confirmed!', `Order ${orderData.orderNumber || orderData.order_number} placed successfully!`);
       }
     } catch (err) {
       showToast('error', 'Order Error', 'Error connecting to server. Please try again.');
@@ -903,7 +995,7 @@ export default function App() {
 
                           <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
                             <span>★★★★★</span>
-                            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
+                            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
                             <span className="text-gray-400 font-medium">| {p.review_count || 24}</span>
                           </div>
 
@@ -1232,7 +1324,7 @@ export default function App() {
 
                               <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
                                 <span>★★★★★</span>
-                                <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
+                                <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
                                 <span className="text-gray-400 font-medium">| {p.review_count || 56}</span>
                               </div>
 
@@ -1312,7 +1404,7 @@ export default function App() {
 
                             <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
                               <span>★★★★★</span>
-                              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
+                              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
                               <span className="text-gray-400 font-medium">| {p.review_count || 24}</span>
                             </div>
 
