@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, Heart, Search, Menu, X, Globe, Grid, ChevronDown, Sparkles, User, Copy, Check } from 'lucide-react';
 import MegaMenu from './navigation/MegaMenu';
+import { InstagramIcon, FacebookIcon, YoutubeIcon, WhatsAppIcon } from './SocialIcons';
 
 export default function Header({ 
   currency, 
@@ -34,6 +35,7 @@ export default function Header({
   const [currencyDropdown, setCurrencyDropdown] = useState(false);
   const [activeCategoryDropdown, setActiveCategoryDropdown] = useState(null);
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
+  const [collectionsDropdown, setCollectionsDropdown] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const megaMenuRef = useRef(null);
 
@@ -131,6 +133,21 @@ export default function Header({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {/* SOCIAL MEDIA ICONS BAR */}
+              <div className="flex items-center gap-2 border-r border-emerald-800/80 pr-2 mr-1">
+                <a href={settings?.instagram_url || "https://instagram.com/valuelifeessentials"} target="_blank" rel="noreferrer" className="p-1 text-emerald-200 hover:text-amber-300 hover:scale-110 transition-all flex items-center" title="Instagram">
+                  <InstagramIcon size={13} />
+                </a>
+                <a href={settings?.facebook_url || "https://facebook.com/valuelifeessentials"} target="_blank" rel="noreferrer" className="p-1 text-emerald-200 hover:text-amber-300 hover:scale-110 transition-all flex items-center" title="Facebook">
+                  <FacebookIcon size={13} />
+                </a>
+                <a href={settings?.youtube_url || "https://youtube.com/@valuelifeessentials"} target="_blank" rel="noreferrer" className="p-1 text-emerald-200 hover:text-amber-300 hover:scale-110 transition-all flex items-center" title="YouTube">
+                  <YoutubeIcon size={13} />
+                </a>
+                <a href={`https://wa.me/${(settings?.whatsapp_number || '919876543210').replace(/[^\d]/g, '')}`} target="_blank" rel="noreferrer" className="p-1 text-emerald-200 hover:text-emerald-400 hover:scale-110 transition-all flex items-center" title="WhatsApp Support">
+                  <WhatsAppIcon size={13} />
+                </a>
+              </div>
               {Number(settings?.enable_multi_currency) === 1 && (
                 <div className="relative">
                   <button 
@@ -353,41 +370,117 @@ export default function Header({
               )}
             </div>
 
-            {/* 3. OFFERS */}
-            <button 
-              type="button"
-              onClick={() => {
-                if (onSelectOffers) onSelectOffers();
-                else if (navigateTo) navigateTo('/offers', { view: 'offers', slug: null, category: null, collection: null });
-              }}
-              className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <span>🔥 Offers</span>
-            </button>
+            {/* COLLECTIONS DROPDOWN (ONLY SHOW IF THERE ARE DROPDOWN COLLECTIONS AVAILABLE) */}
+            {(() => {
+              const dropdownColls = collections ? collections.filter(c => !(c.show_in_navbar === 1 || c.show_in_navbar === true || String(c.show_in_navbar) === '1')) : [];
+              if (dropdownColls.length === 0) return null;
 
-            {/* 4. BEST SELLERS */}
-            <button 
-              type="button"
-              onClick={() => {
-                if (onSelectBestSellers) onSelectBestSellers();
-                else if (navigateTo) navigateTo('/bestsellers', { view: 'bestsellers', slug: null, category: null, collection: null });
-              }}
-              className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <span>⭐ Best Sellers</span>
-            </button>
+              return (
+                <div className="relative py-1">
+                  <button 
+                    type="button"
+                    onClick={() => setCollectionsDropdown(prev => !prev)}
+                    className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+                  >
+                    <span>📦 Collections</span>
+                    <ChevronDown size={14} className={`transition-transform duration-200 ${collectionsDropdown ? 'rotate-180' : ''}`} />
+                  </button>
 
-            {/* 5. NEW ARRIVALS */}
-            <button 
-              type="button"
-              onClick={() => {
-                if (onSelectNewArrivals) onSelectNewArrivals();
-                else if (navigateTo) navigateTo('/new-arrivals', { view: 'new_arrivals', slug: null, category: null, collection: null });
-              }}
-              className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <span>✨ New Arrivals</span>
-            </button>
+                  {collectionsDropdown && (
+                    <div className="absolute left-0 mt-2 w-64 bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl p-3 z-[100] animate-fade-in">
+                      <div className="text-[11px] font-black uppercase text-emerald-400 px-2 py-1 border-b border-slate-800 mb-2">
+                        Collections ({dropdownColls.length})
+                      </div>
+                      <div className="space-y-1 max-h-60 overflow-y-auto custom-scrollbar">
+                        {dropdownColls.map(col => (
+                          <button
+                            key={col.id}
+                            onClick={() => {
+                              setCollectionsDropdown(false);
+                              const lowerSlug = String(col.slug || '').toLowerCase();
+                              const lowerName = String(col.name || '').toLowerCase();
+                              if (lowerSlug === 'offers' || lowerName.includes('offer')) {
+                                if (onSelectOffers) onSelectOffers();
+                                else if (navigateTo) navigateTo('/offers', { view: 'offers', slug: null, category: null, collection: null });
+                              } else if (lowerSlug === 'bestsellers' || lowerName.includes('best seller')) {
+                                if (onSelectBestSellers) onSelectBestSellers();
+                                else if (navigateTo) navigateTo('/bestsellers', { view: 'bestsellers', slug: null, category: null, collection: null });
+                              } else if (lowerSlug === 'new-arrivals' || lowerName.includes('new arrival')) {
+                                if (onSelectNewArrivals) onSelectNewArrivals();
+                                else if (navigateTo) navigateTo('/new-arrivals', { view: 'new_arrivals', slug: null, category: null, collection: null });
+                              } else {
+                                if (onSelectCollection) onSelectCollection(col.id);
+                                else if (navigateTo) navigateTo(`/collection/${col.slug || col.id}`, { view: 'collection', slug: col.slug, collection: col.id });
+                              }
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-emerald-950/80 hover:text-emerald-300 font-bold transition-colors flex items-center justify-between cursor-pointer"
+                          >
+                            <span className="truncate">{col.name}</span>
+                            <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">
+                              {col.product_count !== undefined ? col.product_count : (col.product_ids ? col.product_ids.length : 0)} items
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* DYNAMIC TOP NAVBAR COLLECTIONS (MANAGED DYNAMICALLY IN ADMIN PANEL) */}
+            {(() => {
+              const activeNavColls = collections ? collections.filter(c => c.show_in_navbar === 1 || c.show_in_navbar === true || String(c.show_in_navbar) === '1') : [];
+
+              if (activeNavColls.length > 0) {
+                return activeNavColls.map(navCol => {
+                  const lowerSlug = String(navCol.slug || '').toLowerCase();
+                  const lowerName = String(navCol.name || '').toLowerCase();
+
+                  const handleNavClick = () => {
+                    if (lowerSlug === 'offers' || lowerName.includes('offer')) {
+                      if (onSelectOffers) onSelectOffers();
+                      else if (navigateTo) navigateTo('/offers', { view: 'offers', slug: null, category: null, collection: null });
+                    } else if (lowerSlug === 'bestsellers' || lowerName.includes('best seller')) {
+                      if (onSelectBestSellers) onSelectBestSellers();
+                      else if (navigateTo) navigateTo('/bestsellers', { view: 'bestsellers', slug: null, category: null, collection: null });
+                    } else if (lowerSlug === 'new-arrivals' || lowerName.includes('new arrival')) {
+                      if (onSelectNewArrivals) onSelectNewArrivals();
+                      else if (navigateTo) navigateTo('/new-arrivals', { view: 'new_arrivals', slug: null, category: null, collection: null });
+                    } else {
+                      if (onSelectCollection) onSelectCollection(navCol.id);
+                      else if (navigateTo) navigateTo(`/collection/${navCol.slug || navCol.id}`, { view: 'collection', slug: navCol.slug, collection: navCol.id });
+                    }
+                  };
+
+                  return (
+                    <button 
+                      key={navCol.id}
+                      type="button"
+                      onClick={handleNavClick}
+                      className="hover:text-emerald-300 text-slate-100 font-extrabold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+                    >
+                      <span>{navCol.name}</span>
+                    </button>
+                  );
+                });
+              }
+
+              // Fallback if no collections have show_in_navbar enabled
+              return (
+                <>
+                  <button type="button" onClick={() => onSelectOffers ? onSelectOffers() : navigateTo('/offers', { view: 'offers' })} className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs">
+                    <span>🔥 Offers</span>
+                  </button>
+                  <button type="button" onClick={() => onSelectBestSellers ? onSelectBestSellers() : navigateTo('/bestsellers', { view: 'bestsellers' })} className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs">
+                    <span>⭐ Best Sellers</span>
+                  </button>
+                  <button type="button" onClick={() => onSelectNewArrivals ? onSelectNewArrivals() : navigateTo('/new-arrivals', { view: 'new_arrivals' })} className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs">
+                    <span>✨ New Arrivals</span>
+                  </button>
+                </>
+              );
+            })()}
 
             {/* 6. ABOUT US */}
             <button 
@@ -431,6 +524,30 @@ export default function Header({
           >
             <Grid size={16} /> All Products Catalog
           </button>
+
+          {collections && collections.length > 0 && (
+            <div className="space-y-2 py-2 border-b">
+              <span className="text-[10px] font-black uppercase text-emerald-700">📦 Collections ({collections.length})</span>
+              <div className="pl-2 space-y-1.5 max-h-40 overflow-y-auto">
+                {collections.map(col => (
+                  <button 
+                    key={col.id}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      if (onSelectCollection) onSelectCollection(col.id);
+                      else if (navigateTo) navigateTo(`/collection/${col.slug || col.id}`, { view: 'collection', slug: col.slug, collection: col.id });
+                    }}
+                    className="w-full text-left py-1 text-gray-800 font-bold flex items-center justify-between text-xs hover:text-emerald-600"
+                  >
+                    <span>📦 {col.name}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">
+                      {col.product_count !== undefined ? col.product_count : (col.product_ids ? col.product_ids.length : 0)} items
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2 py-2">
             <span className="text-[10px] font-black uppercase text-gray-400">Categories</span>

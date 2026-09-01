@@ -27,12 +27,22 @@ test-backend.cjs
 take-admin-screenshot.cjs
 
 # Database Files & Uploads
+*.db
+*.sqlite
+*.sqlite3
 *.db-journal
 *.db-shm
 *.db-wal
 server/*.db
 server/*.sqlite*
 server/uploads/
+fallback_db.json
+server/fallback_db.json
+backend/fallback_db.json
+ecommerce.db
+database.sqlite
+audit_summary.json
+exhaustive_audit_summary.json
 
 # Logs & System Files
 logs

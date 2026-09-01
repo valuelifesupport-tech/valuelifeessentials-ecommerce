@@ -1,7 +1,8 @@
+import { getApiUrl } from '../api/config';
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, DollarSign, ShoppingBag, Eye, Star, Plus, Trash2, Edit, Upload, CheckCircle, XCircle, 
-  MessageSquare, Tag, Image, Layers, BarChart2, Globe, TrendingUp, Sparkles, LogOut, ExternalLink, Settings, Wrench, ToggleLeft, ToggleRight, Download, Printer, FileText, Send, Grid, Package, ShieldCheck, HelpCircle, Link as LinkIcon, Search, ChevronRight, ChevronDown, Filter, Heart, Megaphone
+  Users, DollarSign, ShoppingBag, Eye, Star, Plus, Trash2, Edit, Upload, CheckCircle, XCircle, X,
+  MessageSquare, Tag, Image, Image as ImageIcon, Layers, BarChart2, Globe, TrendingUp, Sparkles, LogOut, ExternalLink, Settings, Wrench, ToggleLeft, ToggleRight, Download, Printer, FileText, Send, Grid, Package, ShieldCheck, HelpCircle, Link as LinkIcon, Search, ChevronRight, ChevronDown, Filter, Heart, Megaphone, RefreshCw, FolderOpen, GripVertical, UploadCloud, Truck, Phone, Mail, MapPin, AlertTriangle, Check, Clock
 } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, BarElement, Filler } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
@@ -11,6 +12,28 @@ import HeroSection from './HeroSection';
 import PromoBannerSlider from './PromoBannerSlider';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
+
+const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80') => {
+  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
+  let clean = url.trim();
+
+  if (clean.startsWith('data:')) return clean;
+
+  if (clean.includes('/uploads/')) {
+    const filename = clean.split('/uploads/').pop();
+    return getApiUrl(`/api/media/file/${filename}`);
+  }
+
+  if (clean.includes('/images/')) {
+    const relative = clean.split('/images/').pop();
+    return `/images/${relative}`;
+  }
+
+  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
+  const path = clean.startsWith('/') ? clean : `/${clean}`;
+  return getApiUrl(path);
+};
 
 export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig: propSectionsConfig, onUpdateSectionsConfig, settings: propSettings, onUpdateSettings }) {
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'analytics');
@@ -29,6 +52,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [selectedCatForSubcat, setSelectedCatForSubcat] = useState(null);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -56,6 +80,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [limitTotalUses, setLimitTotalUses] = useState(false);
   const [limitTotalUsesVal, setLimitTotalUsesVal] = useState(100);
   const [limitOnePerCustomer, setLimitOnePerCustomer] = useState(true);
+
+  // DRAG AND DROP STATES FOR PRODUCT MEDIA
+  const [isDraggingOverArea, setIsDraggingOverArea] = useState(false);
+  const [draggedImageIndex, setDraggedImageIndex] = useState(null);
+  const [dragOverImageIndex, setDragOverImageIndex] = useState(null);
 
   // ORDER DETAILS & MESSAGES MODAL
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
@@ -101,27 +130,25 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   // SHOPIFY STYLE PRODUCT FORM
   const defaultProductForm = {
     title: '', sku: '', status: 'Active', vendor: 'ValueLife Essentials', product_type: 'Garden Supplies', 
-    tags: ['organic', 'wellness', 'health'], collection_ids: [1],
+    tags: ['organic', 'wellness', 'health'], collection_ids: [],
     category_id: 1, subcategory_id: '', description: '', 
-    price_inr: 499, price_usd: 12, discount_inr: 349, discount_usd: 9, 
-    compare_price_inr: 599, compare_price_usd: 15, cost_per_item_inr: 180, cost_per_item_usd: 5,
+    price_inr: '', price_usd: '', discount_inr: '', discount_usd: '', 
+    compare_price_inr: '', compare_price_usd: '', cost_per_item_inr: '', cost_per_item_usd: '',
     barcode: '', stock: 100, track_inventory: 1, weight: 0.5, hs_code: '310100', country_of_origin: 'India',
     is_best_product: false, 
     seo_title: '', seo_description: '', url_handle: '',
-    images: [
-      'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80'
-    ], 
+    images: [], 
     specs_json: '{"material":"100% Certified Organic","ideal_for":"Health & Wellness","durability":"2 Years Shelf Life"}'
   };
 
   const [productForm, setProductForm] = useState(defaultProductForm);
 
   const [collectionForm, setCollectionForm] = useState({
-    name: '', description: '', image_url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', category_id: '', product_ids: []
+    name: '', description: '', image_url: '', category_id: '', product_ids: []
   });
 
   const [variantForm, setVariantForm] = useState({ variant_name: '', price_inr: 149, price_usd: 4, discount_inr: 99, discount_usd: 3, stock: 50 });
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', icon: '🌿', image_url: '' });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', icon: '', image_url: '' });
   const [subcategoryName, setSubcategoryName] = useState('');
   const [bannerForm, setBannerForm] = useState({ title: '100% Certified Organic & Wellness Products', subtitle: 'Boost your health naturally with ValueLife Essentials', image_url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=1200&q=80', link_url: '/products' });
   const [couponForm, setCouponForm] = useState({ code: 'VALUELIFE15', discount_type: 'PERCENT', discount_value: 15, min_spend_inr: 300, min_spend_usd: 10 });
@@ -141,7 +168,16 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [filterGroups, setFilterGroups] = useState([]);
   const [newGroupForm, setNewGroupForm] = useState({ name: '', filter_key: '' });
   const [newOptionInputs, setNewOptionInputs] = useState({});
-  const [newVariantInput, setNewVariantInput] = useState({ name: '', price: '', stock: '' });
+  const [newVariantForm, setNewVariantForm] = useState({ variant_name: '', price_inr: '', stock: '100' });
+  const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
+  const [isSubcatDropdownOpen, setIsSubcatDropdownOpen] = useState(false);
+
+  const [mediaFiles, setMediaFiles] = useState([]);
+  const [mediaSearch, setMediaSearch] = useState('');
+  const [mediaFilter, setMediaFilter] = useState('ALL');
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [previewMediaItem, setPreviewMediaItem] = useState(null);
+  const [showProductMediaPickerModal, setShowProductMediaPickerModal] = useState(false);
 
   const [adminProductPage, setAdminProductPage] = useState(1);
   const adminItemsPerPage = 10;
@@ -220,7 +256,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const fetchUsersData = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/users');
+      const res = await fetch(getApiUrl('/api/admin/users'));
       const data = await res.json();
       if (Array.isArray(data)) setUsers(data);
     } catch (err) {}
@@ -229,7 +265,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleViewUserDetails = async (user) => {
     setLoadingUserDossier(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${user.id}/details`);
+      const res = await fetch(getApiUrl(`/api/admin/users/${user.id}/details`));
       const data = await res.json();
       setSelectedUserDossier(data);
     } catch (err) {
@@ -241,7 +277,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleUpdateUserRole = async (userId, newRole) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/role`, {
+      const res = await fetch(getApiUrl(`/api/admin/users/${userId}/role`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole })
@@ -262,7 +298,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const fetchGstSummaryData = async (monthKey = selectedGstMonth) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/gst-report/summary?month=${monthKey}`);
+      const res = await fetch(getApiUrl(`/api/admin/gst-report/summary?month=${monthKey}`));
       const data = await res.json();
       setGstSummaryData(data);
     } catch (err) {}
@@ -271,8 +307,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const fetchTaxesData = async () => {
     try {
       const [res1, res2] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/taxes/states'),
-        fetch('http://localhost:5000/api/admin/taxes/overrides')
+        fetch(getApiUrl('/api/admin/taxes/states')),
+        fetch(getApiUrl('/api/admin/taxes/overrides'))
       ]);
       const data1 = await res1.json();
       const data2 = await res2.json();
@@ -288,7 +324,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleSaveStateTaxRates = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/taxes/states', {
+      const res = await fetch(getApiUrl('/api/admin/taxes/states'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rates: stateTaxRates })
@@ -303,7 +339,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleResetStateTaxRates = async () => {
     if (!window.confirm('Reset all state tax rates to default?')) return;
     try {
-      const res = await fetch('http://localhost:5000/api/admin/taxes/states/reset', { method: 'POST' });
+      const res = await fetch(getApiUrl('/api/admin/taxes/states/reset'), { method: 'POST' });
       if (res.ok) {
         if (showToast) showToast('info', 'Tax Rates Reset', 'All state base tax rates reset to default.');
         fetchTaxesData();
@@ -318,7 +354,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       return;
     }
     try {
-      const res = await fetch('http://localhost:5000/api/admin/taxes/overrides', {
+      const res = await fetch(getApiUrl('/api/admin/taxes/overrides'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOverrideForm)
@@ -333,7 +369,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleDeleteTaxOverride = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/taxes/overrides/${id}`, { method: 'DELETE' });
+      const res = await fetch(getApiUrl(`/api/admin/taxes/overrides/${id}`), { method: 'DELETE' });
       if (res.ok) {
         if (showToast) showToast('info', 'Tax Override Deleted', 'Tax override rule removed.');
         fetchTaxesData();
@@ -369,7 +405,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/analytics');
+      const res = await fetch(getApiUrl('/api/admin/analytics'));
       setAnalytics(await res.json());
     } catch (err) {}
   };
@@ -390,7 +426,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleThemeSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/admin/theme-config', {
+      const res = await fetch(getApiUrl('/api/admin/theme-config'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(themeConfig)
@@ -483,49 +519,98 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     card_2_img: 'https://images.unsplash.com/photo-1592417817098-8f3d6ef23a2a?auto=format&fit=crop&w=600&q=80'
   });
 
-  const fetchAdminData = async () => {
-    try {
-      const [prodRes, catRes, collRes, revRes, banRes, cpnRes, ordRes, usrRes, setRes, pageRes, fltRes, heroRes, thmRes] = await Promise.all([
-        fetch('http://localhost:5000/api/products'),
-        fetch('http://localhost:5000/api/categories'),
-        fetch('http://localhost:5000/api/collections'),
-        fetch('http://localhost:5000/api/admin/reviews'),
-        fetch('http://localhost:5000/api/banners'),
-        fetch('http://localhost:5000/api/coupons'),
-        fetch('http://localhost:5000/api/admin/orders'),
-        fetch('http://localhost:5000/api/admin/users'),
-        fetch('http://localhost:5000/api/settings'),
-        fetch('http://localhost:5000/api/pages'),
-        fetch('http://localhost:5000/api/filter-groups'),
-        fetch('http://localhost:5000/api/hero-config'),
-        fetch('http://localhost:5000/api/theme-config')
-      ]);
-
-      const prods = await prodRes.json() || [];
-      setProducts(prods);
-      setCategories(await catRes.json() || []);
-      setCollections(await collRes.json() || []);
-      setReviews(await revRes.json() || []);
-      setBanners(await banRes.json() || []);
-      setCoupons(await cpnRes.json() || []);
-      setOrders(await ordRes.json() || []);
-      setUsers(await usrRes.json() || []);
-      const sets = await setRes.json();
-      if (sets) {
-        setSettings(sets);
-        setSettingsForm(sets);
+  const safeFetchJson = async (url, retries = 2) => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const res = await fetch(getApiUrl(url));
+        if (res.ok) {
+          const text = await res.text();
+          if (!text || !text.trim()) return null;
+          try {
+            return JSON.parse(text);
+          } catch (e) {
+            return null;
+          }
+        }
+        if (res.status === 503 && i < retries) {
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+        return null;
+      } catch (e) {
+        if (i < retries) {
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+        return null;
       }
-      setPages(await pageRes.json() || []);
-      setFilterGroups(await fltRes.json() || []);
-      const [hData, tData, secData] = await Promise.all([
-        heroRes.json(),
-        thmRes.json(),
-        fetch('/api/sections-config').then(r => r.json()).catch(() => ({}))
-      ]);
-      if (hData && hData.id) setHeroConfig(hData);
-      if (tData && tData.id) setThemeConfig(tData);
-      if (secData && secData.id) setSectionsConfig(secData);
-    } catch (err) {}
+    }
+    return null;
+  };
+
+  const [loadedTabs, setLoadedTabs] = useState(new Set());
+
+  const fetchTabData = async (tab) => {
+    if (loadedTabs.has(tab)) return;
+
+    try {
+      if (tab === 'media') {
+        const meds = await safeFetchJson('/api/media');
+        if (meds && Array.isArray(meds)) setMediaFiles(meds);
+      } else if (tab === 'users' || tab === 'customers') {
+        const usrs = await safeFetchJson('/api/admin/users');
+        if (usrs) setUsers(usrs);
+      } else if (tab === 'banners') {
+        const bans = await safeFetchJson('/api/banners');
+        if (bans) setBanners(bans);
+      } else if (tab === 'coupons') {
+        const cpns = await safeFetchJson('/api/coupons');
+        if (cpns) setCoupons(cpns);
+      } else if (tab === 'reviews') {
+        const revs = await safeFetchJson('/api/admin/reviews');
+        if (revs) setReviews(revs);
+      } else if (tab === 'pages') {
+        const pgs = await safeFetchJson('/api/pages');
+        if (pgs) setPages(pgs);
+      } else if (tab === 'filters') {
+        const flts = await safeFetchJson('/api/filter-groups');
+        if (flts) setFilterGroups(flts);
+      } else if (tab === 'hero') {
+        const hero = await safeFetchJson('/api/hero-config');
+        if (hero && hero.id) setHeroConfig(hero);
+      } else if (tab === 'theme') {
+        const thm = await safeFetchJson('/api/theme-config');
+        if (thm && thm.id) setThemeConfig(thm);
+      } else if (tab === 'sections') {
+        const sec = await safeFetchJson('/api/sections-config');
+        if (sec && sec.id) setSectionsConfig(sec);
+      }
+      setLoadedTabs(prev => new Set(prev).add(tab));
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchTabData(activeTab);
+  }, [activeTab]);
+
+  const fetchAdminData = async () => {
+    // Fast Essential Data load ONLY
+    const [prods, cats, colls, ords, sets] = await Promise.all([
+      safeFetchJson('/api/products?includeDrafts=true'),
+      safeFetchJson('/api/categories'),
+      safeFetchJson('/api/collections'),
+      safeFetchJson('/api/admin/orders'),
+      safeFetchJson('/api/settings')
+    ]);
+
+    if (prods) setProducts(prods);
+    if (cats) setCategories(cats);
+    if (colls) setCollections(colls);
+    if (ords) setOrders(ords);
+    if (sets) {
+      setSettings(sets);
+      setSettingsForm(sets);
+    }
   };
 
   const handleFetchOrderDetails = async (order) => {
@@ -537,7 +622,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     setAdminCancelReasonInput(order.cancellation_reason || '');
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/orders/${order.id}`);
+      const res = await fetch(getApiUrl(`/api/admin/orders/${order.id}`));
       if (res.ok) {
         const data = await res.json();
         setSelectedOrderDetails(data);
@@ -550,11 +635,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     } catch (err) {}
   };
 
+  const [updatingShippingStatus, setUpdatingShippingStatus] = useState(false);
+  const [savingOrderNote, setSavingOrderNote] = useState(false);
+
   const handleUpdateOrderShippingAndStatus = async (e) => {
     e.preventDefault();
     if (!selectedOrderDetails) return;
+    setUpdatingShippingStatus(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/orders/${selectedOrderDetails.id}/status`, {
+      const res = await fetch(getApiUrl(`/api/admin/orders/${selectedOrderDetails.id}/status`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -564,8 +653,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
           cancellation_reason: adminCancelReasonInput
         })
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         const updatedOrder = data.order || {
           ...selectedOrderDetails,
           order_status: adminOrderStatusInput,
@@ -575,35 +664,49 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         };
         setSelectedOrderDetails(updatedOrder);
         fetchAdminData();
-        if (showToast) showToast('success', 'Order & Shipping Updated', `Order set to ${adminOrderStatusInput}`);
+        if (showToast) showToast('success', 'Shipping Status Updated', `Order ${selectedOrderDetails.order_number || ''} set to ${adminOrderStatusInput}!`);
+      } else {
+        if (showToast) showToast('error', 'Update Failed', data.error || 'Failed to update shipping status.');
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Network Error', 'Could not save shipping status update.');
+    } finally {
+      setUpdatingShippingStatus(false);
+    }
   };
 
   const handleSaveOrderNotes = async (e) => {
     e.preventDefault();
     if (!selectedOrderDetails) return;
+    setSavingOrderNote(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/orders/${selectedOrderDetails.id}/notes`, {
+      const res = await fetch(getApiUrl(`/api/admin/orders/${selectedOrderDetails.id}/notes`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_notes: orderNoteInput })
       });
+      const data = await res.json();
       if (res.ok) {
         setSelectedOrderDetails({ ...selectedOrderDetails, order_notes: orderNoteInput });
         fetchAdminData();
-        if (showToast) showToast('success', 'Order Message Saved', 'Order delivery note updated.');
+        if (showToast) showToast('success', 'Order Note Saved', `Customer delivery instructions updated successfully!`);
+      } else {
+        if (showToast) showToast('error', 'Save Failed', data.error || 'Failed to save order note.');
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Network Error', 'Could not save order note.');
+    } finally {
+      setSavingOrderNote(false);
+    }
   };
 
   const handleDownloadUsersCSV = () => {
-    window.open('http://localhost:5000/api/admin/users/export', '_blank');
+    window.open(getApiUrl('/api/admin/users/export'), '_blank');
     if (showToast) showToast('info', 'Downloading CSV', 'Exporting user details CSV file...');
   };
 
   const handleDownloadGstCSV = (monthKey = selectedGstMonth) => {
-    window.open(`http://localhost:5000/api/admin/gst-report/export?month=${monthKey}`, '_blank');
+    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey}`), '_blank');
     if (showToast) showToast('info', 'Downloading Monthly GST Tax Register', `Exporting GST B2C & B2B Sales Report CSV for ${monthKey === 'ALL' ? 'All Months' : monthKey}...`);
   };
 
@@ -614,16 +717,131 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     if (showToast) showToast('success', 'Image Added', 'New product image added.');
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProductForm({ ...productForm, images: [...productForm.images, reader.result] });
-        if (showToast) showToast('success', 'File Uploaded', `${file.name} uploaded!`);
-      };
-      reader.readAsDataURL(file);
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch(getApiUrl('/api/upload'), {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.imageUrl) {
+          uploadedUrls.push(data.imageUrl);
+        } else if (data.fullUrl) {
+          uploadedUrls.push(data.fullUrl);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        setProductForm(prev => ({
+          ...prev,
+          images: [...(prev.images || []), ...uploadedUrls]
+        }));
+        if (showToast) showToast('success', 'Images Uploaded', `${uploadedUrls.length} image(s) uploaded successfully.`);
+      }
+    } catch (err) {
+      console.error('Multiple image upload error:', err);
+      if (showToast) showToast('error', 'Upload Failed', err.message);
     }
+  };
+
+  // DRAG & DROP FILE UPLOAD HANDLER FOR PRODUCT MEDIA
+  const processFilesForUpload = async (filesList) => {
+    const files = Array.from(filesList || []);
+    if (files.length === 0) return;
+
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch(getApiUrl('/api/upload'), {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.imageUrl) {
+          uploadedUrls.push(data.imageUrl);
+        } else if (data.fullUrl) {
+          uploadedUrls.push(data.fullUrl);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        setProductForm(prev => ({
+          ...prev,
+          images: [...(prev.images || []), ...uploadedUrls]
+        }));
+        if (showToast) showToast('success', 'Images Uploaded', `${uploadedUrls.length} image(s) attached via Drag & Drop.`);
+      }
+    } catch (err) {
+      console.error('Drag & drop upload error:', err);
+      if (showToast) showToast('error', 'Upload Failed', err.message);
+    }
+  };
+
+  const handleDropFilesOnArea = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOverArea(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFilesForUpload(e.dataTransfer.files);
+    }
+  };
+
+  const handleDragOverArea = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDraggingOverArea) setIsDraggingOverArea(true);
+  };
+
+  const handleDragLeaveArea = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOverArea(false);
+  };
+
+  // DRAG & DROP THUMBNAIL REORDERING HANDLERS
+  const handleThumbnailDragStart = (e, index) => {
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedImageIndex(index);
+  };
+
+  const handleThumbnailDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverImageIndex !== index) {
+      setDragOverImageIndex(index);
+    }
+  };
+
+  const handleThumbnailDrop = (e, dropIndex) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sourceIndex = draggedImageIndex !== null ? draggedImageIndex : Number(e.dataTransfer.getData('text/plain'));
+    
+    if (sourceIndex === null || sourceIndex === undefined || isNaN(sourceIndex) || sourceIndex === dropIndex) {
+      setDraggedImageIndex(null);
+      setDragOverImageIndex(null);
+      return;
+    }
+
+    const newImages = [...(productForm.images || [])];
+    const [movedItem] = newImages.splice(sourceIndex, 1);
+    newImages.splice(dropIndex, 0, movedItem);
+
+    setProductForm(prev => ({ ...prev, images: newImages }));
+    setDraggedImageIndex(null);
+    setDragOverImageIndex(null);
+    if (showToast) showToast('info', 'Images Reordered', sourceIndex === 0 || dropIndex === 0 ? 'Primary product image updated!' : 'Product gallery order updated.');
   };
 
   const handleRemoveImage = (index) => {
@@ -660,17 +878,59 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     setProductForm({ ...productForm, collection_ids: updated });
   };
 
+  const isDuplicateSku = React.useMemo(() => {
+    if (!productForm.sku || !productForm.sku.trim()) return false;
+    const cleanSku = productForm.sku.trim().toUpperCase();
+    const targetId = editingProduct?.id || productForm?.id;
+    return products.some(p => {
+      if (targetId && (p.id === targetId || String(p.id) === String(targetId) || Number(p.id) === Number(targetId))) {
+        return false;
+      }
+      return (
+        p.sku?.toUpperCase() === cleanSku || 
+        p.variants?.some(v => v.sku?.toUpperCase() === cleanSku)
+      );
+    });
+  }, [productForm.sku, productForm.id, editingProduct, products]);
+
   const handleProductSubmit = async (e) => {
     e.preventDefault();
+
+    if (!productForm.category_id) {
+      if (showToast) showToast('error', 'Category Required', 'Main Category select karna mandatory (required) hai. Please select a Main Category.');
+      setIsCatDropdownOpen(true);
+      return;
+    }
+
+    let finalSku = productForm.sku;
+    if (isDuplicateSku || !finalSku || !finalSku.trim()) {
+      finalSku = `VLE-PROD-${Math.floor(100 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
+    }
+
     try {
       const isEdit = !!editingProduct;
-      const url = isEdit ? `http://localhost:5000/api/products/${editingProduct.id}` : 'http://localhost:5000/api/products';
+      const url = isEdit ? getApiUrl(`/api/products/${editingProduct.id}`) : getApiUrl('/api/products');
       const method = isEdit ? 'PUT' : 'POST';
+
+      const cleanFormImages = (productForm.images || [])
+        .map(img => (typeof img === 'object' && img?.image_url) ? img.image_url : img)
+        .filter(Boolean);
+
+      const cleanFormVariants = (productForm.variants || []).map(v => ({
+        ...v,
+        variant_name: v.variant_name || v.name || 'Standard Pack',
+        price_inr: Number(v.price_inr || v.price || productForm.price_inr || 0),
+        price_usd: Number(v.price_usd || Math.round((Number(v.price_inr || productForm.price_inr || 0)) / 40)),
+        stock: Number(v.stock !== undefined ? v.stock : 50),
+        image_url: typeof v.image_url === 'object' ? v.image_url?.image_url : (v.image_url || cleanFormImages[0] || null)
+      }));
 
       const payload = {
         ...productForm,
+        images: cleanFormImages,
+        variants: cleanFormVariants,
         tags: Array.isArray(productForm.tags) ? productForm.tags.join(', ') : productForm.tags,
-        sku: productForm.sku || `OB-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+        sku: finalSku
       };
 
       const res = await fetch(url, {
@@ -683,15 +943,20 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         setEditingProduct(null);
         fetchAdminData();
         if (showToast) showToast('success', 'Product Saved', isEdit ? 'Product updated!' : 'New product created!');
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Save Product Error', errorData.error || `Server returned HTTP status ${res.status}`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Network Error', err.message || 'Could not connect to backend server');
+    }
   };
 
   const handleAddVariant = async (e) => {
     e.preventDefault();
     if (!selectedProductForVariants) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${selectedProductForVariants.id}/variants`, {
+      const res = await fetch(getApiUrl(`/api/products/${selectedProductForVariants.id}/variants`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(variantForm)
@@ -706,7 +971,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleUpdateProductStock = async (productId, newStock) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${productId}/stock`, {
+      const res = await fetch(getApiUrl(`/api/products/${productId}/stock`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stock: Number(newStock) })
@@ -720,7 +985,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleUpdateVariantStock = async (variantId, newStock) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/variants/${variantId}/stock`, {
+      const res = await fetch(getApiUrl(`/api/variants/${variantId}/stock`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stock: Number(newStock) })
@@ -733,7 +998,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const handleDeleteVariant = async (id) => {
-    await fetch(`http://localhost:5000/api/variants/${id}`, { method: 'DELETE' });
+    await fetch(getApiUrl(`/api/variants/${id}`), { method: 'DELETE' });
     fetchAdminData();
     if (showToast) showToast('info', 'Variant Deleted', 'Variant deleted.');
   };
@@ -741,24 +1006,59 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/categories', {
-        method: 'POST',
+      const isEdit = Boolean(editingCategory);
+      const url = isEdit ? getApiUrl(`/api/categories/${editingCategory.id}`) : getApiUrl('/api/categories');
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(categoryForm)
       });
       if (res.ok) {
         setShowCategoryModal(false);
-        fetchAdminData();
-        if (showToast) showToast('success', 'Category Created', `Added ${categoryForm.name}`);
+        setEditingCategory(null);
+        setCategoryForm({ name: '', description: '', image_url: '', icon: '' });
+        await fetchAdminData();
+        if (showToast) showToast('success', isEdit ? 'Category Updated' : 'Category Created', `Category "${categoryForm.name}" saved successfully.`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Category Save Failed', err.message);
+    }
+  };
+
+  const handleCollectionSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const isEdit = Boolean(editingCollection);
+      const url = isEdit 
+        ? getApiUrl(`/api/collections/${editingCollection.id}`)
+        : getApiUrl('/api/collections');
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectionForm)
+      });
+
+      if (res.ok) {
+        setShowCollectionModal(false);
+        setEditingCollection(null);
+        setCollectionForm({ name: '', description: '', image_url: '', category_id: '', product_ids: [] });
+        await fetchAdminData();
+        if (showToast) showToast('success', isEdit ? 'Collection Updated' : 'Collection Created', `Collection "${collectionForm.name}" saved successfully.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Failed to Save Collection', err.message);
+    }
   };
 
   const handleSubcategorySubmit = async (e) => {
     e.preventDefault();
     if (!selectedCatForSubcat) return;
     try {
-      const res = await fetch('http://localhost:5000/api/subcategories', {
+      const res = await fetch(getApiUrl('/api/subcategories'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category_id: selectedCatForSubcat.id, name: subcategoryName })
@@ -775,7 +1075,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleBannerSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/banners', {
+      const res = await fetch(getApiUrl('/api/banners'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bannerForm)
@@ -797,7 +1097,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         applies_to_type: browseTargetType,
         target_ids: (discountSelections.applies_to || []).map(i => i.id)
       };
-      const res = await fetch('http://localhost:5000/api/coupons', {
+      const res = await fetch(getApiUrl('/api/coupons'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -814,7 +1114,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     const updatedForm = { ...settingsForm, [key]: newValue };
     setSettingsForm(updatedForm);
     try {
-      const res = await fetch('http://localhost:5000/api/settings', {
+      const res = await fetch(getApiUrl('/api/settings'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedForm)
@@ -834,7 +1134,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleSettingsSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/settings', {
+      const res = await fetch(getApiUrl('/api/settings'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settingsForm)
@@ -854,7 +1154,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     e.preventDefault();
     try {
       const isEdit = !!editingPage;
-      const url = isEdit ? `http://localhost:5000/api/admin/pages/${editingPage.id}` : 'http://localhost:5000/api/admin/pages';
+      const url = isEdit ? getApiUrl(`/api/admin/pages/${editingPage.id}`) : getApiUrl('/api/admin/pages');
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -879,7 +1179,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       confirmText: 'Delete Page',
       danger: true,
       onConfirm: async () => {
-        await fetch(`http://localhost:5000/api/admin/pages/${id}`, { method: 'DELETE' });
+        await fetch(getApiUrl(`/api/admin/pages/${id}`), { method: 'DELETE' });
         fetchAdminData();
         if (showToast) showToast('info', 'Page Deleted', 'Custom page deleted.');
       }
@@ -889,14 +1189,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleAddFilterGroup = async (e) => {
     e.preventDefault();
     if (!newGroupForm.name) return;
-    const res = await fetch('http://localhost:5000/api/admin/filter-groups', {
+    const res = await fetch(getApiUrl('/api/admin/filter-groups'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newGroupForm)
     });
     if (res.ok) {
       setNewGroupForm({ name: '', filter_key: '' });
-      fetchAdminData();
+      await fetchAdminData();
       if (showToast) showToast('success', 'Filter Group Added', 'New product filter group created!');
     }
   };
@@ -908,8 +1208,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       confirmText: 'Delete Group',
       danger: true,
       onConfirm: async () => {
-        await fetch(`http://localhost:5000/api/admin/filter-groups/${id}`, { method: 'DELETE' });
-        fetchAdminData();
+        await fetch(getApiUrl(`/api/admin/filter-groups/${id}`), { method: 'DELETE' });
+        await fetchAdminData();
         if (showToast) showToast('info', 'Filter Group Deleted', 'Filter group removed.');
       }
     });
@@ -918,14 +1218,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleAddFilterOption = async (groupId) => {
     const label = newOptionInputs[groupId];
     if (!label) return;
-    const res = await fetch('http://localhost:5000/api/admin/filter-options', {
+    const res = await fetch(getApiUrl('/api/admin/filter-options'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ group_id: groupId, label })
     });
     if (res.ok) {
       setNewOptionInputs({ ...newOptionInputs, [groupId]: '' });
-      fetchAdminData();
+      await fetchAdminData();
       if (showToast) showToast('success', 'Option Added', 'Filter pill option added!');
     }
   };
@@ -937,7 +1237,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       confirmText: 'Remove Option',
       danger: true,
       onConfirm: async () => {
-        await fetch(`http://localhost:5000/api/admin/filter-options/${optId}`, { method: 'DELETE' });
+        await fetch(getApiUrl(`/api/admin/filter-options/${optId}`), { method: 'DELETE' });
         fetchAdminData();
         if (showToast) showToast('info', 'Option Removed', 'Filter option deleted.');
       }
@@ -946,7 +1246,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleHeroSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:5000/api/admin/hero-config', {
+    const res = await fetch(getApiUrl('/api/admin/hero-config'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(heroConfig)
@@ -963,13 +1263,24 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const handleOrderStatus = async (id, order_status) => {
-    await fetch(`http://localhost:5000/api/admin/orders/${id}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_status })
-    });
-    fetchAdminData();
-    if (showToast) showToast('success', 'Order Updated', `Order set to ${order_status}`);
+    try {
+      let res = await fetch(getApiUrl(`/api/admin/orders/${id}/status`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_status })
+      });
+      if (!res.ok) {
+        res = await fetch(getApiUrl(`/api/admin/orders/${id}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_status })
+        });
+      }
+      fetchAdminData();
+      if (showToast) showToast('success', 'Order Updated', `Order #${id} status changed to ${order_status}`);
+    } catch (err) {
+      if (showToast) showToast('error', 'Update Error', err.message || 'Failed to update order status');
+    }
   };
 
   const selectedCategoryObj = categories.find(c => c.id === Number(productForm.category_id));
@@ -1106,6 +1417,21 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     </div>
                     <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
                       {collections.length}
+                    </span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setActiveTab('media'); fetchAdminData(); }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                      activeTab === 'media' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <ImageIcon size={16} className="flex-shrink-0 text-emerald-400" /> 
+                      <span className="truncate whitespace-nowrap text-xs font-bold">Media Library</span>
+                    </div>
+                    <span className="bg-emerald-950 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md border border-emerald-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                      {mediaFiles.length}
                     </span>
                   </button>
 
@@ -1382,7 +1708,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
           <div className="flex items-center gap-4">
             <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 animate-pulse">
-              ● Live Users: {analytics?.liveUsers || 45}
+              ● Live Users: {analytics?.liveUsers ?? 0}
             </span>
             <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shadow-md">
               AD
@@ -1397,7 +1723,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-emerald-600 to-emerald-900 text-white p-5 rounded-2xl shadow-lg border border-emerald-500/30">
                   <span className="text-xs font-extrabold text-emerald-200 uppercase tracking-wider block">Live Active Users</span>
-                  <div className="text-3xl font-black mt-2">{analytics?.liveUsers || 42}</div>
+                  <div className="text-3xl font-black mt-2">{analytics?.liveUsers ?? 0}</div>
                   <span className="text-[11px] text-emerald-200 block mt-1">Real-time store visitors</span>
                 </div>
 
@@ -1409,7 +1735,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                 <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md">
                   <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">Total Visitors</span>
-                  <div className="text-3xl font-black mt-2 text-white">{(analytics?.totalVisitors || 112).toLocaleString('en-IN')}</div>
+                  <div className="text-3xl font-black mt-2 text-white">{(analytics?.totalVisitors ?? 0).toLocaleString('en-IN')}</div>
                   <span className="text-[11px] text-slate-400 block mt-1">Sessions tracked</span>
                 </div>
 
@@ -1621,7 +1947,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 <div className="flex items-center gap-2 w-full md:w-auto">
                   <select 
                     value={productCategoryFilter}
-                    onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    onChange={(e) => {
+                      setProductCategoryFilter(e.target.value);
+                      setAdminProductPage(1);
+                    }}
                     className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none"
                   >
                     <option value="ALL">All Categories</option>
@@ -1632,8 +1961,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                   <select 
                     value={productStatusFilter}
-                    onChange={(e) => setProductStatusFilter(e.target.value)}
-                    className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none"
+                    onChange={(e) => {
+                      setProductStatusFilter(e.target.value);
+                      setAdminProductPage(1);
+                    }}
+                    className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none font-sans"
                   >
                     <option value="ALL">All Statuses</option>
                     <option value="Active">Active</option>
@@ -1649,8 +1981,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <tr>
                       <th className="p-3">Thumbnail</th>
                       <th className="p-3">Title & SKU ID</th>
-                      <th className="p-3">Fixed Price INR (₹)</th>
-                      <th className="p-3">Fixed Price USD ($)</th>
+                      <th className="p-3">Base Price INR (₹)</th>
+                      <th className="p-3">Base Price USD ($)</th>
                       <th className="p-3">Variant Pills CRUD</th>
                       <th className="p-3">Actions</th>
                     </tr>
@@ -1659,21 +1991,38 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     {filteredProducts.slice((adminProductPage - 1) * adminItemsPerPage, adminProductPage * adminItemsPerPage).map(p => (
                       <tr key={p.id} className="hover:bg-slate-800/50 transition-colors">
                         <td className="p-3">
-                          <img src={p.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'} className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" />
+                          <img 
+                            src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
+                            alt={p.title}
+                            className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" 
+                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }}
+                          />
                         </td>
                         <td className="p-3">
                           <div className="font-bold text-white flex items-center gap-2">
-                            <span>{p.title}</span>
+                            <span>
+                              {(() => {
+                                let t = (p.title || '').trim();
+                                if (!t || t.startsWith('http://') || t.startsWith('https://')) {
+                                  if (p.description && p.description.trim()) {
+                                    const clean = p.description.replace(/<[^>]*>?/gm, '').trim();
+                                    if (clean) return clean.split('.')[0].slice(0, 70).trim();
+                                  }
+                                  return 'Organic Essential Product';
+                                }
+                                return t;
+                              })()}
+                            </span>
                             <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-[10px] font-bold px-2 py-0.5 rounded">
                               SKU: {p.sku || `OB-${p.id}`}
                             </span>
                           </div>
                           <div className="text-[11px] text-slate-400 font-mono">
-                            {p.category_name} {p.subcategory_name ? `➔ ${p.subcategory_name}` : ''} | Vendor: {p.vendor || 'OrganicBazar'}
+                            {p.category_name} {p.subcategory_name ? `➔ ${p.subcategory_name}` : ''} | Vendor: {p.vendor || 'VALUELIFE ESSENTIALS'}
                           </div>
                         </td>
-                        <td className="p-3 font-bold text-emerald-400">₹{p.discount_inr || p.price_inr}</td>
-                        <td className="p-3 font-bold text-blue-400">${p.discount_usd || p.price_usd}</td>
+                        <td className="p-3 font-extrabold text-emerald-400 text-sm">₹{p.price_inr !== undefined && p.price_inr !== null ? p.price_inr : (p.discount_inr || 0)}</td>
+                        <td className="p-3 font-extrabold text-blue-400 text-sm">${p.price_usd !== undefined && p.price_usd !== null ? p.price_usd : (p.discount_usd || 0)}</td>
                         <td className="p-3">
                           <button 
                             onClick={() => setSelectedProductForVariants(p)}
@@ -1685,15 +2034,24 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         <td className="p-3 flex items-center gap-2">
                           <button 
                             onClick={() => {
+                              let safeTitle = (p.title || '').trim();
+                              if (!safeTitle || safeTitle.startsWith('http://') || safeTitle.startsWith('https://')) {
+                                if (p.description && p.description.trim()) {
+                                  const clean = p.description.replace(/<[^>]*>?/gm, '').trim();
+                                  if (clean) safeTitle = clean.split('.')[0].slice(0, 70).trim();
+                                }
+                                if (!safeTitle || safeTitle.startsWith('http')) safeTitle = 'Organic Essential Product';
+                              }
+
                               setEditingProduct(p);
                               setProductForm({
-                                title: p.title,
+                                title: safeTitle,
                                 sku: p.sku || `OB-${p.id}`,
                                 status: p.status || 'Active',
-                                vendor: p.vendor || 'OrganicBazar',
+                                vendor: p.vendor || 'VALUELIFE ESSENTIALS',
                                 product_type: p.product_type || 'Garden Supplies',
                                 tags: p.tags ? (typeof p.tags === 'string' ? p.tags.split(',').map(t => t.trim()) : p.tags) : ['organic'],
-                                collection_ids: [1],
+                                collection_ids: p.collection_ids || (Array.isArray(p.collections) ? p.collections.map(c => typeof c === 'object' ? c.id : c) : []),
                                 category_id: p.category_id,
                                 subcategory_id: p.subcategory_id || '',
                                 description: p.description,
@@ -1715,7 +2073,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                 seo_title: p.seo_title || p.title,
                                 seo_description: p.seo_description || p.description,
                                 url_handle: `products/${p.slug}`,
-                                images: p.thumbnail ? [p.thumbnail] : ['https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80'],
+                                images: Array.isArray(p.images) && p.images.length > 0 
+                                  ? p.images 
+                                  : (p.image_url ? [p.image_url] : (p.thumbnail ? [p.thumbnail] : [])),
                                 specs_json: p.specs_json || '{"material":"100% Pure Bio Compost"}',
                                 gst_percent: p.gst_percent ?? '',
                                 variants: p.variants ? p.variants.map(v => ({ ...v })) : []
@@ -1730,7 +2090,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                           <button 
                             onClick={async () => {
-                              await fetch(`http://localhost:5000/api/products/${p.id}`, { method: 'DELETE' });
+                              await fetch(getApiUrl(`/api/products/${p.id}`), { method: 'DELETE' });
                               fetchAdminData();
                             }}
                             className="bg-rose-900/60 text-rose-300 p-1.5 rounded-lg hover:bg-rose-800 border border-rose-700"
@@ -1805,7 +2165,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <p className="text-xs text-slate-400">Add categories and attach custom subcategories.</p>
                 </div>
 
-                <button onClick={() => setShowCategoryModal(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1">
+                <button 
+                  onClick={() => {
+                    setEditingCategory(null);
+                    setCategoryForm({ name: '', description: '', icon: '', image_url: '' });
+                    setShowCategoryModal(true);
+                  }} 
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md"
+                >
                   <Plus size={16} /> Add New Main Category
                 </button>
               </div>
@@ -1820,12 +2187,38 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div className="flex items-center gap-2">
                         <button 
                           onClick={() => { setSelectedCatForSubcat(cat); setShowSubcategoryModal(true); }}
-                          className="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded text-[11px] font-bold"
+                          className="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded text-[11px] font-bold hover:bg-emerald-900 transition-colors"
                         >
                           + Subcategory
                         </button>
-                        <button onClick={async () => { await fetch(`http://localhost:5000/api/categories/${cat.id}`, { method: 'DELETE' }); fetchAdminData(); }} className="text-red-400 p-1">
-                          <Trash2 size={16} />
+                        <button 
+                          onClick={() => {
+                            setEditingCategory(cat);
+                            setCategoryForm({
+                              name: cat.name,
+                              icon: cat.icon || '🌿',
+                              description: cat.description || '',
+                              image_url: cat.image_url || ''
+                            });
+                            setShowCategoryModal(true);
+                          }} 
+                          className="bg-blue-900/60 text-blue-300 p-1.5 rounded-lg hover:bg-blue-800 border border-blue-700 flex items-center gap-1 text-[11px] font-bold transition-colors"
+                          title="Edit Category"
+                        >
+                          <Edit size={14} /> Edit
+                        </button>
+                        <button 
+                          onClick={async () => { 
+                            if (window.confirm(`Delete category "${cat.name}"?`)) {
+                              await fetch(getApiUrl(`/api/categories/${cat.id}`), { method: 'DELETE' }); 
+                              fetchAdminData();
+                              if (showToast) showToast('info', 'Category Deleted', `Category "${cat.name}" deleted.`);
+                            }
+                          }} 
+                          className="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 border border-red-500/30 transition-colors"
+                          title="Delete Category"
+                        >
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </div>
@@ -1838,7 +2231,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         {cat.subcategories?.map(sub => (
                           <span key={sub.id} className="bg-slate-800 text-slate-300 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1 border border-slate-700">
                             {sub.name}
-                            <button onClick={async () => { await fetch(`http://localhost:5000/api/subcategories/${sub.id}`, { method: 'DELETE' }); fetchAdminData(); }} className="text-red-400 hover:text-red-300 ml-1">
+                            <button onClick={async () => { await fetch(getApiUrl(`/api/subcategories/${sub.id}`), { method: 'DELETE' }); fetchAdminData(); }} className="text-red-400 hover:text-red-300 ml-1">
                               ×
                             </button>
                           </span>
@@ -1863,7 +2256,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 <button 
                   onClick={() => {
                     setEditingCollection(null);
-                    setCollectionForm({ name: '', description: '', image_url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', category_id: '', product_ids: [] });
+                    setCollectionForm({ name: '', description: '', image_url: '', category_id: '', show_in_navbar: 0, product_ids: [] });
                     setShowCollectionModal(true);
                   }}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md"
@@ -1872,64 +2265,302 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {collections.map(col => (
-                  <div key={col.id} className="p-4 border border-slate-800 rounded-xl bg-slate-850 space-y-3">
-                    <div className="relative h-32 rounded-lg overflow-hidden border border-slate-700">
-                      <img src={col.image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80'} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-950/60 p-3 flex flex-col justify-between">
-                        <span className="bg-emerald-950/90 text-emerald-400 border border-emerald-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded w-fit">
-                          /collection/{col.slug}
-                        </span>
-                        <h4 className="font-extrabold text-white text-base">{col.name}</h4>
+              {collections.length === 0 ? (
+                <div className="p-8 text-center bg-slate-850 border border-slate-800 rounded-2xl space-y-2">
+                  <p className="text-sm font-bold text-slate-300">No Custom Collections Created Yet</p>
+                  <p className="text-xs text-slate-400">Click "+ Create New Collection" above to create product collections & map items.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {collections.map(col => (
+                    <div key={col.id} className="p-4 border border-slate-800 rounded-xl bg-slate-850 space-y-3">
+                      <div className="relative h-32 rounded-lg overflow-hidden border border-slate-700">
+                        {col.image_url ? (
+                          <img 
+                            src={resolveImgUrl(col.image_url)} 
+                            alt={col.name}
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-r from-emerald-950 to-slate-900 flex items-center justify-center border border-slate-700">
+                            <span className="text-slate-400 font-bold text-xs uppercase tracking-wider">No Banner Image</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-slate-950/60 p-3 flex flex-col justify-between">
+                          <div className="flex justify-between items-center">
+                            <span className="bg-emerald-950/90 text-emerald-400 border border-emerald-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded w-fit">
+                              /collection/{col.slug}
+                            </span>
+                            {col.show_in_navbar === 1 && (
+                              <span className="bg-emerald-600 text-white font-extrabold text-[9px] px-2 py-0.5 rounded shadow">
+                                🌿 SHOW IN NAVBAR
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-extrabold text-white text-base">{col.name}</h4>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-300">{col.description}</p>
+
+                      <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 block uppercase">Top Navbar Link:</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const newStatus = (col.show_in_navbar === 1 || col.show_in_navbar === true) ? 0 : 1;
+                              await fetch(getApiUrl(`/api/collections/${col.id}/navbar-toggle`), {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ show_in_navbar: newStatus })
+                              });
+                              fetchAdminData();
+                              if (showToast) showToast('success', 'Navbar Visibility Updated', `Collection '${col.name}' navbar link turned ${newStatus === 1 ? 'ON' : 'OFF'}.`);
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold cursor-pointer transition-all border ${
+                              col.show_in_navbar === 1
+                                ? 'bg-emerald-950 text-emerald-400 border-emerald-700 hover:bg-emerald-900'
+                                : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800 hover:text-white'
+                            }`}
+                          >
+                            {col.show_in_navbar === 1 ? '🟢 SHOW IN NAVBAR (ON)' : '⚪ HIDDEN FROM NAVBAR (OFF)'}
+                          </button>
+                        </div>
+                        <div className="space-y-1 text-right">
+                          <span className="text-[10px] font-bold text-slate-400 block uppercase">Attached Products:</span>
+                          <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">{col.product_count || 0} Products</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-slate-800">
+                        <button 
+                          onClick={() => {
+                            setEditingCollection(col);
+                            setCollectionForm({
+                              name: col.name,
+                              description: col.description || '',
+                              image_url: col.image_url || '',
+                              category_id: col.category_id || '',
+                              show_in_navbar: col.show_in_navbar !== undefined ? col.show_in_navbar : 0,
+                              product_ids: col.product_ids || []
+                            });
+                            setShowCollectionModal(true);
+                          }}
+                          className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-lg text-xs border border-slate-700"
+                        >
+                          Edit Collection
+                        </button>
+
+                        <button 
+                          onClick={async () => {
+                            if (window.confirm(`Delete collection "${col.name}"?`)) {
+                              await fetch(getApiUrl(`/api/collections/${col.id}`), { method: 'DELETE' });
+                              fetchAdminData();
+                              if (showToast) showToast('info', 'Collection Deleted', 'Collection deleted successfully.');
+                            }
+                          }}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold px-3 py-2 rounded-lg text-xs border border-red-500/30"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-                    <p className="text-xs text-slate-300">{col.description}</p>
+          {/* TAB 4B: MEDIA LIBRARY MANAGER */}
+          {activeTab === 'media' && (
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-md space-y-6">
+              {/* TOP ACTION BAR */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <h3 className="text-xl font-extrabold text-white font-['Outfit'] flex items-center gap-2">
+                    <ImageIcon className="text-emerald-400" size={22} /> Centralized Media & Assets Manager
+                  </h3>
+                  <p className="text-xs text-slate-400">View all images across your store, upload multiple new assets, copy URLs, and manage files.</p>
+                </div>
 
-                    <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Mapped Category:</span>
-                        <span className="font-bold text-emerald-400">{col.category_name || 'All Categories'}</span>
-                      </div>
-                      <div className="space-y-1 text-right">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Attached Products:</span>
-                        <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">{col.product_count || 0} Products</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-2 border-t border-slate-800">
-                      <button 
-                        onClick={() => {
-                          setEditingCollection(col);
-                          setCollectionForm({
-                            name: col.name,
-                            description: col.description || '',
-                            image_url: col.image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80',
-                            category_id: col.category_id || '',
-                            product_ids: col.product_ids || []
-                          });
-                          setShowCollectionModal(true);
-                        }}
-                        className="flex-1 bg-blue-900/50 hover:bg-blue-800 text-blue-300 py-1.5 rounded-lg text-xs font-bold border border-blue-700 flex items-center justify-center gap-1"
-                      >
-                        <Edit size={14} /> Edit & Map Products
-                      </button>
-
-                      <button 
-                        onClick={async () => {
-                          await fetch(`http://localhost:5000/api/collections/${col.id}`, { method: 'DELETE' });
-                          fetchAdminData();
-                          if (showToast) showToast('info', 'Collection Deleted', 'Collection removed.');
-                        }}
-                        className="bg-rose-900/50 hover:bg-rose-800 text-rose-300 p-1.5 rounded-lg border border-rose-700"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <label className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-lg cursor-pointer flex items-center justify-center gap-2 transition-all w-full sm:w-auto">
+                    <Upload size={16} /> 
+                    <span>{mediaUploading ? 'Uploading Assets...' : '+ Upload New Images'}</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      disabled={mediaUploading}
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length === 0) return;
+                        setMediaUploading(true);
+                        try {
+                          for (const file of files) {
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            await fetch(getApiUrl('/api/upload'), { method: 'POST', body: formData });
+                          }
+                          await fetchAdminData();
+                          if (showToast) showToast('success', 'Media Uploaded', `${files.length} image(s) uploaded successfully!`);
+                        } catch (err) {
+                          if (showToast) showToast('error', 'Upload Failed', err.message);
+                        } finally {
+                          setMediaUploading(false);
+                        }
+                      }} 
+                      className="hidden" 
+                    />
+                  </label>
+                </div>
               </div>
+
+              {/* CONTROLS: SEARCH & FILTER TABS */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-850 p-4 rounded-xl border border-slate-800">
+                <div className="relative w-full sm:w-80">
+                  <input 
+                    type="text"
+                    placeholder="Search filename or image URL..."
+                    value={mediaSearch}
+                    onChange={(e) => setMediaSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono"
+                  />
+                  <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto text-xs font-bold">
+                  <span className="text-slate-400 text-[11px]">Filter:</span>
+                  <button 
+                    onClick={() => setMediaFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg border transition-all ${mediaFilter === 'ALL' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+                  >
+                    All Assets ({mediaFiles.length})
+                  </button>
+                  <button 
+                    onClick={() => setMediaFilter('UPLOADED')}
+                    className={`px-3 py-1.5 rounded-lg border transition-all ${mediaFilter === 'UPLOADED' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+                  >
+                    Uploaded Files ({mediaFiles.filter(m => m.source === 'UPLOADED_FILE').length})
+                  </button>
+                </div>
+              </div>
+
+              {/* MEDIA GALLERY GRID */}
+              {mediaFiles.length === 0 ? (
+                <div className="p-12 text-center bg-slate-850 border border-slate-800 rounded-2xl space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center mx-auto">
+                    <ImageIcon size={32} />
+                  </div>
+                  <h4 className="font-extrabold text-base text-white">No Media Files Found</h4>
+                  <p className="text-xs text-slate-400">Click "+ Upload New Images" above to add image assets to your store library.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {mediaFiles
+                    .filter(item => {
+                      if (mediaFilter === 'UPLOADED' && item.source !== 'UPLOADED_FILE') return false;
+                      if (mediaSearch) {
+                        const term = mediaSearch.toLowerCase();
+                        return (item.filename || '').toLowerCase().includes(term) || (item.url || '').toLowerCase().includes(term);
+                      }
+                      return true;
+                    })
+                    .map(item => (
+                      <div key={item.id} className="relative group bg-slate-850 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-slate-700 transition-all">
+                        <div className="relative h-36 bg-slate-900 overflow-hidden flex items-center justify-center p-1 cursor-pointer" onClick={() => setPreviewMediaItem(item)}>
+                          <img 
+                            src={resolveImgUrl(item.url)} 
+                            alt={item.filename}
+                            className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-300" 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                          <span className="absolute top-2 left-2 bg-slate-950/80 text-emerald-400 border border-slate-700 text-[9px] font-mono font-bold px-2 py-0.5 rounded shadow">
+                            {item.source === 'UPLOADED_FILE' ? '📁 FILE' : '🔗 DB'}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 space-y-2 border-t border-slate-800 bg-slate-900/60">
+                          <p className="text-[11px] font-bold text-white truncate" title={item.filename}>{item.filename}</p>
+
+                          <div className="flex items-center gap-1.5">
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(item.fullUrl || item.url);
+                                if (showToast) showToast('success', 'URL Copied!', 'Image URL copied to clipboard.');
+                              }}
+                              className="flex-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold py-1.5 px-2 rounded-lg text-[10px] flex items-center justify-center gap-1 border border-slate-700 transition-colors"
+                              title="Copy URL"
+                            >
+                              <LinkIcon size={11} /> Copy URL
+                            </button>
+
+                            {item.source === 'UPLOADED_FILE' && (
+                              <>
+                                <label className="bg-amber-950/80 hover:bg-amber-700 text-amber-300 hover:text-white p-1.5 rounded-lg border border-amber-800 transition-colors cursor-pointer flex items-center justify-center" title="Replace / Overwrite with New Image File">
+                                  <RefreshCw size={13} />
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      if (!window.confirm(`Replace image "${item.filename}" with new file "${file.name}"? The image URL will stay identical across all products.`)) return;
+                                      
+                                      const formData = new FormData();
+                                      formData.append('image', file);
+                                      formData.append('targetFilename', item.filename);
+
+                                      try {
+                                        const res = await fetch(getApiUrl('/api/media/replace'), {
+                                          method: 'POST',
+                                          body: formData
+                                        });
+                                        const data = await res.json();
+                                        if (res.ok) {
+                                          await fetchAdminData();
+                                          if (showToast) showToast('success', 'Image Replaced', `Image ${item.filename} replaced successfully!`);
+                                        } else {
+                                          if (showToast) showToast('error', 'Replace Failed', data.error);
+                                        }
+                                      } catch (err) {
+                                        if (showToast) showToast('error', 'Replace Error', err.message);
+                                      }
+                                    }} 
+                                    className="hidden" 
+                                  />
+                                </label>
+
+                                <button 
+                                  onClick={async () => {
+                                    if (window.confirm(`Delete image "${item.filename}" from server?`)) {
+                                      try {
+                                        const res = await fetch(getApiUrl(`/api/media/${encodeURIComponent(item.filename)}`), { method: 'DELETE' });
+                                        if (res.ok) {
+                                          fetchAdminData();
+                                          if (showToast) showToast('info', 'Deleted', `File ${item.filename} deleted.`);
+                                        } else {
+                                          if (showToast) showToast('error', 'Delete Failed', `Could not delete file ${item.filename}`);
+                                        }
+                                      } catch (err) {
+                                        if (showToast) showToast('error', 'Delete Error', err.message || 'Network error deleting media file');
+                                      }
+                                    }
+                                  }}
+                                  className="bg-rose-950/80 hover:bg-rose-800 text-rose-300 p-1.5 rounded-lg border border-rose-800 transition-colors"
+                                  title="Delete Image"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1965,14 +2596,19 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     ) : (
                       banners.map(b => (
                         <div key={b.id} className="p-4 border border-slate-800 rounded-2xl bg-slate-850 space-y-3 shadow-sm">
-                          <img src={b.image_url} alt={b.title} className="w-full h-36 object-cover rounded-xl border border-slate-700 bg-slate-900" />
+                          <img 
+                            src={resolveImgUrl(b.image_url)} 
+                            alt={b.title} 
+                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'; }} 
+                            className="w-full h-36 object-cover rounded-xl border border-slate-700 bg-slate-900" 
+                          />
                           <div className="flex justify-between items-start gap-2">
                             <div>
                               <h4 className="font-bold text-white text-xs">{b.title}</h4>
                               <p className="text-[11px] text-slate-400 leading-tight">{b.subtitle}</p>
                               {b.link_url && <span className="text-[10px] text-emerald-400 font-mono block mt-1">Link: {b.link_url}</span>}
                             </div>
-                            <button onClick={async () => { await fetch(`http://localhost:5000/api/banners/${b.id}`, { method: 'DELETE' }); fetchAdminData(); }} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-950/60 rounded-lg border border-rose-900 text-xs" title="Delete Banner">
+                            <button onClick={async () => { await fetch(getApiUrl(`/api/banners/${b.id}`), { method: 'DELETE' }); fetchAdminData(); }} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-950/60 rounded-lg border border-rose-900 text-xs" title="Delete Banner">
                               <Trash2 size={15} />
                             </button>
                           </div>
@@ -2046,7 +2682,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         {c.discount_type === 'PERCENT' ? `${c.discount_value}% OFF` : `₹${c.discount_value} FLAT OFF`}
                       </p>
                     </div>
-                    <button onClick={async () => { await fetch(`http://localhost:5000/api/coupons/${c.id}`, { method: 'DELETE' }); fetchAdminData(); }} className="text-red-400 p-1">
+                    <button onClick={async () => { await fetch(getApiUrl(`/api/coupons/${c.id}`), { method: 'DELETE' }); fetchAdminData(); }} className="text-red-400 p-1">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -2214,7 +2850,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               type="button"
                               onClick={async () => {
                                 const newStatus = r.status === 'APPROVED' ? 'REJECTED' : 'APPROVED';
-                                await fetch(`http://localhost:5000/api/admin/reviews/${r.id}/status`, {
+                                await fetch(getApiUrl(`/api/admin/reviews/${r.id}/status`), {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ status: newStatus })
@@ -2236,7 +2872,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                   confirmText: 'Delete Review',
                                   danger: true,
                                   onConfirm: async () => {
-                                    await fetch(`http://localhost:5000/api/admin/reviews/${r.id}`, { method: 'DELETE' });
+                                    await fetch(getApiUrl(`/api/admin/reviews/${r.id}`), { method: 'DELETE' });
                                     fetchAdminData();
                                     if (showToast) showToast('info', 'Review Deleted', 'Review removed from system');
                                   }
@@ -2266,7 +2902,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           {r.images && r.images.length > 0 && (
                             <div className="flex gap-2 pt-2">
                               {r.images.map((imgUrl, idx) => (
-                                <img key={idx} src={imgUrl} alt="Review attachment" className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" />
+                                <img 
+                                  key={idx} 
+                                  src={resolveImgUrl(imgUrl)} 
+                                  alt="Review attachment" 
+                                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} 
+                                  className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" 
+                                />
                               ))}
                             </div>
                           )}
@@ -2282,7 +2924,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               onKeyDown={async (e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
-                                  await fetch(`http://localhost:5000/api/admin/reviews/${r.id}/reply`, {
+                                  await fetch(getApiUrl(`/api/admin/reviews/${r.id}/reply`), {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ admin_reply: e.target.value })
@@ -2389,6 +3031,60 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   </span>
                 </div>
 
+                {/* QUICK STATUS PILLS BAR */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+                  <button
+                    onClick={() => setOrderStatusFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+                      orderStatusFilter === 'ALL'
+                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-md'
+                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750'
+                    }`}
+                  >
+                    📋 All Orders ({orders.length})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter('PROCESSING')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+                      orderStatusFilter === 'PROCESSING'
+                        ? 'bg-amber-600 text-white border-amber-500 shadow-md'
+                        : 'bg-slate-800 text-amber-400 border-slate-700 hover:bg-slate-750'
+                    }`}
+                  >
+                    🟡 Processing ({orders.filter(o => o.order_status === 'PROCESSING').length})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter('SHIPPED')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+                      orderStatusFilter === 'SHIPPED'
+                        ? 'bg-blue-600 text-white border-blue-500 shadow-md'
+                        : 'bg-slate-800 text-blue-400 border-slate-700 hover:bg-slate-750'
+                    }`}
+                  >
+                    🔵 Shipped ({orders.filter(o => o.order_status === 'SHIPPED').length})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter('DELIVERED')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+                      orderStatusFilter === 'DELIVERED'
+                        ? 'bg-emerald-700 text-white border-emerald-600 shadow-md'
+                        : 'bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-750'
+                    }`}
+                  >
+                    🟢 Delivered ({orders.filter(o => o.order_status === 'DELIVERED').length})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter('CANCELLED')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                      orderStatusFilter === 'CANCELLED'
+                        ? 'bg-rose-600 text-white border-rose-500 shadow-md ring-2 ring-rose-500/50'
+                        : 'bg-rose-950/80 text-rose-300 border-rose-800 hover:bg-rose-900/80'
+                    }`}
+                  >
+                    🔴 Cancelled Requests ({orders.filter(o => o.order_status === 'CANCELLED').length})
+                  </button>
+                </div>
+
                 {/* SEARCH & FILTERS BAR */}
                 <div className="bg-slate-850 p-4 rounded-2xl border border-slate-800 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -2477,19 +3173,31 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       ) : (
                         paginatedOrders.map(o => (
                           <tr key={o.id} className="hover:bg-slate-800/50">
-                            <td className="p-3 font-bold text-white">{o.order_number}</td>
+                            <td className="p-3 font-bold text-white font-mono">{o.order_number}</td>
                             <td className="p-3">
                               <div className="font-bold text-white">{o.customer_name}</div>
-                              <div className="text-[11px] text-slate-400">{o.customer_phone}</div>
+                              <div className="text-[11px] text-slate-400 font-mono">{o.customer_phone}</div>
+                              {o.shipping_address && (
+                                <div className="text-[10px] text-slate-400 font-medium mt-0.5 truncate max-w-[180px]" title={o.shipping_address}>
+                                  📍 {o.shipping_address}
+                                </div>
+                              )}
                               {o.order_notes && (
                                 <div className="mt-1 bg-amber-950/80 text-amber-300 text-[10px] px-2 py-0.5 rounded border border-amber-800/80 font-extrabold max-w-[200px] truncate" title={o.order_notes}>
                                   📝 Remark: "{o.order_notes}"
                                 </div>
                               )}
                             </td>
-                            <td className="p-3 font-black text-white">₹{o.total_amount}</td>
-                            <td className="p-3 font-bold text-emerald-400">₹{o.paid_amount}</td>
-                            <td className="p-3 font-bold text-amber-400">₹{o.remaining_amount}</td>
+                            <td className="p-3 font-black text-white text-sm">
+                              {o.currency === 'USD' ? '$' : '₹'}{(Number(o.total_amount) || 0).toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-3 font-bold text-emerald-400 text-xs">
+                              {o.currency === 'USD' ? '$' : '₹'}{(Number(o.paid_amount) || 0).toLocaleString('en-IN')}
+                              <span className="text-[9px] text-slate-400 block font-normal uppercase">{o.payment_mode || 'PARTIAL'}</span>
+                            </td>
+                            <td className="p-3 font-bold text-amber-400 text-xs">
+                              {o.currency === 'USD' ? '$' : '₹'}{(Number(o.remaining_amount) || 0).toLocaleString('en-IN')}
+                            </td>
                             <td className="p-3">
                               <span className={`px-2.5 py-1 rounded-lg font-extrabold text-[11px] border uppercase ${
                                 o.order_status === 'CANCELLED' ? 'bg-rose-950/80 text-rose-300 border-rose-800' :
@@ -2906,6 +3614,54 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           onChange={(e) => setSettingsForm({ ...settingsForm, contact_email: e.target.value })}
                           className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold"
                         />
+                      </div>
+                    </div>
+
+                    {/* SOCIAL MEDIA HANDLES CARD */}
+                    <div className="pt-3 border-t border-slate-800 space-y-3">
+                      <span className="font-extrabold text-sm text-white block">📱 Social Media Links & Handles</span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">Instagram URL</label>
+                          <input 
+                            type="text"
+                            placeholder="https://instagram.com/valuelifeessentials"
+                            value={settingsForm.instagram_url || ''}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, instagram_url: e.target.value })}
+                            className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">Facebook Page URL</label>
+                          <input 
+                            type="text"
+                            placeholder="https://facebook.com/valuelifeessentials"
+                            value={settingsForm.facebook_url || ''}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, facebook_url: e.target.value })}
+                            className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">YouTube Channel URL</label>
+                          <input 
+                            type="text"
+                            placeholder="https://youtube.com/@valuelifeessentials"
+                            value={settingsForm.youtube_url || ''}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, youtube_url: e.target.value })}
+                            className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">WhatsApp Business Number</label>
+                          <input 
+                            type="text"
+                            placeholder="e.g. +91 98765 43210"
+                            value={settingsForm.whatsapp_number || ''}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number: e.target.value })}
+                            className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -3408,23 +4164,23 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           ⚡ Product Card Action & Layout Design
                         </span>
                         <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                          Selected: {(themeConfig.card_style || 'ORGANIC_BAZAR') === 'CLASSIC_SPLIT' ? '2-Button Split' : 'OrganicBazar Pill'}
+                          Selected: {(themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'CLASSIC_SPLIT' ? '2-Button Split' : 'VALUELIFE ESSENTIALS Pill'}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          onClick={() => setThemeConfig({ ...themeConfig, card_style: 'ORGANIC_BAZAR' })}
+                          onClick={() => setThemeConfig({ ...themeConfig, card_style: 'VALUELIFE_ESSENTIALS' })}
                           className={`p-3 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
-                            (themeConfig.card_style || 'ORGANIC_BAZAR') === 'ORGANIC_BAZAR'
+                            (themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'VALUELIFE_ESSENTIALS'
                               ? 'bg-emerald-950 border-emerald-500 text-white ring-2 ring-emerald-500/30'
                               : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
                           }`}
                         >
                           <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-xs text-white">🌿 OrganicBazar Pill Card</span>
-                            {(themeConfig.card_style || 'ORGANIC_BAZAR') === 'ORGANIC_BAZAR' && <CheckCircle size={14} className="text-emerald-400" />}
+                            <span className="font-extrabold text-xs text-white">🌿 VALUELIFE ESSENTIALS Pill Card</span>
+                            {(themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'VALUELIFE_ESSENTIALS' && <CheckCircle size={14} className="text-emerald-400" />}
                           </div>
                           <p className="text-[10px] opacity-80 font-medium">1-Click 🛒 ADD TO CART button + Rating Stars + Red Heart Wishlist Pill</p>
                         </button>
@@ -3453,7 +4209,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             <Eye size={14} className="text-emerald-400" /> Card Live Preview Mockup:
                           </span>
                           <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                            {(themeConfig.card_style || 'ORGANIC_BAZAR') === 'CLASSIC_SPLIT' ? 'Classic 2-Button Split' : 'OrganicBazar 1-Click Pill'}
+                            {(themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'CLASSIC_SPLIT' ? 'Classic 2-Button Split' : 'VALUELIFE ESSENTIALS 1-Click Pill'}
                           </span>
                         </div>
 
@@ -3537,7 +4293,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         <div className="flex items-center gap-2">
                           <span className="text-xl">🌿</span>
                           <span className="font-black text-sm tracking-tight" style={{ fontFamily: themeConfig.heading_font || 'Outfit' }}>
-                            OrganicBazar
+                            VALUELIFE ESSENTIALS
                           </span>
                         </div>
 
@@ -3916,9 +4672,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               <tr className="bg-slate-900 hover:bg-slate-850/60 transition-colors">
                                 <td className="p-3.5 flex items-center gap-3 font-extrabold text-white">
                                   <img 
-                                    src={p.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'} 
+                                    src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                                     alt={p.title} 
-                                    className="w-10 h-10 object-cover rounded-lg border border-slate-700 bg-white" 
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80';
+                                    }}
+                                    className="w-10 h-10 object-cover rounded-lg border border-slate-700 bg-white shrink-0" 
                                   />
                                   <div>
                                     <span className="text-sm font-black text-white block">{p.title}</span>
@@ -3961,27 +4721,58 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                   </div>
                                 </td>
 
-                                <td className="p-3.5">
-                                  {(p.stock || 0) === 0 ? (
-                                    <span className="bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
-                                      OUT OF STOCK
-                                    </span>
-                                  ) : (p.stock || 0) < 50 ? (
-                                    <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
-                                      LOW STOCK ({p.stock})
-                                    </span>
-                                  ) : (
-                                    <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
-                                      IN STOCK ({p.stock})
-                                    </span>
-                                  )}
+                                <td className="p-3.5 space-y-1">
+                                  {/* STATUS BADGE */}
+                                  <div>
+                                    {p.status === 'Draft' ? (
+                                      <span className="bg-amber-950/80 text-amber-300 border border-amber-700 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 shadow-sm">
+                                        🟡 Draft
+                                      </span>
+                                    ) : p.status === 'Archived' ? (
+                                      <span className="bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 shadow-sm">
+                                        🔴 Archived
+                                      </span>
+                                    ) : (
+                                      <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-700 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 shadow-sm">
+                                        🟢 Active
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* STOCK BADGE */}
+                                  <div>
+                                    {(p.stock || 0) === 0 ? (
+                                      <span className="bg-rose-950 text-rose-300 border border-rose-800 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase">
+                                        OUT OF STOCK
+                                      </span>
+                                    ) : (p.stock || 0) < 50 ? (
+                                      <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase">
+                                        LOW STOCK ({p.stock})
+                                      </span>
+                                    ) : (
+                                      <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase">
+                                        IN STOCK ({p.stock})
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
 
                                 <td className="p-3.5 text-right">
                                   <button 
                                     onClick={() => {
                                       setEditingProduct(p);
-                                      setProductForm({ ...p, variants: p.variants || [] });
+                                      const rawImages = Array.isArray(p.images) && p.images.length > 0 
+                                        ? p.images 
+                                        : (p.image_url ? [p.image_url] : (p.thumbnail ? [p.thumbnail] : []));
+                                      const pImages = rawImages.map(img => (typeof img === 'object' && img?.image_url) ? img.image_url : img).filter(Boolean);
+                                      const pVariants = (p.variants || []).map(v => ({
+                                        ...v,
+                                        variant_name: v.variant_name || v.name || 'Standard Pack',
+                                        price_inr: Number(v.price_inr || v.price || p.price_inr || 0),
+                                        stock: Number(v.stock !== undefined ? v.stock : 50),
+                                        image_url: typeof v.image_url === 'object' ? v.image_url?.image_url : (v.image_url || pImages[0] || null)
+                                      }));
+                                      setProductForm({ ...p, images: pImages, variants: pVariants });
                                       setShowProductModal(true);
                                     }}
                                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-lg border border-slate-700 text-xs shadow-sm"
@@ -3997,9 +4788,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                   <td className="p-3 pl-8 flex items-center gap-2.5 font-bold text-slate-300">
                                     <span className="text-slate-500 font-mono text-xs">↳</span>
                                     <img 
-                                      src={v.image_url || p.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'} 
-                                      alt={v.variant_name} 
-                                      className="w-8 h-8 object-cover rounded border border-slate-700 bg-white" 
+                                      src={resolveImgUrl(v.image_url || p.thumbnail || p.images?.[0])} 
+                                      alt={v.variant_name || 'Variant'} 
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80';
+                                      }}
+                                      className="w-8 h-8 object-cover rounded border border-slate-700 bg-white shrink-0" 
                                     />
                                     <div>
                                       <span className="text-xs font-bold text-emerald-300">{v.variant_name}</span>
@@ -4722,7 +5517,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         <div className="grid grid-cols-2 gap-2">
                           {products.slice(0, 2).map(p => (
                             <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
-                              <img src={p.thumbnail} alt={p.title} className="w-full h-16 object-contain rounded bg-white" />
+                              <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-full h-16 object-contain rounded bg-white" />
                               <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
                               <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
                             </div>
@@ -4742,7 +5537,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         <div className="grid grid-cols-2 gap-2">
                           {products.slice(2, 4).map(p => (
                             <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
-                              <img src={p.thumbnail} alt={p.title} className="w-full h-16 object-contain rounded bg-white" />
+                              <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-full h-16 object-contain rounded bg-white" />
                               <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
                               <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
                             </div>
@@ -4758,7 +5553,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     {/* SECTION 8: FOOTER */}
                     {sectionsConfig.show_footer === 1 ? (
                       <div className="bg-[#1b4332] text-white p-3 rounded-xl text-[10px] space-y-1 border border-emerald-900 shadow">
-                        <span className="font-extrabold text-xs block">🌱 OrganicBazar Footer</span>
+                        <span className="font-extrabold text-xs block">🌱 VALUELIFE ESSENTIALS Footer</span>
                         <p className="opacity-80 text-[9px]">Your 100% trusted online organic store.</p>
                       </div>
                     ) : (
@@ -4956,8 +5751,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <label className="block text-slate-300 font-bold mb-1">Legal Business / Entity Name *</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. OrganicBazar Retail Pvt Ltd"
-                      value={settingsForm.legal_business_name || 'OrganicBazar Retail Private Limited'}
+                      placeholder="e.g. VALUELIFE ESSENTIALS Retail Pvt Ltd"
+                      value={settingsForm.legal_business_name || 'ValueLife Essentials Private Limited'}
                       onChange={(e) => setSettingsForm({ ...settingsForm, legal_business_name: e.target.value })}
                       className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold"
                     />
@@ -5517,33 +6312,33 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* FULL SHOPIFY-STYLE ADD / EDIT PRODUCT MODAL */}
       {showProductModal && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-4xl w-full p-6 space-y-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-[98vw] w-full p-5 lg:p-8 space-y-6 shadow-2xl max-h-[96vh] overflow-y-auto">
             {/* TOP HEADER */}
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">PRODUCT CREATOR</span>
-                <h3 className="font-extrabold text-xl text-white font-['Outfit']">{editingProduct ? `Edit ${editingProduct.title}` : 'Add Product'}</h3>
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">PRODUCT CREATOR & MANAGER</span>
+                <h3 className="font-extrabold text-2xl text-white font-['Outfit']">{editingProduct ? `Edit ${editingProduct.title}` : 'Add New Product'}</h3>
               </div>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowProductModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700"
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleProductSubmit}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-extrabold shadow-lg"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-xs font-extrabold shadow-lg transition-colors flex items-center gap-1.5"
                 >
-                  Save Product
+                  <CheckCircle size={15} /> Save Product
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handleProductSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+            <form onSubmit={handleProductSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-xs">
               {/* LEFT COLUMN (2 COLS WIDE) */}
-              <div className="md:col-span-2 space-y-5">
+              <div className="lg:col-span-2 space-y-6">
                 {/* 1. TITLE & SKU ID CARD */}
                 <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
@@ -5558,13 +6353,42 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     </div>
 
                     <div>
-                      <label className="block font-bold text-emerald-400 mb-1">SKU ID *</label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block font-bold text-emerald-400">SKU ID *</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const titleWords = (productForm.title || 'PROD').trim().split(/\s+/).slice(0, 2).map(w => w.substring(0, 4).toUpperCase()).join('-');
+                            const cleanPrefix = titleWords ? `VLE-${titleWords}` : 'VLE-PROD';
+                            let num = 1;
+                            let candidate = `${cleanPrefix}-00${num}`;
+                            const existingSkus = new Set(products.filter(p => p.id !== productForm.id).flatMap(p => [p.sku?.toUpperCase(), ...(p.variants?.map(v => v.sku?.toUpperCase()) || [])]));
+                            while (existingSkus.has(candidate.toUpperCase())) {
+                              num++;
+                              candidate = `${cleanPrefix}-${num < 10 ? '00' : num < 100 ? '0' : ''}${num}`;
+                            }
+                            setProductForm({ ...productForm, sku: candidate });
+                            if (showToast) showToast('info', 'Unique SKU Generated', `Assigned unique SKU: ${candidate}`);
+                          }}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 underline font-bold cursor-pointer"
+                          title="Generate Auto Unique SKU ID"
+                        >
+                          ⚡ Auto-Generate
+                        </button>
+                      </div>
                       <input 
-                        type="text" required placeholder="e.g. OB-VERM-5"
+                        type="text" required placeholder="e.g. VLE-FERT-001"
                         value={productForm.sku}
                         onChange={(e) => setProductForm({ ...productForm, sku: e.target.value.toUpperCase() })}
-                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono font-bold uppercase"
+                        className={`w-full p-2.5 bg-slate-800 border rounded-lg text-white font-mono font-bold uppercase transition-colors ${
+                          isDuplicateSku ? 'border-rose-500 bg-rose-950/20 text-rose-300 ring-2 ring-rose-500/50' : 'border-slate-700'
+                        }`}
                       />
+                      {isDuplicateSku && (
+                        <span className="text-[11px] text-rose-400 font-extrabold block mt-1 animate-pulse">
+                          ⚠️ SKU ID "{productForm.sku}" is already assigned to another product!
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -5591,85 +6415,275 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   </div>
                 </div>
 
-                {/* 2. MEDIA & IMAGE UPLOADER CARD (Paste URL or Upload File) */}
-                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-4">
+                {/* 2. MEDIA & IMAGE UPLOADER CARD (Drag & Drop + URL + Media Library) */}
+                <div 
+                  onDragOver={handleDragOverArea}
+                  onDragLeave={handleDragLeaveArea}
+                  onDrop={handleDropFilesOnArea}
+                  className={`bg-slate-850 p-4 rounded-2xl border transition-all duration-200 space-y-4 relative ${
+                    isDraggingOverArea 
+                      ? 'border-emerald-500 bg-emerald-950/30 ring-4 ring-emerald-500/20 shadow-2xl scale-[1.01]' 
+                      : 'border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  {/* ACTIVE DRAG OVER OVERLAY */}
+                  {isDraggingOverArea && (
+                    <div className="absolute inset-0 bg-emerald-950/90 backdrop-blur-sm z-50 rounded-2xl border-2 border-dashed border-emerald-400 flex flex-col items-center justify-center space-y-2 animate-pulse pointer-events-none">
+                      <UploadCloud size={48} className="text-emerald-400 animate-bounce" />
+                      <p className="text-emerald-200 font-extrabold text-base">Drop Image Files Here to Upload Instantly!</p>
+                      <p className="text-emerald-400/80 text-xs font-semibold">Multiple images supported (.png, .jpg, .webp, .jpeg)</p>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
-                    <label className="block font-bold text-slate-200">Media & Product Images *</label>
+                    <div className="flex items-center gap-2">
+                      <label className="block font-bold text-slate-200">Media & Product Images *</label>
+                      <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                        <UploadCloud size={11} /> Drag & Drop Supported
+                      </span>
+                    </div>
                     <span className="text-slate-400 text-[11px] font-bold">({productForm.images?.length || 0} Images attached)</span>
                   </div>
 
+                  {/* VISUAL DRAG & DROP UPLOAD DROPZONE */}
+                  <div className="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 bg-slate-900/60 hover:bg-slate-900 rounded-xl p-3 text-center transition-all cursor-pointer group">
+                    <label className="cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-slate-400 group-hover:text-slate-200">
+                      <UploadCloud size={20} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                      <span><strong>Drag & Drop</strong> product image files directly into this box, or</span>
+                      <span className="bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white px-2.5 py-1 rounded-md font-bold text-[11px] border border-emerald-500/50 transition-colors inline-block">
+                        Browse Files
+                      </span>
+                      <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+                    </label>
+                  </div>
+
+                  {/* URL INPUT & MEDIA LIBRARY BUTTONS */}
                   <div className="flex items-center gap-2">
                     <input 
                       type="text" 
-                      placeholder="Paste image URL (e.g. https://images.unsplash.com/...)"
+                      placeholder="Or paste image URL (e.g. https://images.unsplash.com/...)"
                       value={imageUrlInput}
                       onChange={(e) => setImageUrlInput(e.target.value)}
-                      className="flex-1 p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                      className="flex-1 p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs font-medium focus:border-emerald-500 focus:outline-none"
                     />
                     <button 
                       type="button"
                       onClick={handleAddImage}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg font-bold text-xs"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors cursor-pointer"
                     >
                       + Add URL
                     </button>
-                    <label className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg font-bold text-xs border border-slate-700 cursor-pointer flex items-center gap-1">
-                      <Upload size={14} /> Upload File
-                      <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fetchAdminData();
+                        setShowProductMediaPickerModal(true);
+                      }}
+                      className="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-3 py-2 rounded-lg font-bold text-xs border border-slate-700 flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
+                    >
+                      <FolderOpen size={14} /> Select from Media Library
+                    </button>
                   </div>
 
-                  {/* THUMBNAILS GRID */}
-                  <div className="grid grid-cols-4 gap-3 pt-2">
-                    {productForm.images?.map((imgUrl, idx) => (
-                      <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-700 bg-slate-900 h-24">
-                        <img src={imgUrl} className="w-full h-full object-cover" />
-                        {idx === 0 && (
-                          <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
-                            PRIMARY ⭐
-                          </span>
-                        )}
-                        <button 
-                          type="button"
-                          onClick={() => handleRemoveImage(idx)}
-                          className="absolute top-1 right-1 bg-rose-900/80 text-rose-200 p-1 rounded hover:bg-rose-700 transition-colors"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                  {/* REORDERABLE THUMBNAILS GRID */}
+                  {productForm.images && productForm.images.length > 0 && (
+                    <div className="space-y-1.5 pt-1 border-t border-slate-800">
+                      <p className="text-[10px] font-bold text-slate-400 flex items-center justify-between">
+                        <span>💡 Tip: Drag & drop thumbnails to reorder photos (Card #1 is Primary)</span>
+                        <span className="text-emerald-400 text-[9px]">↕️ Hold & Drag</span>
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                        {productForm.images?.map((imgUrl, idx) => (
+                          <div 
+                            key={idx} 
+                            draggable={true}
+                            onDragStart={(e) => handleThumbnailDragStart(e, idx)}
+                            onDragOver={(e) => handleThumbnailDragOver(e, idx)}
+                            onDrop={(e) => handleThumbnailDrop(e, idx)}
+                            onDragEnd={() => { setDraggedImageIndex(null); setDragOverImageIndex(null); }}
+                            className={`relative group rounded-xl overflow-hidden border bg-slate-900 h-28 shadow-sm cursor-grab active:cursor-grabbing transition-all ${
+                              draggedImageIndex === idx 
+                                ? 'opacity-40 border-dashed border-emerald-500 scale-95' 
+                                : dragOverImageIndex === idx 
+                                ? 'border-2 border-emerald-400 ring-2 ring-emerald-500/40 scale-105 z-10' 
+                                : 'border-slate-700 hover:border-slate-500'
+                            }`}
+                          >
+                            <img 
+                              src={resolveImgUrl(imgUrl)} 
+                              alt={`Product Image ${idx + 1}`}
+                              className="w-full h-full object-cover select-none pointer-events-none" 
+                              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=200&q=80'; }}
+                            />
+
+                            {/* DRAG HANDLE BADGE */}
+                            <div className="absolute top-1.5 left-1.5 bg-slate-950/80 text-slate-300 p-1 rounded-md border border-slate-700 opacity-80 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                              <GripVertical size={12} className="text-emerald-400" />
+                            </div>
+
+                            {idx === 0 ? (
+                              <span className="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md shadow-md flex items-center gap-0.5">
+                                PRIMARY ⭐
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const reordered = [imgUrl, ...productForm.images.filter((_, i) => i !== idx)];
+                                  setProductForm({ ...productForm, images: reordered });
+                                  if (showToast) showToast('info', 'Primary Image Set', `Image #${idx + 1} set as main product cover.`);
+                                }}
+                                className="absolute bottom-1.5 left-1.5 bg-slate-950/90 hover:bg-emerald-700 text-slate-200 text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-700 transition-colors opacity-0 group-hover:opacity-100"
+                              >
+                                Make Primary
+                              </button>
+                            )}
+
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              className="absolute top-1.5 right-1.5 bg-rose-950/90 text-rose-200 p-1.5 rounded-lg hover:bg-rose-700 transition-colors shadow border border-rose-800"
+                              title="Remove Image"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* 3. CATEGORY & SUBCATEGORY CARD */}
-                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-3">
-                  <label className="block font-bold text-slate-200">Category & Subcategory *</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-400 mb-1">Main Category</label>
-                      <select 
-                        value={productForm.category_id}
-                        onChange={(e) => setProductForm({ ...productForm, category_id: Number(e.target.value), subcategory_id: '' })}
-                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                {/* 3. CATEGORY & SUBCATEGORY CARD (CUSTOM REACT DROPDOWN FOR GUARANTEED 100% VISIBILITY) */}
+                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-3 relative">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-200">Category & Subcategory *</label>
+                    <button 
+                      type="button"
+                      onClick={() => setShowCategoryModal(true)}
+                      className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline"
+                    >
+                      + Create Category
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* CUSTOM MAIN CATEGORY DROPDOWN */}
+                    <div className="relative">
+                      <label className="block text-slate-300 font-bold text-xs mb-1">
+                        Main Category <span className="text-rose-400 font-extrabold">* (Required)</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCatDropdownOpen(!isCatDropdownOpen);
+                          setIsSubcatDropdownOpen(false);
+                        }}
+                        className={`w-full p-2.5 bg-slate-800 hover:bg-slate-750 border rounded-lg text-white font-bold text-xs flex items-center justify-between transition-colors shadow-sm cursor-pointer ${
+                          !productForm.category_id 
+                            ? 'border-rose-500/70 ring-1 ring-rose-500/30' 
+                            : 'border-slate-700'
+                        }`}
                       >
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                        <span className="truncate flex items-center gap-1.5">
+                          {selectedCategoryObj ? (
+                            <>
+                              <span>{selectedCategoryObj.icon || '🌿'}</span>
+                              <span className="text-white font-extrabold">{selectedCategoryObj.name}</span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 font-normal">-- Select Main Category --</span>
+                          )}
+                        </span>
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform shrink-0 ${isCatDropdownOpen ? 'rotate-180 text-emerald-400' : ''}`} />
+                      </button>
+
+                      {isCatDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-800/80 py-1">
+                          {categories.length === 0 ? (
+                            <div className="p-3 text-center text-slate-400 text-xs font-semibold">
+                              No categories found.
+                            </div>
+                          ) : (
+                            categories.map(c => {
+                              const isSelected = String(c.id) === String(productForm.category_id);
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setProductForm({ ...productForm, category_id: Number(c.id), subcategory_id: '' });
+                                    setIsCatDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-2.5 text-left text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                                    isSelected ? 'bg-emerald-950/80 text-emerald-400 border-l-4 border-emerald-500' : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                                  }`}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <span className="text-base">{c.icon || '🌿'}</span>
+                                    <span className="font-extrabold">{c.name}</span>
+                                  </span>
+                                  {isSelected && <Check size={14} className="text-emerald-400 shrink-0" />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-slate-400 mb-1">Subcategory (Optional)</label>
-                      <select 
-                        value={productForm.subcategory_id}
-                        onChange={(e) => setProductForm({ ...productForm, subcategory_id: e.target.value ? Number(e.target.value) : '' })}
-                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                    {/* CUSTOM SUBCATEGORY DROPDOWN */}
+                    <div className="relative">
+                      <label className="block text-slate-400 text-xs mb-1">Subcategory (Optional)</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSubcatDropdownOpen(!isSubcatDropdownOpen);
+                          setIsCatDropdownOpen(false);
+                        }}
+                        className="w-full p-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg text-white font-bold text-xs flex items-center justify-between transition-colors shadow-sm cursor-pointer"
                       >
-                        <option value="">-- Choose Subcategory --</option>
-                        {selectedCategoryObj?.subcategories?.map(sc => (
-                          <option key={sc.id} value={sc.id}>{sc.name}</option>
-                        ))}
-                      </select>
+                        <span className="truncate">
+                          {selectedCategoryObj?.subcategories?.find(sc => String(sc.id) === String(productForm.subcategory_id))?.name || (
+                            <span className="text-slate-400 font-normal">-- Choose Subcategory --</span>
+                          )}
+                        </span>
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform shrink-0 ${isSubcatDropdownOpen ? 'rotate-180 text-emerald-400' : ''}`} />
+                      </button>
+
+                      {isSubcatDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-800/80 py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductForm({ ...productForm, subcategory_id: '' });
+                              setIsSubcatDropdownOpen(false);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-bold text-slate-400 hover:bg-slate-800 cursor-pointer"
+                          >
+                            -- None (No Subcategory) --
+                          </button>
+                          {selectedCategoryObj?.subcategories?.map(sc => {
+                            const isSelected = String(sc.id) === String(productForm.subcategory_id);
+                            return (
+                              <button
+                                key={sc.id}
+                                type="button"
+                                onClick={() => {
+                                  setProductForm({ ...productForm, subcategory_id: Number(sc.id) });
+                                  setIsSubcatDropdownOpen(false);
+                                }}
+                                className={`w-full px-3 py-2.5 text-left text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                                  isSelected ? 'bg-emerald-950/80 text-emerald-400 border-l-4 border-emerald-500' : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                                }`}
+                              >
+                                <span className="font-extrabold">{sc.name}</span>
+                                {isSelected && <Check size={14} className="text-emerald-400 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -5684,7 +6698,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <input 
                         type="number" required placeholder="₹ 0.00"
                         value={productForm.price_inr ?? ''}
-                        onChange={(e) => setProductForm({ ...productForm, price_inr: Number(e.target.value) })}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setProductForm({ 
+                            ...productForm, 
+                            price_inr: val, 
+                            discount_inr: val 
+                          });
+                        }}
                         className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold text-emerald-400"
                       />
                     </div>
@@ -5693,7 +6714,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <input 
                         type="number" required placeholder="$ 0.00"
                         value={productForm.price_usd ?? ''}
-                        onChange={(e) => setProductForm({ ...productForm, price_usd: Number(e.target.value) })}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setProductForm({ 
+                            ...productForm, 
+                            price_usd: val, 
+                            discount_usd: val 
+                          });
+                        }}
                         className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold text-blue-400"
                       />
                     </div>
@@ -5743,23 +6771,23 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   </div>
                 </div>
 
-                {/* 5. PRODUCT VARIANTS CARD (Matching User Screenshot 2 & 3) */}
-                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                {/* 5. PRODUCT VARIANTS & STOCK BREAKDOWN CARD (Exact Shopify Admin style) */}
+                <div className="bg-slate-850 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <span className="font-extrabold text-sm text-white block">Product Variants & Stock Breakdown</span>
-                      <p className="text-slate-400 text-xs">Add variant options like different pack sizes (e.g. 250g, 500g, 1Kg) with title, image, price & stock quantity.</p>
+                      <h3 className="font-extrabold text-white text-sm">Product Variants & Stock Breakdown</h3>
+                      <p className="text-xs text-slate-400">Add variant options like different pack sizes (e.g. 250g, 500g, 1Kg) with title, image, price & stock quantity.</p>
                     </div>
-                    <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-black px-3 py-1 rounded-full">
+                    <span className="text-xs font-black text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-800">
                       {productForm.variants?.length || 0} VARIANTS
                     </span>
                   </div>
 
-                  {/* EXISTING VARIANTS TABLE (Matching User Screenshot 3) */}
-                  {productForm.variants?.length > 0 && (
-                    <div className="border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-sm">
-                      <table className="w-full text-left text-xs text-slate-300">
-                        <thead className="bg-slate-800 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-700">
+                  {/* VARIANTS LIST TABLE */}
+                  {productForm.variants && productForm.variants.length > 0 && (
+                    <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                      <table className="w-full text-xs text-left text-slate-300">
+                        <thead className="bg-slate-900 text-[11px] uppercase font-bold text-slate-400 border-b border-slate-800">
                           <tr>
                             <th className="p-2.5">Variant Image</th>
                             <th className="p-2.5">Variant Title / Name</th>
@@ -5768,50 +6796,72 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             <th className="p-2.5 text-center">Action</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-800 bg-slate-850">
                           {productForm.variants.map((v, vIdx) => (
-                            <tr key={vIdx} className="hover:bg-slate-850/70 transition-colors">
+                            <tr key={v.id || vIdx} className="hover:bg-slate-800/50">
                               <td className="p-2.5">
-                                <img 
-                                  src={v.image_url || productForm.images?.[0] || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'} 
-                                  className="w-10 h-10 object-cover rounded-lg border border-slate-700 bg-white"
-                                />
+                                <div className="flex items-center gap-2">
+                                  {v.image_url ? (
+                                    <img src={resolveImgUrl(typeof v.image_url === 'object' ? v.image_url.image_url : v.image_url)} alt="Variant" className="w-9 h-9 object-cover rounded-lg border border-slate-700 bg-slate-900" />
+                                  ) : (
+                                    <div className="w-9 h-9 rounded-lg border border-slate-700 bg-slate-900 flex items-center justify-center text-[10px] text-slate-500 font-bold">No Img</div>
+                                  )}
+                                  <label className="cursor-pointer text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-700">
+                                    Upload
+                                    <input 
+                                      type="file" accept="image/*" className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+                                        const formData = new FormData();
+                                        formData.append('image', file);
+                                        try {
+                                          const res = await fetch(getApiUrl('/api/upload'), { method: 'POST', body: formData });
+                                          const data = await res.json();
+                                          if (data.imageUrl) {
+                                            const updated = [...productForm.variants];
+                                            updated[vIdx] = { ...updated[vIdx], image_url: data.imageUrl };
+                                            setProductForm({ ...productForm, variants: updated });
+                                          }
+                                        } catch (err) {}
+                                      }}
+                                    />
+                                  </label>
+                                </div>
                               </td>
-                              <td className="p-2.5 font-extrabold text-white">
+                              <td className="p-2.5">
                                 <input 
-                                  type="text"
-                                  value={v.variant_name}
+                                  type="text" value={v.variant_name || v.name || ''} 
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    updated[vIdx].variant_name = e.target.value;
+                                    updated[vIdx] = { ...updated[vIdx], variant_name: e.target.value };
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
-                                  className="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white font-bold text-xs w-full"
-                                  placeholder="e.g. 500g Jar"
+                                  className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                                  placeholder="e.g. 500g Pack"
                                 />
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number"
-                                  value={v.price_inr}
+                                  type="number" value={v.price_inr !== undefined ? v.price_inr : (v.price || '')} 
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    updated[vIdx].price_inr = Number(e.target.value);
+                                    const pVal = Number(e.target.value);
+                                    updated[vIdx] = { ...updated[vIdx], price_inr: pVal, price: pVal, discount_inr: pVal };
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
-                                  className="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-emerald-400 font-bold text-xs w-24"
+                                  className="w-24 p-2 bg-slate-800 border border-slate-700 rounded-lg text-emerald-400 font-bold"
                                 />
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number"
-                                  value={v.stock}
+                                  type="number" value={v.stock !== undefined ? v.stock : 50} 
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    updated[vIdx].stock = Number(e.target.value);
+                                    updated[vIdx] = { ...updated[vIdx], stock: Number(e.target.value) };
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
-                                  className="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white font-bold text-xs w-20"
+                                  className="w-20 p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                                 />
                               </td>
                               <td className="p-2.5 text-center">
@@ -5821,10 +6871,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                     const updated = productForm.variants.filter((_, idx) => idx !== vIdx);
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
-                                  className="text-rose-400 hover:text-rose-300 font-bold p-1 rounded hover:bg-rose-950/50"
-                                  title="Delete Variant"
+                                  className="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg hover:bg-rose-950/40"
                                 >
-                                  <Trash2 size={15} />
+                                  🗑️
                                 </button>
                               </td>
                             </tr>
@@ -5834,86 +6883,87 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     </div>
                   )}
 
-                  {/* + ADD NEW VARIANT PILL INPUT FORM (Matching User Screenshot 2) */}
-                  <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 space-y-3 shadow-inner">
-                    <span className="font-extrabold text-xs text-emerald-400 block uppercase tracking-wider">
-                      + Add New Variant Pill:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  {/* ADD NEW VARIANT CREATION INPUTS */}
+                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+                    <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider block">+ Add New Variant Pill:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                       <input 
-                        type="text" 
-                        placeholder="Variant Title (e.g. 500g, 1Kg, Pack of 5)"
-                        value={newVariantInput.name}
-                        onChange={(e) => setNewVariantInput({ ...newVariantInput, name: e.target.value })}
-                        className="sm:col-span-2 p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold text-xs"
+                        type="text" placeholder="Variant Title (e.g. 500g, 1Kg, Pack of 5)"
+                        value={newVariantForm.variant_name}
+                        onChange={(e) => setNewVariantForm({ ...newVariantForm, variant_name: e.target.value })}
+                        className="sm:col-span-2 p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"
                       />
                       <input 
-                        type="number" 
-                        placeholder="Price ₹"
-                        value={newVariantInput.price}
-                        onChange={(e) => setNewVariantInput({ ...newVariantInput, price: e.target.value })}
-                        className="p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-emerald-400 font-bold text-xs"
+                        type="number" placeholder="Price ₹"
+                        value={newVariantForm.price_inr}
+                        onChange={(e) => setNewVariantForm({ ...newVariantForm, price_inr: e.target.value })}
+                        className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-emerald-400 font-bold text-xs"
                       />
                       <input 
-                        type="number" 
-                        placeholder="Stock Qty"
-                        value={newVariantInput.stock}
-                        onChange={(e) => setNewVariantInput({ ...newVariantInput, stock: e.target.value })}
-                        className="p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold text-xs"
+                        type="number" placeholder="Stock Qty"
+                        value={newVariantForm.stock}
+                        onChange={(e) => setNewVariantForm({ ...newVariantForm, stock: e.target.value })}
+                        className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"
                       />
                     </div>
                     <button 
                       type="button"
                       onClick={() => {
-                        if (!newVariantInput.name) return;
+                        if (!newVariantForm.variant_name.trim()) return;
+                        const vPrice = Number(newVariantForm.price_inr || productForm.price_inr || 0);
+                        const vStock = Number(newVariantForm.stock || 100);
                         const newV = {
-                          variant_name: newVariantInput.name,
-                          price_inr: Number(newVariantInput.price) || productForm.price_inr,
-                          price_usd: Math.round((Number(newVariantInput.price) || productForm.price_inr) / 40),
-                          stock: Number(newVariantInput.stock) !== undefined ? Number(newVariantInput.stock) : 50,
+                          id: `var_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                          variant_name: newVariantForm.variant_name.trim(),
+                          price_inr: vPrice,
+                          price: vPrice,
+                          discount_inr: vPrice,
+                          price_usd: Math.round(vPrice / 40),
+                          discount_usd: Math.round(vPrice / 40),
+                          stock: vStock,
                           sku: `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-                          image_url: productForm.images?.[0] || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80'
+                          image_url: productForm.images && productForm.images.length > 0 ? (typeof productForm.images[0] === 'object' ? productForm.images[0].image_url : productForm.images[0]) : null
                         };
                         setProductForm({ ...productForm, variants: [...(productForm.variants || []), newV] });
-                        setNewVariantInput({ name: '', price: '', stock: '' });
+                        setNewVariantForm({ variant_name: '', price_inr: '', stock: '100' });
+                        if (showToast) showToast('success', 'Variant Pill Added', `Variant "${newV.variant_name}" added to list!`);
                       }}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-lg text-xs tracking-wider shadow-md uppercase"
+                      className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold py-2 text-xs rounded-lg transition-colors cursor-pointer"
                     >
                       Save & Create Variant Pill
                     </button>
                   </div>
                 </div>
 
-                {/* 6. SEARCH ENGINE LISTING (SEO PREVIEW & FORM) */}
-                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-4">
+                {/* 6. GOOGLE SEO & URL HANDLE CARD */}
+                <div className="bg-slate-850 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="font-extrabold text-sm text-white">Search Engine Listing Preview (Google SEO)</span>
+                    <div>
+                      <h3 className="font-extrabold text-white text-sm">Search Engine Listing Preview (Google SEO)</h3>
+                      <p className="text-xs text-slate-400">Preview of how this product will appear in Google search results.</p>
+                    </div>
                     <button 
-                      type="button" 
+                      type="button"
                       onClick={() => setShowSeoFields(!showSeoFields)}
-                      className="text-emerald-400 font-bold text-xs hover:underline cursor-pointer border border-emerald-800 px-2.5 py-1 rounded-lg bg-emerald-950/60"
+                      className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1"
                     >
-                      {showSeoFields ? 'Close SEO Editor ▲' : 'Edit website SEO ▼'}
+                      Edit website SEO {showSeoFields ? '▲' : '▼'}
                     </button>
                   </div>
 
-                  {/* GOOGLE SEARCH RESULT PREVIEW CARD */}
-                  <div className="bg-white text-gray-900 p-4 rounded-xl space-y-1 shadow-inner border border-gray-200">
-                    <div className="text-[11px] text-gray-500 flex items-center gap-1 font-mono">
-                      <span>OrganicBazar</span>
-                      <span>›</span>
-                      <span>https://organicbazar.net</span>
-                      <span>›</span>
-                      <span className="text-gray-700 font-bold">{urlHandle}</span>
+                  {/* PREVIEW BOX */}
+                  <div className="p-3 bg-white rounded-xl space-y-1 font-sans shadow-sm">
+                    <div className="text-[11px] text-gray-500 truncate">
+                      VALUELIFE ESSENTIALS › https://valuelifeessentials.com › products/{productForm.url_handle || (productForm.title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-')}
                     </div>
-                    <div className="text-base font-extrabold text-blue-800 hover:underline cursor-pointer leading-snug line-clamp-1">
+                    <div className="text-sm font-bold text-blue-800 truncate hover:underline cursor-pointer">
                       {pageTitle}
                     </div>
                     <div className="text-xs text-gray-600 line-clamp-2 leading-normal">
                       {metaDesc}
                     </div>
                     <div className="text-xs font-bold text-gray-900 pt-1">
-                      ₹{productForm.discount_inr || productForm.price_inr}.00 INR
+                      ₹{productForm.price_inr || productForm.discount_inr || 0}.00 INR
                     </div>
                   </div>
 
@@ -5996,7 +7046,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <div>
                     <label className="block text-slate-400 mb-1">Vendor / Brand</label>
                     <input 
-                      type="text" placeholder="e.g. OrganicBazar"
+                      type="text" placeholder="e.g. VALUELIFE ESSENTIALS"
                       value={productForm.vendor}
                       onChange={(e) => setProductForm({ ...productForm, vendor: e.target.value })}
                       className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
@@ -6006,28 +7056,50 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   {/* COLLECTIONS PILL TAGS */}
                   <div className="space-y-2 pt-1 border-t border-slate-800">
                     <div className="flex justify-between items-center">
-                      <label className="font-bold text-slate-300">Collections</label>
+                      <div className="flex items-center gap-2">
+                        <label className="font-bold text-slate-300">Collections</label>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCollectionModal(true)}
+                          className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline"
+                        >
+                          + Create Collection
+                        </button>
+                      </div>
                       <span className="text-[10px] text-emerald-400 font-bold">({productForm.collection_ids?.length || 0} Selected)</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 bg-slate-800 p-2.5 rounded-lg border border-slate-700 min-h-12">
-                      {collections.map(col => {
-                        const isSelected = productForm.collection_ids?.includes(col.id);
-                        return (
-                          <button 
-                            key={col.id}
+                    <div className="flex flex-wrap gap-1.5 bg-slate-800 p-2.5 rounded-lg border border-slate-700 min-h-12 items-center">
+                      {collections.length === 0 ? (
+                        <div className="w-full flex items-center justify-between py-1 px-1">
+                          <span className="text-xs text-slate-400">No custom collections created yet.</span>
+                          <button
                             type="button"
-                            onClick={() => handleToggleCollection(col.id)}
-                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
-                              isSelected 
-                                ? 'bg-emerald-600 text-white shadow-md' 
-                                : 'bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
-                            }`}
+                            onClick={() => setShowCollectionModal(true)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm"
                           >
-                            {isSelected ? '✓ ' : '+ '}{col.name}
+                            + Create Collection
                           </button>
-                        );
-                      })}
+                        </div>
+                      ) : (
+                        collections.map(col => {
+                          const isSelected = productForm.collection_ids?.includes(col.id);
+                          return (
+                            <button 
+                              key={col.id}
+                              type="button"
+                              onClick={() => handleToggleCollection(col.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                isSelected 
+                                  ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400' 
+                                  : 'bg-slate-900 text-slate-300 hover:bg-slate-750 hover:text-white border border-slate-700'
+                              }`}
+                            >
+                              {isSelected ? '✓ ' : '+ '}{col.name}
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
 
@@ -6071,15 +7143,6 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       })()}
                     </div>
                   </div>
-                </div>
-
-                {/* 3. THEME TEMPLATE */}
-                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <label className="block font-bold text-slate-200">Theme Template</label>
-                  <select className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold">
-                    <option>Default product</option>
-                    <option>Organic PDP template</option>
-                  </select>
                 </div>
 
                 {/* 4. SUGGESTED PRODUCTS & CROSS-SELL SETTINGS (Matching User Screenshot 1) */}
@@ -6198,8 +7261,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* CREATE / EDIT COLLECTION MODAL */}
       {showCollectionModal && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-4xl w-full p-6 lg:p-8 space-y-5 shadow-2xl max-h-[94vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-lg text-white">{editingCollection ? 'Edit Collection & Map Products' : 'Create New Collection'}</h3>
               <button onClick={() => setShowCollectionModal(false)}><XCircle size={24} /></button>
@@ -6226,15 +7289,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Banner Image URL *</label>
-                <input 
-                  type="text" required
-                  value={collectionForm.image_url}
-                  onChange={(e) => setCollectionForm({ ...collectionForm, image_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                />
-              </div>
+              <ImageUploader 
+                label="Collection Banner Image (Upload Local File or Paste URL Link) *"
+                value={collectionForm.image_url}
+                onChange={(url) => setCollectionForm({ ...collectionForm, image_url: url })}
+                placeholder="Upload image file or paste web/Unsplash URL..."
+              />
 
               <div>
                 <label className="block font-bold text-slate-300 mb-1">Map to Parent Category (Optional)</label>
@@ -6248,6 +7308,23 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* TOP NAVBAR FEATURED TOGGLE */}
+              <div className="bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-800/60 flex items-center justify-between">
+                <div>
+                  <span className="font-extrabold text-emerald-300 text-xs block">Featured Top Navbar Navigation Link</span>
+                  <p className="text-[11px] text-slate-400">Show this collection directly as a featured link on the top website navbar (next to Offers / Best Sellers).</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={collectionForm.show_in_navbar === 1 || collectionForm.show_in_navbar === true || String(collectionForm.show_in_navbar) === '1'}
+                    onChange={(e) => setCollectionForm({ ...collectionForm, show_in_navbar: e.target.checked ? 1 : 0 })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
               </div>
 
               <div className="space-y-2 bg-slate-850 p-3 rounded-xl border border-slate-800">
@@ -6423,9 +7500,18 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-4 py-2 rounded-xl shadow-md transition-colors cursor-pointer flex items-center gap-1.5"
+                    disabled={updatingShippingStatus}
+                    className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-extrabold px-4 py-2 rounded-xl shadow-md transition-colors cursor-pointer flex items-center gap-1.5"
                   >
-                    <Truck size={14} /> Update Shipping & Status
+                    {updatingShippingStatus ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" /> Updating Status...
+                      </>
+                    ) : (
+                      <>
+                        <Truck size={14} /> Update Shipping & Status
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -6437,7 +7523,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 {selectedOrderDetails.items?.map((item, idx) => (
                   <div key={idx} className="p-3 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
-                      <img src={item.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'} className="w-10 h-10 object-cover rounded-lg border border-slate-700" />
+                      <img src={resolveImgUrl(item.thumbnail || item.image_url)} alt={item.product_title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-10 h-10 object-cover rounded-lg border border-slate-700" />
                       <div>
                         <div className="font-bold text-white text-sm">{item.product_title}</div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -6490,9 +7576,18 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                   <button 
                     type="submit"
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-md"
+                    disabled={savingOrderNote}
+                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-md cursor-pointer"
                   >
-                    <Send size={14} /> Save Order Note
+                    {savingOrderNote ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" /> Saving Note...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={14} /> Save Order Note
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -6501,10 +7596,179 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         </div>
       )}
 
+      {/* MEDIA PREVIEW LIGHTBOX MODAL */}
+      {previewMediaItem && (
+        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">ASSET DETAILS</span>
+                <h3 className="font-extrabold text-base text-white truncate max-w-md">{previewMediaItem.filename}</h3>
+              </div>
+              <button onClick={() => setPreviewMediaItem(null)} className="text-slate-400 hover:text-white"><XCircle size={24} /></button>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden max-h-80 flex items-center justify-center p-2">
+              <img src={resolveImgUrl(previewMediaItem.url)} alt="Preview" className="max-h-72 object-contain rounded-xl" />
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between items-center p-2.5 bg-slate-800/80 rounded-xl border border-slate-700 font-mono text-[11px]">
+                <span className="text-slate-400">Full Image URL:</span>
+                <span className="text-emerald-300 font-bold truncate max-w-md">{previewMediaItem.fullUrl || getApiUrl(previewMediaItem.url)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(previewMediaItem.fullUrl || getApiUrl(previewMediaItem.url));
+                  if (showToast) showToast('success', 'URL Copied!', 'Image URL copied to clipboard.');
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5"
+              >
+                <LinkIcon size={14} /> Copy Full Image URL
+              </button>
+
+              <label className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-colors">
+                <RefreshCw size={14} /> Replace Image File
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!window.confirm(`Replace image "${previewMediaItem.filename}" with new file "${file.name}"? The image URL will stay identical across all products.`)) return;
+                    
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    formData.append('targetFilename', previewMediaItem.filename);
+
+                    try {
+                      const res = await fetch(getApiUrl('/api/media/replace'), {
+                        method: 'POST',
+                        body: formData
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setPreviewMediaItem(null);
+                        await fetchAdminData();
+                        if (showToast) showToast('success', 'Image Replaced', `Image ${previewMediaItem.filename} replaced successfully!`);
+                      } else {
+                        if (showToast) showToast('error', 'Replace Failed', data.error);
+                      }
+                    } catch (err) {
+                      if (showToast) showToast('error', 'Replace Error', err.message);
+                    }
+                  }} 
+                  className="hidden" 
+                />
+              </label>
+
+              <button 
+                onClick={() => setPreviewMediaItem(null)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs border border-slate-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRODUCT CREATOR MEDIA LIBRARY PICKER MODAL */}
+      {showProductMediaPickerModal && (
+        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-4xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">PRODUCT MEDIA PICKER</span>
+                <h3 className="font-extrabold text-base text-white">Select Images from Media Library</h3>
+              </div>
+              <button onClick={() => setShowProductMediaPickerModal(false)} className="text-slate-400 hover:text-white"><XCircle size={24} /></button>
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search media by filename..."
+                value={mediaSearch}
+                onChange={(e) => setMediaSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono"
+              />
+              <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+            </div>
+
+            {mediaFiles.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400 bg-slate-850 rounded-xl border border-slate-800">
+                No media files uploaded yet. Upload a file above first.
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-96 overflow-y-auto p-1">
+                {mediaFiles
+                  .filter(m => !mediaSearch || m.filename.toLowerCase().includes(mediaSearch.toLowerCase()))
+                  .map((item, idx) => {
+                    const isSelected = (productForm.images || []).includes(item.url);
+                    return (
+                      <div
+                        key={item.id || idx}
+                        onClick={() => {
+                          if (isSelected) {
+                            setProductForm({
+                              ...productForm,
+                              images: productForm.images.filter(img => img !== item.url)
+                            });
+                          } else {
+                            setProductForm({
+                              ...productForm,
+                              images: [...(productForm.images || []), item.url]
+                            });
+                          }
+                        }}
+                        className={`relative group bg-slate-850 border rounded-xl overflow-hidden cursor-pointer hover:border-emerald-500 transition-all ${
+                          isSelected ? 'border-emerald-500 ring-2 ring-emerald-500/50' : 'border-slate-800'
+                        }`}
+                      >
+                        <div className="h-28 bg-slate-900 overflow-hidden flex items-center justify-center p-1 relative">
+                          <img
+                            src={resolveImgUrl(item.url)}
+                            alt={item.filename}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          {isSelected && (
+                            <span className="absolute top-1.5 right-1.5 bg-emerald-600 text-white rounded-full p-0.5 shadow">
+                              <CheckCircle size={14} />
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-1.5 bg-slate-900/80 border-t border-slate-800">
+                          <p className="text-[10px] font-bold text-white truncate" title={item.filename}>{item.filename}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-3 border-t border-slate-800 text-xs">
+              <span className="text-emerald-400 font-bold">
+                {productForm.images?.length || 0} image(s) selected for this product
+              </span>
+              <button
+                onClick={() => setShowProductMediaPickerModal(false)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2 rounded-xl shadow transition-colors"
+              >
+                Done & Apply Images
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MANAGE VARIANTS MODAL (CRUD) */}
       {selectedProductForVariants && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-4xl w-full p-6 lg:p-8 space-y-5 shadow-2xl max-h-[94vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-white">Variant Pills CRUD Manager</h3>
@@ -6519,8 +7783,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 <div key={v.id} className="p-3 border border-slate-800 bg-slate-850 rounded-xl flex justify-between items-center text-xs">
                   <div>
                     <span className="font-bold text-white">{v.variant_name}</span>
-                    <div className="text-[11px] text-emerald-400 font-bold">
-                      Price: ₹{v.discount_inr || v.price_inr} / ${v.discount_usd || v.price_usd} (Stock: {v.stock})
+                    <div className="text-[11px] text-emerald-400 font-bold flex items-center gap-2">
+                      <span>Offer Price: ₹{v.discount_inr || v.price_inr}</span>
+                      {v.price_inr > (v.discount_inr || v.price_inr) && (
+                        <span className="text-slate-400 line-through text-[10px]">MRP: ₹{v.price_inr}</span>
+                      )}
+                      <span className="text-blue-400">(${v.discount_usd || v.price_usd})</span>
+                      <span className="text-slate-300">Stock: {v.stock}</span>
                     </div>
                   </div>
                   <button onClick={() => handleDeleteVariant(v.id)} className="bg-rose-900/50 text-rose-300 p-1.5 rounded-lg border border-rose-700 hover:bg-rose-800">
@@ -6537,27 +7806,63 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 placeholder="Variant Pill Name (e.g. Pack of 1, 5 Kg, 500ml)" 
                 value={variantForm.variant_name}
                 onChange={(e) => setVariantForm({ ...variantForm, variant_name: e.target.value })}
-                className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
               />
-              <div className="grid grid-cols-3 gap-2">
-                <input 
-                  type="number" required placeholder="Price INR (₹)"
-                  value={variantForm.price_inr}
-                  onChange={(e) => setVariantForm({ ...variantForm, price_inr: Number(e.target.value), discount_inr: Number(e.target.value) })}
-                  className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                />
-                <input 
-                  type="number" required placeholder="Price USD ($)"
-                  value={variantForm.price_usd}
-                  onChange={(e) => setVariantForm({ ...variantForm, price_usd: Number(e.target.value), discount_usd: Number(e.target.value) })}
-                  className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                />
-                <input 
-                  type="number" required placeholder="Stock"
-                  value={variantForm.stock}
-                  onChange={(e) => setVariantForm({ ...variantForm, stock: Number(e.target.value) })}
-                  className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                />
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-400 mb-1">Offer / Sale Price INR (₹) *</label>
+                    <input 
+                      type="number" required placeholder="Offer Price (e.g. 249)"
+                      value={variantForm.discount_inr || ''}
+                      onChange={(e) => setVariantForm({ ...variantForm, discount_inr: Number(e.target.value) })}
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">Compare At / MRP (₹)</label>
+                    <input 
+                      type="number" placeholder="MRP Price (e.g. 349)"
+                      value={variantForm.price_inr || ''}
+                      onChange={(e) => setVariantForm({ ...variantForm, price_inr: Number(e.target.value) })}
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-blue-400 mb-1">Offer USD ($) *</label>
+                    <input 
+                      type="number" required placeholder="Offer USD"
+                      value={variantForm.discount_usd || ''}
+                      onChange={(e) => setVariantForm({ ...variantForm, discount_usd: Number(e.target.value) })}
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">Compare USD ($)</label>
+                    <input 
+                      type="number" placeholder="MRP USD"
+                      value={variantForm.price_usd || ''}
+                      onChange={(e) => setVariantForm({ ...variantForm, price_usd: Number(e.target.value) })}
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-300 mb-1">Stock Qty *</label>
+                    <input 
+                      type="number" required placeholder="Stock"
+                      value={variantForm.stock || ''}
+                      onChange={(e) => setVariantForm({ ...variantForm, stock: Number(e.target.value) })}
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                    />
+                  </div>
+                </div>
               </div>
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg">
                 Save & Create Variant Pill
@@ -6597,15 +7902,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Banner Image URL *</label>
-                <input 
-                  type="text" required
-                  value={bannerForm.image_url}
-                  onChange={(e) => setBannerForm({ ...bannerForm, image_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                />
-              </div>
+              <ImageUploader 
+                label="Banner Image (Upload Local File or Paste URL Link) *"
+                value={bannerForm.image_url}
+                onChange={(url) => setBannerForm({ ...bannerForm, image_url: url })}
+                placeholder="Upload image file or paste web/Unsplash URL..."
+              />
 
               <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-lg">
                 Create Hero Banner
@@ -7199,8 +8501,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         <div className="drawer-overlay flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="font-extrabold text-base text-white">Create Category</h3>
-              <button onClick={() => setShowCategoryModal(false)}><XCircle size={24} /></button>
+              <h3 className="font-extrabold text-base text-white">{editingCategory ? 'Edit Category' : 'Create Category'}</h3>
+              <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }}><XCircle size={24} /></button>
             </div>
 
             <form onSubmit={handleCategorySubmit} className="space-y-3 text-xs">
@@ -7215,10 +8517,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Category Icon (Emoji) *</label>
+                <label className="block font-bold text-slate-300 mb-1">Category Icon (Emoji) (Optional)</label>
                 <input 
-                  type="text" required placeholder="e.g. 🐛 or 🌿"
-                  value={categoryForm.icon}
+                  type="text" placeholder="e.g. 🐛 or 🌿 (Optional)"
+                  value={categoryForm.icon || ''}
                   onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
                   className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
                 />
@@ -7234,8 +8536,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 />
               </div>
 
-              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-lg">
-                Create Category
+              <ImageUploader 
+                label="Category Cover Image (Upload Local File or Paste URL Link) *"
+                value={categoryForm.image_url}
+                onChange={(url) => setCategoryForm({ ...categoryForm, image_url: url })}
+                placeholder="Upload image file or paste web/Unsplash URL..."
+              />
+
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition-colors">
+                {editingCategory ? 'Update Category' : 'Create Category'}
               </button>
             </form>
           </div>
@@ -7363,7 +8672,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <img src={p.thumbnail || 'https://images.unsplash.com/photo-1592417817098-8f3d6eb1b7a5?w=100'} alt={p.title} className="w-10 h-10 object-cover rounded-lg bg-white" />
+                          <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1592417817098-8f3d6eb1b7a5?w=100'; }} className="w-10 h-10 object-cover rounded-lg bg-white shrink-0" />
                           <div>
                             <div className="font-bold text-xs text-white line-clamp-1">{p.title}</div>
                             <div className="text-[10px] text-emerald-400 font-mono">₹{p.discount_inr || p.price_inr} • Stock: {p.stock}</div>

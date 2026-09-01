@@ -12,10 +12,37 @@ import CategorySlider from './components/CategorySlider';
 import MobileBottomNav from './components/MobileBottomNav';
 import CustomerAuthModal from './components/CustomerAuthModal';
 import CustomerProfilePage from './components/CustomerProfilePage';
+import MaintenancePage from './components/MaintenancePage';
+import BrandLoader from './components/common/BrandLoader';
+import SectionErrorBoundary from './components/common/SectionErrorBoundary';
+import { getApiUrl } from './api/config';
 import { 
   ShoppingBag, Heart, Star, ShieldCheck, Truck, RotateCcw, CheckCircle, 
   ArrowRight, PhoneCall, Mail, MapPin, Sparkles, Filter, Lock, Grid, SlidersHorizontal, List, LayoutGrid, Eye
 } from 'lucide-react';
+import { InstagramIcon, FacebookIcon, YoutubeIcon, WhatsAppIcon } from './components/SocialIcons';
+
+const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80') => {
+  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
+  let clean = url.trim();
+
+  if (clean.startsWith('data:')) return clean;
+
+  if (clean.includes('/uploads/')) {
+    const filename = clean.split('/uploads/').pop();
+    return getApiUrl(`/api/media/file/${filename}`);
+  }
+
+  if (clean.includes('/images/')) {
+    const relative = clean.split('/images/').pop();
+    return `/images/${relative}`;
+  }
+
+  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
+  const path = clean.startsWith('/') ? clean : `/${clean}`;
+  return getApiUrl(path);
+};
 
 export default function App() {
   const getInitialRouteState = () => {
@@ -62,11 +89,21 @@ export default function App() {
   };
 
   const [route, setRoute] = useState(getInitialRouteState());
+  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
+  const [isMaintenanceUnlocked, setIsMaintenanceUnlocked] = useState(() => {
+    return localStorage.getItem('maintenance_unlocked') === 'true';
+  });
   const [currency, setCurrency] = useState('INR');
   const [currencySymbol, setCurrencySymbol] = useState('₹');
   
   const [banners, setBanners] = useState([]);
+  const [isAppLoading, setIsAppLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsAppLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
   const [collections, setCollections] = useState([]);
   const [products, setProducts] = useState([]);
   const [bestProducts, setBestProducts] = useState([]);
@@ -96,11 +133,13 @@ export default function App() {
   const ITEMS_PER_PAGE = 12;
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
 
   const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -114,9 +153,11 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     localStorage.setItem('customerUser', JSON.stringify(user));
-    showToast('success', 'Welcome!', `Signed in as ${user.name}`);
+    showToast('success', 'Welcome Back!', `Signed in as ${user.name || user.phone}`);
     setIsAuthOpen(false);
-    navigateTo('/account', { view: 'account', slug: null, category: null, collection: null });
+    if (cart && cart.length > 0) {
+      setIsCartOpen(true);
+    }
   };
 
   const handleLogout = () => {
@@ -137,7 +178,16 @@ export default function App() {
     setToast({ type, title, message });
   };
 
-  useEffect(() => {
+  const handleProceedToCheckout = (data) => {
+    if (!currentUser) {
+      showToast('info', 'Login Required 🔒', 'Order place karne ke liye kripya pehle Login/Register karein.');
+      setIsAuthOpen(true);
+      return;
+    }
+    setCheckoutData(data);
+    setIsCartOpen(false);
+    setShowCheckoutModal(true);
+  };  useEffect(() => {
     const handlePopState = () => {
       setRoute(getInitialRouteState());
     };
@@ -146,36 +196,42 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/settings')
+    fetch(getApiUrl('/api/settings'))
       .then(res => res.json())
       .then(data => { if (data) setSettings(data); })
       .catch(() => {});
 
-    fetch('/api/filter-groups')
+    fetch(getApiUrl('/api/filter-groups'))
       .then(res => res.json())
       .then(data => { if (data) setFilterGroups(data); })
       .catch(() => {});
 
-    fetch('/api/hero-config')
+    fetch(getApiUrl('/api/hero-config'))
       .then(res => res.json())
       .then(data => { if (data) setHeroConfig(data); })
       .catch(() => {});
 
-    fetch('/api/theme-config')
+    fetch(getApiUrl('/api/theme-config'))
       .then(res => res.json())
       .then(data => { if (data && data.id) setThemeConfig(data); })
       .catch(() => {});
 
-    fetch('/api/sections-config')
+    fetch(getApiUrl('/api/sections-config'))
       .then(res => res.json())
       .then(data => { if (data && data.id) setSectionsConfig(data); })
+      .catch(() => {});
+
+    fetch(getApiUrl('/api/maintenance/status'))
+      .then(res => res.json())
+      .then(data => { if (data && data.maintenance_mode) setIsMaintenanceActive(true); })
       .catch(() => {});
   }, []);
 
   const navigateTo = (path, newRouteState) => {
     window.history.pushState({}, '', path);
     setRoute(newRouteState);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
+    try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) {}
   };
 
   const handleClearFilters = () => {
@@ -187,7 +243,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/currency/detect')
+    fetch(getApiUrl('/api/currency/detect'))
       .then(res => res.json())
       .then(data => {
         if (data.currency) {
@@ -217,71 +273,162 @@ export default function App() {
 
   const fetchBanners = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/banners');
+      const res = await fetch(getApiUrl('/api/banners'));
       setBanners(await res.json());
     } catch (err) {}
   };
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/categories');
+      const res = await fetch(getApiUrl('/api/categories'));
       setCategories(await res.json());
     } catch (err) {}
   };
 
   const fetchCollections = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/collections');
+      const res = await fetch(getApiUrl('/api/collections'));
       setCollections(await res.json());
     } catch (err) {}
   };
 
   const fetchProducts = async () => {
+    setIsProductsLoading(true);
     try {
-      let url = 'http://localhost:5000/api/products?';
-      if (route.category) url += `category=${route.category}&`;
-      if (route.collection) url += `collection=${route.collection}&`;
-      if (searchQuery) url += `search=${encodeURIComponent(searchQuery)}&`;
+      const params = new URLSearchParams();
+      if (route.category) params.append('category', route.category);
+      if (route.collection) params.append('collection', route.collection);
+      if (searchQuery) params.append('search', searchQuery);
+
+      const queryString = params.toString();
+      const url = getApiUrl('/api/products') + (queryString ? `?${queryString}` : '');
 
       const res = await fetch(url);
-      let data = await res.json();
+      const rawData = await res.json();
+      let data = Array.isArray(rawData) ? rawData : (rawData && Array.isArray(rawData.products) ? rawData.products : []);
 
       if (route.view === 'offers') {
-        data = data.filter(p => (p.discount_inr > 0 && p.price_inr > p.discount_inr) || (p.discount_usd > 0 && p.price_usd > p.discount_usd));
+        data = data.filter(p => p && ((p.discount_inr > 0 && p.price_inr > p.discount_inr) || (p.discount_usd > 0 && p.price_usd > p.discount_usd)));
       } else if (route.view === 'bestsellers') {
-        data = data.filter(p => p.is_best_product === 1);
+        data = data.filter(p => p && p.is_best_product === 1);
       } else if (route.view === 'new_arrivals') {
-        data = [...data].sort((a, b) => b.id - a.id);
+        data = [...data].sort((a, b) => (b.id || 0) - (a.id || 0));
+      }
+
+      if (route.collection) {
+        const cleanColl = String(route.collection);
+        const targetColl = (collections || []).find(c => String(c.id) === cleanColl || c.slug === cleanColl);
+        const targetId = targetColl ? String(targetColl.id) : cleanColl;
+
+        data = data.filter(p => {
+          if (!p) return false;
+          if (Array.isArray(p.collection_ids)) {
+            return p.collection_ids.some(cid => String(cid) === targetId);
+          }
+          return false;
+        });
       }
 
       setProducts(data);
-      setBestProducts(data.filter(p => p.is_best_product === 1));
-    } catch (err) {}
-  };
-
-  const handleAddToCart = (product) => {
-    const qty = product.quantity || 1;
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + qty } : item);
-      }
-      return [...prev, { ...product, quantity: qty }];
-    });
-    showToast('success', 'Added to Cart', `Added "${product.title}" to cart!`);
-    setIsCartOpen(true);
-  };
-
-  const handleUpdateQuantity = (id, newQty) => {
-    if (newQty <= 0) {
-      handleRemoveFromCart(id);
-    } else {
-      setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: newQty } : item));
+      setBestProducts(data.filter(p => p && p.is_best_product === 1));
+    } catch (err) {
+      setProducts([]);
+      setBestProducts([]);
+    } finally {
+      setIsProductsLoading(false);
     }
   };
 
-  const handleRemoveFromCart = (id) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+  const handleAddToCart = (productPayload) => {
+    const qty = productPayload.quantity || 1;
+    const isINR = currency === 'INR';
+
+    // Extract selected variant object
+    const selectedVariant = productPayload.variant || productPayload.selectedVariant || null;
+    const variantId = selectedVariant?.id || productPayload.variant_id || null;
+    const variantName = selectedVariant?.variant_name || selectedVariant?.name || productPayload.variant_name || null;
+
+    // Determine exact unit price
+    let itemPriceInr = productPayload.price_inr;
+    let itemPriceUsd = productPayload.price_usd;
+
+    if (selectedVariant) {
+      itemPriceInr = Number(selectedVariant.discount_inr !== undefined && selectedVariant.discount_inr !== null && Number(selectedVariant.discount_inr) > 0 ? selectedVariant.discount_inr : (selectedVariant.price_inr || selectedVariant.price || productPayload.price_inr));
+      itemPriceUsd = Number(selectedVariant.discount_usd !== undefined && selectedVariant.discount_usd !== null && Number(selectedVariant.discount_usd) > 0 ? selectedVariant.discount_usd : (selectedVariant.price_usd || selectedVariant.price || productPayload.price_usd));
+    } else if (productPayload.price !== undefined && productPayload.price !== null) {
+      if (isINR) itemPriceInr = Number(productPayload.price);
+      else itemPriceUsd = Number(productPayload.price);
+    }
+
+    if (!itemPriceInr) itemPriceInr = Number(productPayload.discount_inr || productPayload.price_inr || 0);
+    if (!itemPriceUsd) itemPriceUsd = Number(productPayload.discount_usd || productPayload.price_usd || Math.round(itemPriceInr / 40));
+
+    const activePrice = isINR ? itemPriceInr : itemPriceUsd;
+
+    const cartKey = variantId 
+      ? `${productPayload.id}_var_${variantId}` 
+      : (variantName ? `${productPayload.id}_var_${variantName.replace(/\s+/g, '_')}` : `${productPayload.id}`);
+
+    const itemThumbnail = selectedVariant?.image_url || (Array.isArray(productPayload.images) ? productPayload.images[0] : null) || productPayload.thumbnail || productPayload.image_url;
+
+    setCart(prev => {
+      const existingIndex = prev.findIndex(item => item.cartKey === cartKey || (item.id === productPayload.id && (item.variant_id === variantId || item.variant_name === variantName)));
+
+      if (existingIndex > -1) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + qty,
+          price: activePrice,
+          price_inr: itemPriceInr,
+          discount_inr: itemPriceInr,
+          price_usd: itemPriceUsd,
+          discount_usd: itemPriceUsd
+        };
+        return updated;
+      }
+
+      return [
+        ...prev,
+        {
+          ...productPayload,
+          cartKey,
+          id: productPayload.id,
+          product_id: productPayload.id,
+          title: productPayload.title,
+          slug: productPayload.slug,
+          thumbnail: itemThumbnail,
+          image_url: itemThumbnail,
+          variant_id: variantId,
+          variant_name: variantName,
+          variant: selectedVariant,
+          selectedVariant,
+          price: activePrice,
+          price_inr: itemPriceInr,
+          discount_inr: itemPriceInr,
+          price_usd: itemPriceUsd,
+          discount_usd: itemPriceUsd,
+          quantity: qty,
+          gst_percent: productPayload.gst_percent
+        }
+      ];
+    });
+
+    const toastTitle = variantName ? `Added ${variantName}` : 'Added to Cart';
+    showToast('success', toastTitle, `Added "${productPayload.title}${variantName ? ` (${variantName})` : ''}" to cart!`);
+    setIsCartOpen(true);
+  };
+
+  const handleUpdateQuantity = (cartKey, newQty) => {
+    if (newQty <= 0) {
+      handleRemoveFromCart(cartKey);
+    } else {
+      setCart(prev => prev.map(item => (item.cartKey === cartKey || item.id === cartKey) ? { ...item, quantity: newQty } : item));
+    }
+  };
+
+  const handleRemoveFromCart = (cartKey) => {
+    setCart(prev => prev.filter(item => !(item.cartKey === cartKey || item.id === cartKey)));
   };
 
   const handleToggleWishlist = (product) => {
@@ -294,12 +441,6 @@ export default function App() {
       showToast('success', 'Saved to Wishlist', `Added "${product.title}" to wishlist!`);
       return [...prev, product];
     });
-  };
-
-  const handleProceedToCheckout = (data) => {
-    setCheckoutData(data);
-    setIsCartOpen(false);
-    setShowCheckoutModal(true);
   };
 
   useEffect(() => {
@@ -316,6 +457,13 @@ export default function App() {
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
     if (isSubmittingOrder) return;
+
+    if (!currentUser) {
+      showToast('error', 'Login Required 🔒', 'Order place karne ke liye Account Login hona anivarya hai.');
+      setShowCheckoutModal(false);
+      setIsAuthOpen(true);
+      return;
+    }
 
     if (!cart || cart.length === 0) {
       showToast('error', 'Cart Empty', 'Your shopping cart is empty.');
@@ -340,7 +488,7 @@ export default function App() {
     setIsSubmittingOrder(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/orders', {
+      const res = await fetch(getApiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -444,6 +592,10 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [visibleCount, sortedProducts.length, isLoadingMore]);
 
+  if (isAppLoading) {
+    return <BrandLoader text="Loading ValueLife Essentials..." fullScreen={true} />;
+  }
+
   if (route.view === 'admin') {
     return (
       <>
@@ -457,6 +609,17 @@ export default function App() {
           onUpdateSettings={setSettings}
         />
       </>
+    );
+  }
+
+  if (isMaintenanceActive && !isMaintenanceUnlocked && route.view !== 'admin') {
+    return (
+      <MaintenancePage 
+        onUnlock={() => {
+          setIsMaintenanceUnlocked(true);
+          localStorage.setItem('maintenance_unlocked', 'true');
+        }} 
+      />
     );
   }
 
@@ -500,30 +663,46 @@ export default function App() {
       />
 
       {route.view === 'account' ? (
-        <CustomerProfilePage 
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          showToast={showToast}
-          onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-          onSelectProduct={(slug) => navigateTo(`/products/${slug}`, { view: 'pdp', slug, category: null, collection: null })}
-        />
+        <SectionErrorBoundary name="Customer Profile">
+          <CustomerProfilePage 
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            onUpdateUser={(updated) => setCurrentUser(updated)}
+            showToast={showToast}
+            onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
+            onSelectProduct={(slug, pObj) => {
+              const pId = pObj?.id || (typeof pObj === 'number' ? pObj : null);
+              const targetSlug = slug || pObj?.slug || (pId ? String(pId) : '');
+              navigateTo(`/products/${targetSlug}`, { view: 'pdp', slug: targetSlug, id: pId, category: null, collection: null });
+            }}
+          />
+        </SectionErrorBoundary>
       ) : route.view === 'pdp' && route.slug ? (
-        <ProductDetailPage 
-          productSlug={route.slug}
-          currency={currency}
-          currencySymbol={currencySymbol}
-          onAddToCart={handleAddToCart}
-          onAddToWishlist={handleToggleWishlist}
-          onBack={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
-          onSelectProduct={(slug) => navigateTo(`/products/${slug}`, { view: 'pdp', slug, category: null, collection: null })}
-          showToast={showToast}
-        />
+        <SectionErrorBoundary name="Product Details Page">
+          <ProductDetailPage 
+            productSlug={route.slug}
+            productId={route.id}
+            currency={currency}
+            currencySymbol={currencySymbol}
+            onAddToCart={handleAddToCart}
+            onAddToWishlist={handleToggleWishlist}
+            onBack={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
+            onSelectProduct={(slug, pObj) => {
+              const pId = pObj?.id || (typeof pObj === 'number' ? pObj : null);
+              const targetSlug = slug || pObj?.slug || (pId ? String(pId) : '');
+              navigateTo(`/products/${targetSlug}`, { view: 'pdp', slug: targetSlug, id: pId, category: null, collection: null });
+            }}
+            showToast={showToast}
+          />
+        </SectionErrorBoundary>
       ) : route.view === 'page' && route.slug ? (
-        <PageView 
-          slug={route.slug} 
-          onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-          showToast={showToast} 
-        />
+        <SectionErrorBoundary name="Custom Page">
+          <PageView 
+            slug={route.slug} 
+            onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
+            showToast={showToast} 
+          />
+        </SectionErrorBoundary>
       ) : (
         <main className="flex-1 space-y-12 pb-28 sm:pb-20">
           {/* MULTI-STYLE DYNAMIC HERO SECTION */}
@@ -585,6 +764,67 @@ export default function App() {
             <CategorySlider categories={categories} navigateTo={navigateTo} sectionTitle={sectionsConfig?.category_slider_title} sectionsConfig={sectionsConfig} />
           )}
 
+          {/* CURATED PRODUCT COLLECTIONS SECTION */}
+          {collections && collections.length > 0 && route.view === 'store' && !searchQuery && (
+            <div className="max-w-7xl mx-auto px-4 space-y-6">
+              <div className="bg-[#0f172a] text-white p-5 rounded-3xl border border-slate-800 flex justify-between items-center shadow-lg">
+                <div>
+                  <span className="text-[11px] font-black uppercase text-emerald-400 tracking-widest flex items-center gap-1">
+                    📦 FEATURED CATALOG COLLECTIONS
+                  </span>
+                  <h2 className="text-2xl font-black text-white font-['Outfit']">Handpicked Collections</h2>
+                </div>
+                <button 
+                  onClick={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
+                  className="text-xs font-extrabold text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  Browse All Products →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {collections.map(col => {
+                  const count = col.product_count !== undefined ? col.product_count : (col.product_ids ? col.product_ids.length : 0);
+                  const coverImg = col.image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80';
+
+                  return (
+                    <div 
+                      key={col.id}
+                      onClick={() => navigateTo(`/collection/${col.slug || col.id}`, { view: 'catalog', slug: null, category: null, collection: col.id })}
+                      className="group bg-white rounded-3xl overflow-hidden border border-gray-200 shadow-md hover:shadow-2xl transition-all cursor-pointer flex flex-col relative"
+                    >
+                      <div className="w-full h-48 bg-gray-100 relative overflow-hidden">
+                        <img 
+                          src={resolveImgUrl(coverImg)} 
+                          alt={col.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-4">
+                          <span className="bg-emerald-500 text-emerald-950 font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full w-fit mb-1.5 shadow">
+                            {count} {count === 1 ? 'Product' : 'Products'}
+                          </span>
+                          <h3 className="font-extrabold text-white text-lg font-['Outfit'] leading-snug group-hover:text-emerald-300 transition-colors">
+                            {col.name}
+                          </h3>
+                        </div>
+                      </div>
+
+                      {col.description && (
+                        <div className="p-4 bg-white flex-1 flex flex-col justify-between">
+                          <p className="text-xs text-gray-600 line-clamp-2">{col.description}</p>
+                          <div className="mt-3 flex items-center justify-between text-xs font-bold text-emerald-700 pt-2 border-t border-gray-100">
+                            <span>Explore Collection</span>
+                            <span>→</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* BEST SELLERS SECTION */}
           {bestProducts.length > 0 && route.view === 'store' && !searchQuery && (!sectionsConfig || Number(sectionsConfig.show_bestsellers) !== 0) && (
             <div className="max-w-7xl mx-auto px-4 space-y-6">
@@ -605,19 +845,38 @@ export default function App() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {bestProducts.map((p) => {
-                  const pPrice = currency === 'INR' ? (p.discount_inr || p.price_inr) : (p.discount_usd || p.price_usd);
-                  const pOriginal = currency === 'INR' ? p.price_inr : p.price_usd;
+                  const isINR = currency === 'INR';
+                  const rawPrice = isINR ? (Number(p.price_inr) || 0) : (Number(p.price_usd) || 0);
+                  const rawDiscount = isINR 
+                    ? (p.discount_inr !== undefined && p.discount_inr !== null && p.discount_inr > 0 ? Number(p.discount_inr) : null)
+                    : (p.discount_usd !== undefined && p.discount_usd !== null && p.discount_usd > 0 ? Number(p.discount_usd) : null);
+                  const rawCompare = isINR
+                    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && p.compare_price_inr > 0 ? Number(p.compare_price_inr) : null)
+                    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && p.compare_price_usd > 0 ? Number(p.compare_price_usd) : null);
+
+                  let pPrice = rawPrice;
+                  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
+                    pPrice = rawDiscount;
+                  }
+
+                  let pOriginal = pPrice;
+                  if (rawCompare !== null && rawCompare > pPrice) {
+                    pOriginal = rawCompare;
+                  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
+                    pOriginal = rawPrice;
+                  }
+
                   const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
                   const isWish = wishlist.some(w => w.id === p.id);
 
                   return (
                     <div key={p.id} className="bg-[#f8f7f2] rounded-3xl overflow-hidden border border-gray-200/60 shadow-sm hover:shadow-xl transition-all flex flex-col group p-3 space-y-3">
                       <div 
-                        onClick={() => navigateTo(`/products/${p.slug}`, { view: 'pdp', slug: p.slug, category: null, collection: null })}
+                        onClick={() => navigateTo(`/products/${p.slug}`, { view: 'pdp', slug: p.slug, id: p.id, category: null, collection: null })}
                         className="w-full h-48 sm:h-56 bg-white rounded-2xl relative overflow-hidden cursor-pointer flex items-center justify-center p-2 group/img"
                       >
                         <img 
-                          src={p.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'} 
+                          src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                           alt={p.title}
                           className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500"
                         />
@@ -636,7 +895,7 @@ export default function App() {
                       <div className="space-y-2 flex-1 flex flex-col justify-between px-1">
                         <div className="space-y-1">
                           <h3 
-                            onClick={() => navigateTo(`/products/${p.slug}`, { view: 'pdp', slug: p.slug, category: null, collection: null })}
+                            onClick={() => navigateTo(`/products/${p.slug}`, { view: 'pdp', slug: p.slug, id: p.id, category: null, collection: null })}
                             className="font-extrabold text-xs sm:text-sm text-gray-800 group-hover:text-[#3b6e14] cursor-pointer line-clamp-1 leading-snug"
                           >
                             {p.title}
@@ -693,33 +952,51 @@ export default function App() {
             </div>
           )}
 
-          {/* CATALOG / ALL PRODUCTS PAGE GRID (Matching OrganicBazar.net screenshot) */}
+          {/* CATALOG / ALL PRODUCTS PAGE GRID (Matching valuelifeessentials.com screenshot) */}
           <div className="space-y-6 pb-12">
             {/* 1. HERO HEADER BANNER WITH OVERLAY TITLE & BREADCRUMB */}
-            <div className="relative w-full h-48 sm:h-56 bg-slate-900 overflow-hidden flex items-center justify-center text-center">
-              <img 
-                src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=1600&q=80" 
-                alt="Banner"
-                className="absolute inset-0 w-full h-full object-cover opacity-40"
-              />
+            <div className="relative w-full h-48 sm:h-56 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 overflow-hidden flex items-center justify-center text-center">
               <div className="relative z-10 space-y-2 px-4">
-                <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight font-['Outfit']">
-                  {route.view === 'offers' ? '🔥 Special Organic Offers & Discount Deals' :
-                   route.view === 'bestsellers' ? '⭐ Best Seller Organic Products' :
-                   route.view === 'new_arrivals' ? '✨ New Arrivals & Fresh Stock' :
-                   route.view === 'all_products' ? 'All Organic Products' :
-                   route.category ? route.category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) :
-                   route.collection ? route.collection.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) :
-                   'Organic Seeds'}
-                </h1>
-                <p className="text-xs font-bold text-emerald-200">
-                  <span>Home</span> / <span className="text-white font-extrabold">
-                    {route.view === 'offers' ? 'Offers' :
-                     route.view === 'bestsellers' ? 'Best Sellers' :
-                     route.view === 'new_arrivals' ? 'New Arrivals' :
-                     route.category ? route.category.replace(/-/g, ' ') : 'Catalog'}
-                  </span>
-                </p>
+                {(() => {
+                  const getCategoryTitle = () => {
+                    if (!route.category) return 'Catalog';
+                    const found = (categories || []).find(c => String(c.id) === String(route.category) || c.slug === route.category);
+                    if (found && found.name) return found.name;
+                    return String(route.category).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  };
+
+                  const getCollectionTitle = () => {
+                    if (!route.collection) return 'Catalog';
+                    const found = (collections || []).find(c => String(c.id) === String(route.collection) || c.slug === route.collection);
+                    if (found && found.name) return found.name;
+                    return String(route.collection).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  };
+
+                  const titleText = route.view === 'offers' ? '🔥 Special Organic Offers & Discount Deals' :
+                    route.view === 'bestsellers' ? '⭐ Best Seller Organic Products' :
+                    route.view === 'new_arrivals' ? '✨ New Arrivals & Fresh Stock' :
+                    route.view === 'all_products' ? 'All Organic Products' :
+                    route.category ? getCategoryTitle() :
+                    route.collection ? getCollectionTitle() :
+                    'Organic Seeds';
+
+                  const breadcrumbText = route.view === 'offers' ? 'Offers' :
+                    route.view === 'bestsellers' ? 'Best Sellers' :
+                    route.view === 'new_arrivals' ? 'New Arrivals' :
+                    route.category ? getCategoryTitle() :
+                    route.collection ? getCollectionTitle() : 'Catalog';
+
+                  return (
+                    <>
+                      <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight font-['Outfit']">
+                        {titleText}
+                      </h1>
+                      <p className="text-xs font-bold text-emerald-200">
+                        <span>Home</span> / <span className="text-white font-extrabold">{breadcrumbText}</span>
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -854,8 +1131,18 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 4. PRODUCT CARDS GRID (Exact match to OrganicBazar screenshot) */}
-              {sortedProducts.length === 0 ? (
+              {/* 4. PRODUCT CARDS GRID (Exact match to VALUELIFE ESSENTIALS screenshot) */}
+              {isProductsLoading ? (
+                <div className="py-20 text-center space-y-4 bg-white/70 rounded-3xl border border-gray-200/80 shadow-sm my-6">
+                  <div className="w-12 h-12 border-4 border-[#3b6e14] border-t-transparent rounded-full animate-spin mx-auto shadow-md" />
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-extrabold text-gray-800 tracking-wide uppercase font-['Outfit'] animate-pulse">
+                      🌱 Loading Fresh Organic Products...
+                    </h3>
+                    <p className="text-xs text-gray-400 font-medium">Fetching catalog from ValueLife Essentials server</p>
+                  </div>
+                </div>
+              ) : sortedProducts.length === 0 ? (
                 <div className="bg-white rounded-3xl border border-gray-200 p-12 text-center space-y-4 max-w-xl mx-auto shadow-sm my-8">
                   <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
                     🔍
@@ -874,9 +1161,28 @@ export default function App() {
               ) : (
                 <div className={`grid ${mobileViewMode === 'list' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-4 sm:gap-5`}>
                   {sortedProducts.slice(0, visibleCount).map((p) => {
-                    const pPrice = currency === 'INR' ? (p.discount_inr || p.price_inr) : (p.discount_usd || p.price_usd);
-                    const pOriginal = currency === 'INR' ? p.price_inr : p.price_usd;
-                    const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+                  const isINR = currency === 'INR';
+                  const rawPrice = isINR ? (Number(p.price_inr) || 0) : (Number(p.price_usd) || 0);
+                  const rawDiscount = isINR 
+                    ? (p.discount_inr !== undefined && p.discount_inr !== null && p.discount_inr > 0 ? Number(p.discount_inr) : null)
+                    : (p.discount_usd !== undefined && p.discount_usd !== null && p.discount_usd > 0 ? Number(p.discount_usd) : null);
+                  const rawCompare = isINR
+                    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && p.compare_price_inr > 0 ? Number(p.compare_price_inr) : null)
+                    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && p.compare_price_usd > 0 ? Number(p.compare_price_usd) : null);
+
+                  let pPrice = rawPrice;
+                  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
+                    pPrice = rawDiscount;
+                  }
+
+                  let pOriginal = pPrice;
+                  if (rawCompare !== null && rawCompare > pPrice) {
+                    pOriginal = rawCompare;
+                  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
+                    pOriginal = rawPrice;
+                  }
+
+                  const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
                     const isWish = wishlist.some(w => w.id === p.id);
 
                     if (mobileViewMode === 'list') {
@@ -888,7 +1194,7 @@ export default function App() {
                             className="w-36 sm:w-44 h-36 sm:h-44 bg-white rounded-2xl relative overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center p-2 border border-gray-200/80 group/img"
                           >
                             <img 
-                              src={p.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'} 
+                              src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                               alt={p.title}
                               className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500"
                             />
@@ -979,7 +1285,7 @@ export default function App() {
                           className="w-full h-52 sm:h-60 bg-white rounded-2xl relative overflow-hidden cursor-pointer flex items-center justify-center p-2 group/img"
                         >
                           <img 
-                            src={p.thumbnail || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'} 
+                            src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                             alt={p.title}
                             className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500"
                           />
@@ -1104,6 +1410,25 @@ export default function App() {
             <p className="text-emerald-200/80 leading-relaxed">
               Your 100% trusted online organic & wellness store. Supplying certified organic superfoods, seeds, pure supplements, and natural wellness products.
             </p>
+
+            {/* SOCIAL MEDIA ICONS BAR */}
+            <div className="pt-1 space-y-1.5">
+              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest block">Connect & Follow Us:</span>
+              <div className="flex items-center gap-2">
+                <a href={settings?.instagram_url || "https://instagram.com/valuelifeessentials"} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" title="Instagram">
+                  <InstagramIcon size={15} />
+                </a>
+                <a href={settings?.facebook_url || "https://facebook.com/valuelifeessentials"} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" title="Facebook">
+                  <FacebookIcon size={15} />
+                </a>
+                <a href={settings?.youtube_url || "https://youtube.com/@valuelifeessentials"} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" title="YouTube Channel">
+                  <YoutubeIcon size={15} />
+                </a>
+                <a href={`https://wa.me/${(settings?.whatsapp_number || '919876543210').replace(/[^\d]/g, '')}`} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-emerald-400 hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" title="WhatsApp Direct Chat">
+                  <WhatsAppIcon size={15} />
+                </a>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -1409,7 +1734,9 @@ export default function App() {
       <MobileBottomNav 
         cartCount={cart.length} 
         navigateTo={navigateTo} 
-        onOpenCart={() => setIsCartOpen(true)} 
+        onOpenCart={() => setIsCartOpen(true)}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
     </div>
   );

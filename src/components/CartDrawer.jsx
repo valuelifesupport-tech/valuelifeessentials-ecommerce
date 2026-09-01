@@ -1,5 +1,28 @@
+import { getApiUrl } from '../api/config';
 import React, { useState } from 'react';
 import { X, Trash2, ShieldCheck, Tag, ArrowRight, CreditCard, Banknote, Sparkles, Plus, Check } from 'lucide-react';
+
+const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=200&q=80') => {
+  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
+  let clean = url.trim();
+
+  if (clean.startsWith('data:')) return clean;
+
+  if (clean.includes('/uploads/')) {
+    const filename = clean.split('/uploads/').pop();
+    return getApiUrl(`/api/media/file/${filename}`);
+  }
+
+  if (clean.includes('/images/')) {
+    const relative = clean.split('/images/').pop();
+    return `/images/${relative}`;
+  }
+
+  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
+  const path = clean.startsWith('/') ? clean : `/${clean}`;
+  return getApiUrl(path);
+};
 
 export default function CartDrawer({ 
   isOpen, 
@@ -31,7 +54,7 @@ export default function CartDrawer({
   let calculatedGstTax = 0;
 
   cartItems.forEach(item => {
-    const itemPrice = currency === 'INR' ? (item.discount_inr || item.price_inr) : (item.discount_usd || item.price_usd);
+    const itemPrice = item.price !== undefined && item.price !== null ? Number(item.price) : (currency === 'INR' ? (item.discount_inr || item.price_inr || 0) : (item.discount_usd || item.price_usd || 0));
     const itemTotal = itemPrice * item.quantity;
     rawSubtotal += itemTotal;
 
@@ -65,7 +88,7 @@ export default function CartDrawer({
     if (!couponCode.trim()) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/coupons/validate', {
+      const res = await fetch(getApiUrl('/api/coupons/validate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: couponCode, order_amount: rawSubtotal })
@@ -153,17 +176,33 @@ export default function CartDrawer({
             </div>
           ) : (
             cartItems.map((item) => {
-              const price = currency === 'INR' ? (item.discount_inr || item.price_inr) : (item.discount_usd || item.price_usd);
+              const price = item.price !== undefined && item.price !== null ? Number(item.price) : (currency === 'INR' ? (item.discount_inr || item.price_inr || 0) : (item.discount_usd || item.price_usd || 0));
+              const itemKey = item.cartKey || item.id;
+              const variantName = item.variant_name || item.variant?.variant_name || item.variant?.name || null;
+
               return (
-                <div key={item.id} className="flex gap-3.5 p-3.5 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative group">
+                <div key={itemKey} className="flex gap-3.5 p-3.5 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative group">
                   <img 
-                    src={item.thumbnail || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=200&q=80'} 
+                    src={resolveImgUrl(item.thumbnail || item.image_url || item.selectedVariant?.image_url)} 
                     alt={item.title} 
                     className="w-20 h-20 object-cover rounded-xl border border-gray-100 bg-gray-50 shrink-0"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=200&q=80';
+                    }}
                   />
 
                   <div className="flex-1 min-w-0">
                     <h4 className="font-extrabold text-sm text-gray-900 line-clamp-1 font-['Outfit']">{item.title}</h4>
+                    
+                    {variantName && (
+                      <div className="mt-1">
+                        <span className="inline-block bg-[#f0f7e6] text-[#33691e] border border-[#558b2f]/30 text-[11px] font-extrabold px-2 py-0.5 rounded-md">
+                          Variant: {variantName}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="text-xs text-[#2d6a4f] font-black mt-1">
                       {currencySymbol}{price} <span className="text-gray-400 font-medium text-[11px]">/ unit</span>
                     </div>
@@ -171,14 +210,14 @@ export default function CartDrawer({
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center border border-gray-200 rounded-xl bg-slate-50 overflow-hidden shadow-inner">
                         <button 
-                          onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => onUpdateQuantity(itemKey, item.quantity - 1)}
                           className="px-3 py-1 text-gray-700 font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
                         >
                           -
                         </button>
                         <span className="px-3 text-xs font-black text-gray-900 font-mono">{item.quantity}</span>
                         <button 
-                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => onUpdateQuantity(itemKey, item.quantity + 1)}
                           className="px-3 py-1 text-gray-700 font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
                         >
                           +
@@ -186,7 +225,7 @@ export default function CartDrawer({
                       </div>
 
                       <button 
-                        onClick={() => onRemoveItem(item.id)}
+                        onClick={() => onRemoveItem(itemKey)}
                         className="text-rose-500 hover:text-rose-700 p-1.5 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Remove item from cart"
                       >
@@ -221,9 +260,13 @@ export default function CartDrawer({
                     <div key={sp.id} className="p-2.5 bg-white rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between gap-2.5 hover:border-emerald-300 transition-all">
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <img 
-                          src={sp.thumbnail || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=150&q=80'} 
+                          src={resolveImgUrl(sp.thumbnail || sp.image_url)} 
                           alt={sp.title} 
                           className="w-11 h-11 object-cover rounded-lg border border-gray-100 bg-gray-50 shrink-0"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=150&q=80';
+                          }}
                         />
                         <div className="min-w-0 flex-1">
                           <h5 className="font-extrabold text-xs text-gray-900 truncate font-['Outfit']">{sp.title}</h5>

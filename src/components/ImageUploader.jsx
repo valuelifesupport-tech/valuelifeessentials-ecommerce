@@ -1,14 +1,55 @@
+import { getApiUrl } from '../api/config';
 import React, { useState } from 'react';
-import { Upload, Link as LinkIcon, Image as ImageIcon, X, CheckCircle } from 'lucide-react';
+import { Upload, Link as LinkIcon, Image as ImageIcon, X, CheckCircle, FolderOpen, Search, XCircle } from 'lucide-react';
 
 export default function ImageUploader({ label, value, onChange, placeholder = 'https://...' }) {
-  const [uploadMode, setUploadMode] = useState('upload'); // 'upload' | 'url'
+  const [uploadMode, setUploadMode] = useState('upload'); // 'upload' | 'media' | 'url'
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  const [mediaList, setMediaList] = useState([]);
+  const [mediaSearch, setMediaSearch] = useState('');
+  const [loadingMedia, setLoadingMedia] = useState(false);
 
-  const fullImageUrl = value 
-    ? (value.startsWith('http') || value.startsWith('data:') ? value : `http://localhost:5000${value}`) 
-    : '';
+  const resolveImgUrl = (val) => {
+    if (!val || typeof val !== 'string' || !val.trim()) return '';
+    let clean = val.trim();
+
+    if (clean.startsWith('data:')) return clean;
+
+    if (clean.includes('/uploads/')) {
+      const filename = clean.split('/uploads/').pop();
+      return getApiUrl(`/api/media/file/${filename}`);
+    }
+
+    if (clean.includes('/images/')) {
+      const relative = clean.split('/images/').pop();
+      return `/images/${relative}`;
+    }
+
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
+    const path = clean.startsWith('/') ? clean : `/${clean}`;
+    return getApiUrl(path);
+  };
+
+  const fullImageUrl = resolveImgUrl(value);
+
+  const openMediaPicker = async () => {
+    setShowMediaModal(true);
+    setLoadingMedia(true);
+    try {
+      const res = await fetch(getApiUrl('/api/media'));
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setMediaList(data);
+      }
+    } catch (err) {
+      console.error('Failed to load media list:', err);
+    } finally {
+      setLoadingMedia(false);
+    }
+  };
 
   const handleFileUpload = async (file) => {
     if (!file) return;
@@ -17,16 +58,16 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
       const formData = new FormData();
       formData.append('image', file);
 
-      const res = await fetch('http://localhost:5000/api/upload', {
+      const res = await fetch(getApiUrl('/api/upload'), {
         method: 'POST',
         body: formData
       });
 
       const data = await res.json();
-      if (data.fullUrl) {
+      if (data.imageUrl) {
+        onChange(data.imageUrl);
+      } else if (data.fullUrl) {
         onChange(data.fullUrl);
-      } else if (data.imageUrl) {
-        onChange(`http://localhost:5000${data.imageUrl}`);
       }
     } catch (err) {
       console.error('File upload error:', err);
@@ -59,7 +100,7 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
       {label && <label className="block text-slate-300 font-bold text-xs">{label}</label>}
 
       {/* MODE PICKER TABS */}
-      <div className="flex items-center gap-2 p-1 bg-slate-800 rounded-xl border border-slate-700 w-fit text-[11px] font-bold">
+      <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-800 rounded-xl border border-slate-700 w-fit text-[11px] font-bold">
         <button
           type="button"
           onClick={() => setUploadMode('upload')}
@@ -68,6 +109,19 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
           }`}
         >
           <Upload size={13} /> <span>Upload Local File</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setUploadMode('media');
+            openMediaPicker();
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            uploadMode === 'media' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <FolderOpen size={13} /> <span>Select from Media Library</span>
         </button>
 
         <button
@@ -115,7 +169,24 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
         </div>
       )}
 
-      {/* MODE 2: EXTERNAL URL INPUT */}
+      {/* MODE 2: MEDIA LIBRARY SELECTOR BUTTON */}
+      {uploadMode === 'media' && (
+        <div className="p-3 bg-slate-800/90 rounded-xl border border-slate-700 flex items-center justify-between">
+          <div className="text-xs text-slate-300 font-bold flex items-center gap-2">
+            <FolderOpen size={16} className="text-emerald-400" />
+            <span>{value ? 'Image Selected from Library' : 'Choose an image asset from Media Library'}</span>
+          </div>
+          <button
+            type="button"
+            onClick={openMediaPicker}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition-colors"
+          >
+            Browse Library 📂
+          </button>
+        </div>
+      )}
+
+      {/* MODE 3: EXTERNAL URL INPUT */}
       {uploadMode === 'url' && (
         <div className="relative">
           <input
@@ -159,10 +230,87 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
           <button
             type="button"
             onClick={() => onChange('')}
-            className="p-1.5 rounded-lg bg-rose-950 text-rose-300 border border-rose-800 hover:bg-rose-900 text-xs font-bold shrink-0 cursor-pointer"
+            className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10"
+            title="Clear Image"
           >
-            Remove
+            <X size={16} />
           </button>
+        </div>
+      )}
+
+      {/* MEDIA LIBRARY PICKER MODAL */}
+      {showMediaModal && (
+        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-3xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">ASSET SELECTOR</span>
+                <h3 className="font-extrabold text-base text-white">Select Image from Media Library</h3>
+              </div>
+              <button type="button" onClick={() => setShowMediaModal(false)} className="text-slate-400 hover:text-white">
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search media by filename..."
+                value={mediaSearch}
+                onChange={(e) => setMediaSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono"
+              />
+              <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+            </div>
+
+            {loadingMedia ? (
+              <div className="p-8 text-center text-xs font-bold text-emerald-400 animate-pulse">
+                ⏳ Loading Media Library assets...
+              </div>
+            ) : mediaList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400 bg-slate-850 rounded-xl border border-slate-800">
+                No media files uploaded yet. Upload a file above first.
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-1">
+                {mediaList
+                  .filter(m => !mediaSearch || m.filename.toLowerCase().includes(mediaSearch.toLowerCase()))
+                  .map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      onClick={() => {
+                        onChange(item.url);
+                        setShowMediaModal(false);
+                      }}
+                      className={`relative group bg-slate-850 border rounded-xl overflow-hidden cursor-pointer hover:border-emerald-500 transition-all ${
+                        value === item.url ? 'border-emerald-500 ring-2 ring-emerald-500/50' : 'border-slate-800'
+                      }`}
+                    >
+                      <div className="h-28 bg-slate-900 overflow-hidden flex items-center justify-center p-1">
+                        <img
+                          src={resolveImgUrl(item.url)}
+                          alt={item.filename}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                      </div>
+                      <div className="p-1.5 bg-slate-900/80 border-t border-slate-800">
+                        <p className="text-[10px] font-bold text-white truncate" title={item.filename}>{item.filename}</p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowMediaModal(false)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs border border-slate-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

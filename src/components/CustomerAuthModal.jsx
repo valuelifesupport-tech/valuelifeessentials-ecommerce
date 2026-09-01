@@ -1,3 +1,4 @@
+import { getApiUrl } from '../api/config';
 import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Phone, Package, LogOut, ShieldCheck, ArrowRight, CheckCircle } from 'lucide-react';
 
@@ -13,10 +14,86 @@ export default function CustomerAuthModal({
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+
+  const [forgotInput, setForgotInput] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState(1);
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  const handleSendForgotOtp = async (e) => {
+    e.preventDefault();
+    if (!forgotInput || !forgotInput.trim()) {
+      setErrorMsg('Please enter your registered Email or Mobile number.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch(getApiUrl('/api/auth/forgot-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_or_phone: forgotInput })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccessMsg(data.message);
+        if (data.otp) setForgotOtp(data.otp);
+        setForgotStep(2);
+      } else {
+        setErrorMsg(data.error || 'Failed to process request.');
+      }
+    } catch (err) {
+      setErrorMsg('Network connection error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotOtp || !forgotOtp.trim()) {
+      setErrorMsg('Please enter the 6-digit OTP code.');
+      return;
+    }
+    if (!forgotNewPassword || forgotNewPassword.length < 6) {
+      setErrorMsg('New password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch(getApiUrl('/api/auth/reset-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email_or_phone: forgotInput,
+          otp: forgotOtp,
+          new_password: forgotNewPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccessMsg(data.message || 'Password reset successfully!');
+        setTimeout(() => {
+          setActiveTab('LOGIN');
+          setPassword(forgotNewPassword);
+          setForgotStep(1);
+        }, 1500);
+      } else {
+        setErrorMsg(data.error || 'Password reset failed.');
+      }
+    } catch (err) {
+      setErrorMsg('Network error while resetting password.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const [myOrders, setMyOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -31,7 +108,7 @@ export default function CustomerAuthModal({
     setCancellingOrder(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/orders/${selectedOrderToCancel.id}/cancel`, {
+      const res = await fetch(getApiUrl(`/api/orders/${selectedOrderToCancel.id}/cancel`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,13 +147,25 @@ export default function CustomerAuthModal({
     if (!userEmail) return;
     setLoadingOrders(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${userEmail}/orders`);
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(userEmail)}/orders`));
       if (res.ok) {
-        const data = await res.json();
-        setMyOrders(data);
+        const text = await res.text();
+        if (!text || !text.trim()) {
+          setMyOrders([]);
+          return;
+        }
+        try {
+          const data = JSON.parse(text);
+          setMyOrders(Array.isArray(data) ? data : []);
+        } catch (e) {
+          setMyOrders([]);
+        }
+      } else {
+        setMyOrders([]);
       }
     } catch (err) {
       console.error('Error fetching customer orders:', err);
+      setMyOrders([]);
     } finally {
       setLoadingOrders(false);
     }
@@ -96,7 +185,7 @@ export default function CustomerAuthModal({
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginVal, phone: loginVal, password })
@@ -131,7 +220,7 @@ export default function CustomerAuthModal({
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch(getApiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name ? name.trim() : '', email: email ? email.trim() : '', phone: phone.trim(), password })
@@ -233,7 +322,16 @@ export default function CustomerAuthModal({
             </div>
 
             <div>
-              <label className="block font-bold text-gray-700 mb-1">Password *</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block font-bold text-gray-700">Password *</label>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('FORGOT'); setErrorMsg(''); setSuccessMsg(''); setForgotStep(1); }}
+                  className="text-[#3b6e14] font-extrabold hover:underline text-[11px] cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-3 text-gray-400" />
                 <input
@@ -259,6 +357,99 @@ export default function CustomerAuthModal({
               🔒 Fast & Secure Login using Mobile Phone or Email.
             </p>
           </form>
+        )}
+
+        {/* 3. FORGOT PASSWORD FORM */}
+        {!currentUser && activeTab === 'FORGOT' && (
+          <div className="space-y-4 text-xs">
+            <div className="bg-emerald-50/80 p-3.5 rounded-2xl border border-emerald-200">
+              <h3 className="font-extrabold text-[#3b6e14] text-xs">🔑 Password Reset & Recovery</h3>
+              <p className="text-[11px] text-gray-600">Enter your registered email or phone number to receive a 6-digit verification OTP code.</p>
+            </div>
+
+            {forgotStep === 1 ? (
+              <form onSubmit={handleSendForgotOtp} className="space-y-4">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Registered Email or Phone Number *</label>
+                  <div className="relative">
+                    <Mail size={16} className="absolute left-3 top-3 text-gray-400" />
+                    <input
+                      type="text" required
+                      placeholder="e.g. rohan@gmail.com or +919988776655"
+                      value={forgotInput}
+                      onChange={(e) => setForgotInput(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#3b6e14] hover:bg-[#2e5710] text-white font-extrabold py-3 rounded-xl shadow-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{loading ? 'Generating OTP...' : 'Send Password Reset OTP'}</span>
+                  <ArrowRight size={16} />
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('LOGIN'); setErrorMsg(''); setSuccessMsg(''); }}
+                    className="text-gray-600 hover:text-gray-900 font-bold text-xs underline cursor-pointer"
+                  >
+                    ← Back to Login
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">6-Digit Verification OTP Code *</label>
+                  <input
+                    type="text" required maxLength={6}
+                    placeholder="Enter 6-digit OTP code (e.g. 123456)"
+                    value={forgotOtp}
+                    onChange={(e) => setForgotOtp(e.target.value)}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-mono font-bold text-center tracking-widest text-base focus:border-[#3b6e14] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">New Password (Min 6 chars) *</label>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3 top-3 text-gray-400" />
+                    <input
+                      type="password" required minLength={6}
+                      placeholder="••••••••"
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#3b6e14] hover:bg-[#2e5710] text-white font-extrabold py-3 rounded-xl shadow-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{loading ? 'Resetting Password...' : 'Reset Password & Proceed to Login'}</span>
+                  <CheckCircle size={16} />
+                </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setForgotStep(1); setErrorMsg(''); setSuccessMsg(''); }}
+                    className="text-gray-500 hover:text-gray-800 font-bold text-xs underline cursor-pointer"
+                  >
+                    ← Re-send OTP or Change Input
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* 2. REGISTER FORM */}

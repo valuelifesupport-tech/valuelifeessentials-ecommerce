@@ -1,5 +1,28 @@
+import { getApiUrl } from '../api/config';
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const resolveImgUrl = (url, fallback = '') => {
+  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
+  let clean = url.trim();
+
+  if (clean.startsWith('data:')) return clean;
+
+  if (clean.includes('/uploads/')) {
+    const filename = clean.split('/uploads/').pop();
+    return getApiUrl(`/api/media/file/${filename}`);
+  }
+
+  if (clean.includes('/images/')) {
+    const relative = clean.split('/images/').pop();
+    return `/images/${relative}`;
+  }
+
+  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
+  const path = clean.startsWith('/') ? clean : `/${clean}`;
+  return getApiUrl(path);
+};
 
 export default function CategorySlider({ categories, navigateTo, sectionTitle, sectionsConfig }) {
   if (sectionsConfig && Number(sectionsConfig.show_categories_slider) === 0) return null;
@@ -84,9 +107,10 @@ export default function CategorySlider({ categories, navigateTo, sectionTitle, s
               {/* CIRCULAR CATEGORY IMAGE CONTAINER (Exact Screenshot 1 aesthetic) */}
               <div className="w-28 h-28 sm:w-40 sm:h-40 rounded-full border-2 border-emerald-900/15 p-1 bg-white shadow-md group-hover:shadow-2xl group-hover:border-[#2d6a4f] transition-all duration-300 relative overflow-hidden flex items-center justify-center">
                 <img
-                  src={cat.image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'}
+                  src={resolveImgUrl(cat.image_url)}
                   alt={cat.name}
                   className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500"
+                  onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'; }}
                 />
                 <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors" />
               </div>

@@ -1,3 +1,4 @@
+import { getApiUrl, resolveImgUrl } from '../api/config';
 import React from 'react';
 import { ShoppingBag, Sparkles, ArrowRight, ShieldCheck, Truck, Award, CheckCircle2 } from 'lucide-react';
 
@@ -46,14 +47,7 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
   } = config;
 
   const resolveImageUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-      return url;
-    }
-    if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-      return `http://localhost:5000/${url.replace(/^\/+/, '')}`;
-    }
-    return url;
+    return resolveImgUrl(url);
   };
 
   const formattedImageUrl = resolveImageUrl(image_url);

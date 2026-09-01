@@ -1,3 +1,4 @@
+import { getApiUrl } from '../api/config';
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Truck, Clock } from 'lucide-react';
 
@@ -18,7 +19,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/pages/${slug}`);
+      const res = await fetch(getApiUrl(`/api/pages/${slug}`));
       if (!res.ok) throw new Error('Page not found');
       const data = await res.json();
       setPage(data);
@@ -86,26 +87,37 @@ export default function PageView({ slug, onGoHome, showToast }) {
 
         {/* DYNAMIC CONTENT AREA */}
         <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
-          <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed space-y-4">
-            {page.content.split('\n\n').map((paragraph, idx) => {
-              if (paragraph.startsWith('# ')) {
-                return <h1 key={idx} className="text-2xl font-extrabold text-slate-900 border-b pb-2 border-slate-100">{paragraph.replace('# ', '')}</h1>;
-              }
-              if (paragraph.startsWith('### ')) {
-                return <h3 key={idx} className="text-lg font-bold text-emerald-900 mt-4">{paragraph.replace('### ', '')}</h3>;
-              }
-              if (paragraph.startsWith('- ')) {
-                return (
-                  <ul key={idx} className="space-y-1.5 pl-4 list-disc marker:text-emerald-600">
-                    {paragraph.split('\n').map((line, i) => (
-                      <li key={i} className="text-sm text-slate-600">{line.replace('- ', '')}</li>
-                    ))}
-                  </ul>
-                );
-              }
-              return <p key={idx} className="text-sm sm:text-base text-slate-600 leading-relaxed">{paragraph}</p>;
-            })}
-          </div>
+          {(() => {
+            const rawContent = page?.content || page?.content_html || page?.body || '';
+            const isHtml = /<[a-z][\s\S]*>/i.test(rawContent);
+
+            if (isHtml) {
+              return <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed space-y-4" dangerouslySetInnerHTML={{ __html: rawContent }} />;
+            }
+
+            return (
+              <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed space-y-4">
+                {(rawContent || 'Page content coming soon.').split('\n\n').map((paragraph, idx) => {
+                  if (paragraph.startsWith('# ')) {
+                    return <h1 key={idx} className="text-2xl font-extrabold text-slate-900 border-b pb-2 border-slate-100">{paragraph.replace('# ', '')}</h1>;
+                  }
+                  if (paragraph.startsWith('### ')) {
+                    return <h3 key={idx} className="text-lg font-bold text-emerald-900 mt-4">{paragraph.replace('### ', '')}</h3>;
+                  }
+                  if (paragraph.startsWith('- ')) {
+                    return (
+                      <ul key={idx} className="space-y-1.5 pl-4 list-disc marker:text-emerald-600">
+                        {(paragraph || '').split('\n').map((line, i) => (
+                          <li key={i} className="text-sm text-slate-600">{line.replace('- ', '')}</li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  return <p key={idx} className="text-sm sm:text-base text-slate-600 leading-relaxed">{paragraph}</p>;
+                })}
+              </div>
+            );
+          })()}
 
           {/* INTERACTIVE CONTACT FORM FOR CONTACT US PAGE */}
           {page.slug === 'contact-us' && (

@@ -1,16 +1,28 @@
+import { getApiUrl } from '../api/config';
 import React, { useState } from 'react';
-import { Home, Bookmark, MapPin, ShoppingBag, PhoneCall, X, Search, PackageCheck, Truck } from 'lucide-react';
+import { Home, Bookmark, User, UserCheck, ShoppingBag, PhoneCall, X, Search, PackageCheck, Truck } from 'lucide-react';
 
 export default function MobileBottomNav({ 
   cartCount = 0, 
   navigateTo, 
-  onOpenCart 
+  onOpenCart,
+  currentUser,
+  onOpenAuth
 }) {
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackInput, setTrackInput] = useState('');
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [trackError, setTrackError] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+
+  const handleAccountOrProfileClick = () => {
+    if (currentUser) {
+      if (navigateTo) navigateTo('/account', { view: 'account', slug: null, category: null, collection: null });
+    } else {
+      if (onOpenAuth) onOpenAuth();
+      else if (navigateTo) navigateTo('/auth', { view: 'auth' });
+    }
+  };
 
   const handleTrackSearch = async (e) => {
     e.preventDefault();
@@ -20,7 +32,7 @@ export default function MobileBottomNav({
     setTrackedOrder(null);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/orders`);
+      const res = await fetch(getApiUrl('/api/orders'));
       const allOrders = await res.json();
       const found = allOrders.find(o => 
         o.order_number?.toLowerCase() === trackInput.trim().toLowerCase() ||
@@ -64,14 +76,25 @@ export default function MobileBottomNav({
           <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Collections</span>
         </button>
 
-        {/* 3. TRACK ORDER */}
+        {/* 3. ACCOUNT / PROFILE (DYNAMICALLY CHANGED BASED ON AUTH STATUS) */}
         <button
           type="button"
-          onClick={() => setShowTrackModal(true)}
+          onClick={handleAccountOrProfileClick}
           className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1 relative"
         >
-          <MapPin size={19} className="stroke-[2.2]" />
-          <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Track Order</span>
+          {currentUser ? (
+            <>
+              <UserCheck size={19} className="stroke-[2.2] text-[#3b6e14]" />
+              <span className="text-[10px] font-extrabold tracking-tight font-['Outfit'] text-[#3b6e14]">
+                {currentUser.name ? currentUser.name.split(' ')[0] : 'Profile'}
+              </span>
+            </>
+          ) : (
+            <>
+              <User size={19} className="stroke-[2.2]" />
+              <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Account</span>
+            </>
+          )}
         </button>
 
         {/* 4. CART WITH BADGE */}
