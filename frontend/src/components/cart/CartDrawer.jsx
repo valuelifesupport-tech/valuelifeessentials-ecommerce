@@ -105,39 +105,9 @@ export default function CartDrawer({
     }
   };
 
-  const defaultSuggestions = [
-    {
-      id: 991,
-      title: 'Neem Oil Organic Pest Shield (250ml)',
-      price_inr: 199,
-      discount_inr: 149,
-      price_usd: 5.99,
-      discount_usd: 3.99,
-      thumbnail: 'https://images.unsplash.com/photo-1615811361523-6bd03d7748e7?auto=format&fit=crop&w=200&q=80'
-    },
-    {
-      id: 992,
-      title: 'Organic Epsom Salt Growth Booster (500g)',
-      price_inr: 179,
-      discount_inr: 129,
-      price_usd: 4.99,
-      discount_usd: 2.99,
-      thumbnail: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=200&q=80'
-    },
-    {
-      id: 993,
-      title: 'Liquid Seaweed Extract Bio Elixir (250ml)',
-      price_inr: 299,
-      discount_inr: 219,
-      price_usd: 7.99,
-      discount_usd: 5.49,
-      thumbnail: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=200&q=80'
-    }
-  ];
-
   const suggestedProducts = (allProducts && allProducts.length > 0)
     ? allProducts.filter(p => !cartItems.some(item => item.id === p.id))
-    : defaultSuggestions;
+    : [];
 
   const handleAddSuggestion = (prod) => {
     if (typeof onAddToCart === 'function') {

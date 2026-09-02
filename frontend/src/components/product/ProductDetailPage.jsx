@@ -182,15 +182,36 @@ export default function ProductDetailPage({
         } catch (err) {}
       }
 
+      let cleanVariants = [];
       if (Array.isArray(data.variants)) {
-        const seenVar = new Set();
-        data.variants = data.variants.filter(v => {
-          const vName = (v?.variant_name || v?.name || '').trim().toLowerCase();
-          if (!vName || seenVar.has(vName)) return false;
-          seenVar.add(vName);
-          return true;
-        });
+        cleanVariants = data.variants;
+      } else if (typeof data.variants === 'string') {
+        try {
+          cleanVariants = JSON.parse(data.variants);
+        } catch (e) {
+          cleanVariants = [];
+        }
       }
+
+      let cleanImages = [];
+      if (Array.isArray(data.images)) {
+        cleanImages = data.images;
+      } else if (typeof data.images === 'string') {
+        try {
+          cleanImages = JSON.parse(data.images);
+        } catch (e) {
+          cleanImages = data.images ? [data.images] : [];
+        }
+      }
+
+      const seenVar = new Set();
+      data.variants = (Array.isArray(cleanVariants) ? cleanVariants : []).filter(v => {
+        const vName = (v?.variant_name || v?.name || v?.title || '').trim().toLowerCase();
+        if (!vName || seenVar.has(vName)) return false;
+        seenVar.add(vName);
+        return true;
+      });
+      data.images = Array.isArray(cleanImages) ? cleanImages : [];
 
       setProductData(data);
       
@@ -312,14 +333,18 @@ export default function ProductDetailPage({
     );
   }
 
-  const targetItem = selectedVariant || productData;
-  const isINR = currency === 'INR';
-  const prodInr = Number(productData.price_inr) || 0;
-  const prodUsd = Number(productData.price_usd) || (prodInr > 0 ? Number((prodInr / 95).toFixed(2)) : 0);
-  const varInr = targetItem && Number(targetItem.price_inr) > 0 ? Number(targetItem.price_inr) : (targetItem && Number(targetItem.price) > 0 ? Number(targetItem.price) : prodInr);
-  const varUsd = targetItem && Number(targetItem.price_usd) > 0 ? Number(targetItem.price_usd) : (varInr > 0 ? Number((varInr / 95).toFixed(2)) : prodUsd);
+  const variantsList = Array.isArray(productData?.variants) ? productData.variants : [];
+  const firstVariant = variantsList.length > 0 ? variantsList[0] : null;
+  const targetItem = selectedVariant || firstVariant || productData;
 
-  const rawPrice = isINR ? varInr : varUsd;
+  const isINR = currency === 'INR';
+  const prodInr = Number(productData.price_inr || productData.price || productData.discount_inr || (firstVariant ? (firstVariant.price_inr || firstVariant.price) : 0)) || 0;
+  const prodUsd = Number(productData.price_usd || productData.discount_usd) || (prodInr > 0 ? Number((prodInr / 95).toFixed(2)) : (firstVariant ? Number(firstVariant.price_usd || 0) : 0));
+
+  const varInr = targetItem && (Number(targetItem.price_inr) > 0 ? Number(targetItem.price_inr) : (Number(targetItem.price) > 0 ? Number(targetItem.price) : (Number(targetItem.discount_inr) > 0 ? Number(targetItem.discount_inr) : prodInr)));
+  const varUsd = targetItem && (Number(targetItem.price_usd) > 0 ? Number(targetItem.price_usd) : (Number(targetItem.discount_usd) > 0 ? Number(targetItem.discount_usd) : (varInr > 0 ? Number((varInr / 95).toFixed(2)) : prodUsd)));
+
+  const rawPrice = isINR ? (varInr > 0 ? varInr : prodInr) : (varUsd > 0 ? varUsd : prodUsd);
   const rawDiscount = isINR 
     ? (targetItem.discount_inr !== undefined && targetItem.discount_inr !== null && Number(targetItem.discount_inr) > 0 && Number(targetItem.discount_inr) < rawPrice ? Number(targetItem.discount_inr) : null)
     : (targetItem.discount_usd !== undefined && targetItem.discount_usd !== null && Number(targetItem.discount_usd) > 0 && Number(targetItem.discount_usd) < rawPrice ? Number(targetItem.discount_usd) : null);
@@ -456,7 +481,7 @@ export default function ProductDetailPage({
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-snug font-['Outfit']">
-                {productData.title}
+                {productData.title || productData.name || 'ValueLife Essentials Product'}
               </h1>
 
               {/* RATING STARS */}
@@ -469,7 +494,7 @@ export default function ProductDetailPage({
                   <Star size={16} fill="currentColor" />
                 </div>
                 <span className="font-bold text-xs text-gray-700">
-                  {Number(productData.ratingStats?.avg_rating || 4.69).toFixed(2)} | {productData.ratingStats?.total_reviews || 74}
+                  {Number(productData.ratingStats?.avg_rating !== undefined ? productData.ratingStats.avg_rating : (productData.avg_rating || 0)).toFixed(1)} | {productData.ratingStats?.total_reviews ?? productData.total_reviews ?? 0} reviews
                 </span>
               </div>
             </div>
@@ -497,28 +522,39 @@ export default function ProductDetailPage({
             </div>
 
             {/* PRODUCT VARIANTS SELECTOR PILLS (EXACT LOOK OF USER SCREENSHOT) */}
-            {productData.variants && productData.variants.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs font-medium text-gray-500 block">
-                  Select
+            {variantsList && variantsList.length > 0 && (
+              <div className="space-y-2 pt-2 pb-1 border-t border-gray-100">
+                <label className="text-xs font-bold text-gray-700 block">
+                  Select Size / Option:
                 </label>
 
                 <div className="flex flex-wrap gap-2.5">
-                  {productData.variants.map((v) => {
-                    const isSelected = (selectedVariant?.id === v.id) || (selectedVariant?.variant_name === v.variant_name);
+                  {variantsList.map((v, vIdx) => {
+                    const isSelected = (selectedVariant?.id && v.id && selectedVariant.id === v.id) || 
+                                       (selectedVariant?.variant_name && v.variant_name && selectedVariant.variant_name === v.variant_name) ||
+                                       (!selectedVariant && vIdx === 0);
+
+                    const vPrice = isINR 
+                      ? (Number(v.price_inr) || Number(v.price) || 0) 
+                      : (Number(v.price_usd) || (Number(v.price_inr || v.price) ? Number(((Number(v.price_inr || v.price)) / 95).toFixed(2)) : 0));
 
                     return (
                       <button
-                        key={v.id || v.variant_name}
+                        key={v.id || v.variant_name || vIdx}
                         type="button"
                         onClick={() => handleSelectVariant(v)}
-                        className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all border cursor-pointer ${
+                        className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all border cursor-pointer flex items-center gap-1.5 ${
                           isSelected
-                            ? 'border-2 border-[#558b2f] bg-[#f0f7e6] text-[#33691e] shadow-xs ring-1 ring-[#558b2f]/20 font-extrabold'
-                            : 'border border-gray-200 bg-white text-[#33691e] font-semibold hover:border-[#558b2f] hover:bg-emerald-50/30'
+                            ? 'border-2 border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm ring-2 ring-emerald-500/20 font-extrabold scale-105'
+                            : 'border border-gray-200 bg-white text-gray-700 font-semibold hover:border-emerald-500 hover:bg-emerald-50/30'
                         }`}
                       >
-                        {v.variant_name || v.name}
+                        <span>{v.variant_name || v.name || v.title || `Option ${vIdx + 1}`}</span>
+                        {vPrice > 0 && (
+                          <span className={`text-[11px] font-bold ${isSelected ? 'text-emerald-700' : 'text-gray-500'}`}>
+                            • {currencySymbol}{vPrice.toFixed(2)}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -628,61 +664,117 @@ export default function ProductDetailPage({
           </div>
         </div>
 
-        {/* 50-50 DESKTOP GRID: PRODUCT HIGHLIGHTS & DESCRIPTION (LEFT 50%) + SUGGESTED PRODUCTS (RIGHT 50%) */}
-        <div className="border-t pt-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* LEFT 50%: HIGHLIGHTS & ACCORDIONS */}
-          <div className="space-y-4 bg-gray-50/50 p-5 rounded-3xl border border-gray-200/80">
-            <div className="flex border-b border-gray-200 gap-4 text-xs font-extrabold text-gray-600 overflow-x-auto pb-1">
-              <button 
-                onClick={() => setActiveTab('highlights')}
-                className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'highlights' ? 'border-[#2d6a4f] text-[#2d6a4f]' : 'border-transparent hover:text-gray-900'}`}
-              >
-                📝 Product Highlights
-              </button>
-              <button 
-                onClick={() => setActiveTab('plants')}
-                className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'plants' ? 'border-[#2d6a4f] text-[#2d6a4f]' : 'border-transparent hover:text-gray-900'}`}
-              >
-                🪴 Suitable Plants & Usage
-              </button>
-              <button 
-                onClick={() => setActiveTab('shipping')}
-                className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'shipping' ? 'border-[#2d6a4f] text-[#2d6a4f]' : 'border-transparent hover:text-gray-900'}`}
-              >
-                🚚 Shipping & COD Policy
-              </button>
-            </div>
+        {/* DYNAMIC GRID: PRODUCT HIGHLIGHTS & (OPTIONAL) FREQUENTLY BOUGHT TOGETHER */}
+        {(() => {
+          const rawBundleList = productData.frequently_bought_products || productData.frequentlyBoughtProducts || [];
+          const bundleList = Array.isArray(rawBundleList) ? rawBundleList.slice(0, 4) : [];
+          const hasFrequentlyBought = bundleList.length > 0;
 
-            <div className="text-xs text-gray-700 leading-relaxed space-y-4">
-              {activeTab === 'highlights' && (
-                <div className="space-y-3">
-                  <h4 className="font-extrabold text-sm text-gray-900">Description & Key Benefits:</h4>
-                  <p>{productData.description}</p>
+          return (
+            <div className={`border-t pt-8 grid grid-cols-1 ${hasFrequentlyBought ? 'md:grid-cols-2 gap-8' : 'w-full'} items-start`}>
+              {/* LEFT: HIGHLIGHTS & ACCORDIONS */}
+              <div className="space-y-4 bg-gray-50/50 p-5 rounded-3xl border border-gray-200/80">
+                <div className="flex border-b border-gray-200 gap-4 text-xs font-extrabold text-gray-600 overflow-x-auto pb-1">
+                  <button 
+                    onClick={() => setActiveTab('highlights')}
+                    className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'highlights' ? 'border-[#2d6a4f] text-[#2d6a4f]' : 'border-transparent hover:text-gray-900'}`}
+                  >
+                    📝 Product Highlights
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('specs')}
+                    className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'specs' ? 'border-[#2d6a4f] text-[#2d6a4f]' : 'border-transparent hover:text-gray-900'}`}
+                  >
+                    🔍 Specifications & Details
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('shipping')}
+                    className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'shipping' ? 'border-[#2d6a4f] text-[#2d6a4f]' : 'border-transparent hover:text-gray-900'}`}
+                  >
+                    🚚 Shipping & COD Policy
+                  </button>
                 </div>
-              )}
 
-              {activeTab === 'plants' && (
-                <div className="space-y-3">
-                  <h4 className="font-extrabold text-sm text-gray-900">Recommended Plant Types:</h4>
-                  <p>Suitable for Tomato, Chilli, Brinjal, Spinach, Coriander, Cucumber, Rose, Jasmine, and indoor potted plants.</p>
+                <div className="text-xs text-gray-700 leading-relaxed space-y-4">
+                  {activeTab === 'highlights' && (
+                    <div className="space-y-3">
+                      <h4 className="font-extrabold text-sm text-gray-900">Description & Key Benefits:</h4>
+                      <p className="whitespace-pre-line">{productData.description || '100% Pure, authentic, and certified organic wellness formulation.'}</p>
+                      {productData.tags && (
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          {productData.tags.split(',').map((tag, tIdx) => (
+                            <span key={tIdx} className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              #{tag.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'specs' && (
+                    <div className="space-y-3">
+                      <h4 className="font-extrabold text-sm text-gray-900">Product Specifications:</h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {productData.sku && (
+                          <div className="bg-white p-2.5 rounded-xl border border-gray-200">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">SKU Code</span>
+                            <span className="font-black text-gray-900">{productData.sku}</span>
+                          </div>
+                        )}
+                        {productData.vendor && (
+                          <div className="bg-white p-2.5 rounded-xl border border-gray-200">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Brand / Vendor</span>
+                            <span className="font-black text-gray-900">{productData.vendor}</span>
+                          </div>
+                        )}
+                        {productData.category_name && (
+                          <div className="bg-white p-2.5 rounded-xl border border-gray-200">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Category</span>
+                            <span className="font-black text-gray-900">{productData.category_name}</span>
+                          </div>
+                        )}
+                        {productData.country_of_origin && (
+                          <div className="bg-white p-2.5 rounded-xl border border-gray-200">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Origin</span>
+                            <span className="font-black text-gray-900">{productData.country_of_origin}</span>
+                          </div>
+                        )}
+                        {productData.weight && (
+                          <div className="bg-white p-2.5 rounded-xl border border-gray-200">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Net Weight / Pack</span>
+                            <span className="font-black text-gray-900">{productData.weight}</span>
+                          </div>
+                        )}
+                        {productData.gst_rate && (
+                          <div className="bg-white p-2.5 rounded-xl border border-gray-200">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Applicable GST Rate</span>
+                            <span className="font-black text-gray-900">{productData.gst_rate}% (GST Included)</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'shipping' && (
+                    <div className="space-y-3">
+                      <h4 className="font-extrabold text-sm text-gray-900">Delivery Information & COD Terms:</h4>
+                      <p>All orders are safely processed and dispatched within 24–48 hours via top express courier partners with end-to-end tracking.</p>
+                      <ul className="list-disc pl-4 space-y-1 text-gray-600 text-[11px]">
+                        <li>Express door delivery across all serviceable pin codes in India.</li>
+                        <li>Safe & hygienic multi-layer packaging for organic goods.</li>
+                        <li>Partial Payment & Cash on Delivery (COD) options available at checkout.</li>
+                        <li>Easy 7-day transit damage replacement support.</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
-              {activeTab === 'shipping' && (
-                <div className="space-y-3">
-                  <h4 className="font-extrabold text-sm text-gray-900">Delivery Information:</h4>
-                  <p>All orders are dispatched within 24 hours via Express Courier. Cash on Delivery (COD) and 20% online partial deposit options available nationwide.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* RIGHT 50%: FREQUENTLY BOUGHT TOGETHER */}
-          <div className="space-y-4">
-            {(() => {
-              const rawBundleList = productData.frequently_bought_products || productData.frequentlyBoughtProducts || [];
-              const bundleList = rawBundleList.slice(0, 4);
-              if (bundleList.length === 0) return null;
+              {/* RIGHT: FREQUENTLY BOUGHT TOGETHER (ONLY RENDERS IF CONFIGURED BY ADMIN) */}
+              {hasFrequentlyBought && (
+                <div className="space-y-4">
+                  {(() => {
 
               // Calculate total price of all selected bundle items
               const bundleTotalPrice = bundleList.reduce((sum, item) => {
@@ -816,7 +908,10 @@ export default function ProductDetailPage({
               );
             })()}
           </div>
-        </div>
+        )}
+      </div>
+    );
+  })()}
         {/* 1. "SUGGESTED" BADGE & "YOU MIGHT ALSO LIKE" AUTO-SCROLL CAROUSEL SECTION */}
         {(() => {
           const suggestedList = productData.frequently_bought_products || productData.frequentlyBoughtProducts || [];
@@ -951,116 +1046,105 @@ export default function ProductDetailPage({
           );
         })()}
 
-        {/* 2. FULL CUSTOMER REVIEWS BREAKDOWN SECTION (Matching Screenshot 2 1-to-1) */}
-        <div className="border-t pt-10 space-y-8 max-w-5xl mx-auto">
-          <h2 className="text-2xl font-black text-gray-900 font-['Outfit'] text-center">
-            Customer Reviews
-          </h2>
+        {/* 2. FULL CUSTOMER REVIEWS BREAKDOWN SECTION (100% DYNAMIC FROM DATABASE) */}
+        {(() => {
+          const rawReviews = Array.isArray(productData.reviews) ? productData.reviews : [];
+          const totalReviews = rawReviews.length;
+          const avgRatingNum = totalReviews > 0 
+            ? (rawReviews.reduce((sum, r) => sum + Number(r.rating || 5), 0) / totalReviews)
+            : Number(productData.avg_rating || 0);
+          const avgRatingFormatted = avgRatingNum > 0 ? avgRatingNum.toFixed(1) : '0.0';
 
-          {/* RATING SUMMARY BANNER */}
-          <div className="p-6 bg-gray-50 border border-gray-200 rounded-3xl grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            {/* RATING SCORE */}
-            <div className="text-center md:text-left space-y-1">
-              <div className="star-rating text-amber-500 font-extrabold text-lg flex items-center justify-center md:justify-start gap-1">
-                <span>★★★★★</span>
-                <span className="text-gray-900 font-black text-xl">4.93 out of 5</span>
-              </div>
-              <p className="text-xs text-gray-500 font-bold">Based on 15 verified customer reviews</p>
-            </div>
+          // Compute star counts
+          const starCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+          rawReviews.forEach(r => {
+            const s = Math.min(5, Math.max(1, Math.round(Number(r.rating || 5))));
+            starCounts[s] = (starCounts[s] || 0) + 1;
+          });
 
-            {/* STAR RATING BARS */}
-            <div className="space-y-1 text-xs font-bold text-gray-600">
-              <div className="flex items-center gap-2">
-                <span>★★★★★</span>
-                <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#3b6e14] h-full w-[93%]"></div>
+          // Extract all real customer review photos
+          const allCustomerPhotos = [];
+          rawReviews.forEach(r => {
+            if (r.images && Array.isArray(r.images)) {
+              r.images.forEach(img => { if (img) allCustomerPhotos.push(img); });
+            }
+          });
+
+          const sorted = [...rawReviews].sort((a, b) => {
+            if (reviewSort === 'lowest') return (a.rating || 5) - (b.rating || 5);
+            if (reviewSort === 'recent') return new Date(b.created_at || Date.now()) - new Date(a.created_at || Date.now());
+            return (b.rating || 5) - (a.rating || 5);
+          });
+
+          const REVIEWS_PER_PAGE = 3;
+          const totalPages = Math.ceil(sorted.length / REVIEWS_PER_PAGE) || 1;
+          const paginated = sorted.slice((reviewPage - 1) * REVIEWS_PER_PAGE, reviewPage * REVIEWS_PER_PAGE);
+
+          return (
+            <div className="border-t pt-10 space-y-8 max-w-5xl mx-auto">
+              <h2 className="text-2xl font-black text-gray-900 font-['Outfit'] text-center">
+                Customer Reviews
+              </h2>
+
+              {/* RATING SUMMARY BANNER */}
+              <div className="p-6 bg-gray-50 border border-gray-200 rounded-3xl grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                {/* RATING SCORE */}
+                <div className="text-center md:text-left space-y-1">
+                  <div className="star-rating text-amber-500 font-extrabold text-lg flex items-center justify-center md:justify-start gap-1">
+                    <span>★★★★★</span>
+                    <span className="text-gray-900 font-black text-xl">{avgRatingFormatted} out of 5</span>
+                  </div>
+                  <p className="text-xs text-gray-500 font-bold">
+                    {totalReviews > 0 ? `Based on ${totalReviews} verified customer ${totalReviews === 1 ? 'review' : 'reviews'}` : 'No reviews yet for this product'}
+                  </p>
                 </div>
-                <span>14</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>★★★★☆</span>
-                <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#3b6e14] h-full w-[7%]"></div>
+
+                {/* STAR RATING BARS */}
+                <div className="space-y-1 text-xs font-bold text-gray-600">
+                  {[5, 4, 3, 2, 1].map(stars => {
+                    const count = starCounts[stars] || 0;
+                    const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                    return (
+                      <div key={stars} className="flex items-center gap-2">
+                        <span className="w-12 text-right">{'★'.repeat(stars)}</span>
+                        <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
+                          <div className="bg-[#3b6e14] h-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                        </div>
+                        <span className="w-6 text-left">{count}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <span>1</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <span>★★★☆☆</span>
-                <div className="flex-1 bg-gray-200 h-2 rounded-full"></div>
-                <span>0</span>
-              </div>
-            </div>
 
-            {/* WRITE A REVIEW + AUTHENTICITY SEALS */}
-            <div className="text-center space-y-3">
-              <button 
-                onClick={() => setShowReviewModal(true)}
-                className="bg-[#3b6e14] hover:bg-[#2e5710] text-white font-extrabold text-xs px-6 py-2.5 rounded-full shadow-md cursor-pointer transition-all uppercase tracking-wider"
-              >
-                Write a review
-              </button>
+                {/* WRITE A REVIEW + AUTHENTICITY SEALS */}
+                <div className="text-center space-y-3">
+                  <button 
+                    onClick={() => setShowReviewModal(true)}
+                    className="bg-[#3b6e14] hover:bg-[#2e5710] text-white font-extrabold text-xs px-6 py-2.5 rounded-full shadow-md cursor-pointer transition-all uppercase tracking-wider"
+                  >
+                    Write a review
+                  </button>
 
-              <div className="flex justify-center gap-4 text-[9px] font-black text-blue-900">
-                <div className="flex items-center gap-1 border border-blue-200 bg-blue-50 px-2 py-1 rounded-lg">
-                  🛡️ DIAMOND AUTHENTICITY 100.0
-                </div>
-                <div className="flex items-center gap-1 border border-amber-200 bg-amber-50 px-2 py-1 rounded-lg text-amber-900">
-                  🏆 TRANSPARENCY 88.9
+                  <div className="flex justify-center gap-4 text-[9px] font-black text-blue-900">
+                    <div className="flex items-center gap-1 border border-blue-200 bg-blue-50 px-2 py-1 rounded-lg">
+                      🛡️ DIAMOND AUTHENTICITY 100.0
+                    </div>
+                    <div className="flex items-center gap-1 border border-amber-200 bg-amber-50 px-2 py-1 rounded-lg text-amber-900">
+                      🏆 100% VERIFIED BUYERS
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* REVIEWS LIST HEADER & SORT */}
-          {(() => {
-            const rawReviews = (productData.reviews && productData.reviews.length > 0) 
-              ? productData.reviews 
-              : [
-                { id: 1, user_name: 'SujitDinda', title: 'ladies finger', comment: 'super', rating: 5, created_at: '2026-03-14' },
-                { id: 2, user_name: 'Koshy Chacko', title: 'Easy To grow, High Germination', comment: 'Okra or Lady Finger Hybrid (bhindi) Seeds - 50 Seeds (भिंडी के बीज) Easy To grow, High Germination, High Yield Okra Seeds for Home Gardening', rating: 5, created_at: '2026-02-05' },
-                { id: 3, user_name: 'Aswini Patra', title: 'Your product is very good', comment: 'Your product is very good. Your gide the very mostly give me', rating: 5, created_at: '2025-12-15' },
-                { id: 4, user_name: 'Harmesh Mehta', title: 'Packing is good', comment: 'Superb packing and quality is also good', rating: 5, created_at: '2025-12-05' },
-                { id: 5, user_name: 'Tushar', title: 'Got good germination rate!!', comment: 'These okra seeds are truly amazing, the germination rate is awesome.', rating: 5, created_at: '2025-08-22', images: ['https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=300'] },
-                { id: 6, user_name: 'Ega Doyc', title: 'Great Germination White Seeds', comment: 'Untreated Radish White Long Seeds For Organic Gardening - 250 Seeds (Mooli/ मूली के बीज)', rating: 5, created_at: '2026-01-12' },
-                { id: 7, user_name: 'SUKHJEET', title: 'Quick Success Rate', comment: 'Radish White seeds, i used these seeds and they are very quick and success rate of germination around 95%.', rating: 5, created_at: '2025-09-29' },
-                { id: 8, user_name: 'Vijay Kumar', title: 'Quality Product', comment: 'Excellent! One word i can say its quality product.', rating: 5, created_at: '2025-06-10' },
-                { id: 9, user_name: 'Ramesh Patel', title: 'Awesome quality', comment: 'Very fresh seeds, germinated in 4 days!', rating: 4, created_at: '2025-05-18' }
-              ];
-
-            // Extract all real customer review photos
-            const allCustomerPhotos = [];
-            rawReviews.forEach(r => {
-              if (r.images && Array.isArray(r.images)) {
-                r.images.forEach(img => { if (img) allCustomerPhotos.push(img); });
-              }
-            });
-            const photosToDisplay = allCustomerPhotos.length > 0 ? allCustomerPhotos : [
-              'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=500',
-              'https://images.unsplash.com/photo-1592417817098-8f3d6eb1b7a5?w=500',
-              'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=500',
-              'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=500'
-            ];
-
-            const sorted = [...rawReviews].sort((a, b) => {
-              if (reviewSort === 'lowest') return (a.rating || 5) - (b.rating || 5);
-              if (reviewSort === 'recent') return new Date(b.created_at || Date.now()) - new Date(a.created_at || Date.now());
-              return (b.rating || 5) - (a.rating || 5);
-            });
-
-            const REVIEWS_PER_PAGE = 3;
-            const totalPages = Math.ceil(sorted.length / REVIEWS_PER_PAGE) || 1;
-            const paginated = sorted.slice((reviewPage - 1) * REVIEWS_PER_PAGE, reviewPage * REVIEWS_PER_PAGE);
-
-            return (
-              <div className="space-y-6">
-                {/* DYNAMIC CUSTOMER PHOTOS & VIDEOS STRIP */}
+              {/* DYNAMIC CUSTOMER PHOTOS & VIDEOS STRIP */}
+              {allCustomerPhotos.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="font-extrabold text-xs text-gray-700 uppercase tracking-wider flex items-center justify-between">
                     <span>Customer photos & videos</span>
-                    <span className="text-[10px] text-emerald-700 font-bold lowercase">({photosToDisplay.length} photos • click to view full size)</span>
+                    <span className="text-[10px] text-emerald-700 font-bold lowercase">({allCustomerPhotos.length} photos • click to view full size)</span>
                   </h3>
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-                    {photosToDisplay.map((photoUrl, pIdx) => (
+                    {allCustomerPhotos.map((photoUrl, pIdx) => (
                       <div 
                         key={pIdx} 
                         onClick={() => setPreviewReviewImage(resolveImgUrl(photoUrl))}
@@ -1071,9 +1155,6 @@ export default function ProductDetailPage({
                           src={resolveImgUrl(photoUrl)} 
                           alt={`Review photo ${pIdx + 1}`} 
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=300';
-                          }}
                         />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <span className="text-white text-xs font-bold">🔍</span>
@@ -1082,139 +1163,115 @@ export default function ProductDetailPage({
                     ))}
                   </div>
                 </div>
+              )}
 
-                <div id="customer-reviews-section" className="space-y-6 border-t pt-4">
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-xs font-black text-gray-800">{sorted.length} Customer Reviews</span>
-                    <select 
-                      value={reviewSort}
-                      onChange={(e) => {
-                        setReviewSort(e.target.value);
-                        setReviewPage(1);
-                      }}
-                      className="bg-white border border-gray-300 text-xs font-bold text-gray-700 rounded-full px-3.5 py-1.5 focus:outline-none cursor-pointer shadow-sm"
-                    >
-                      <option value="highest">Highest Rating ▾</option>
-                      <option value="lowest">Lowest Rating</option>
-                      <option value="recent">Most Recent</option>
-                    </select>
-                  </div>
-
-                  {/* DYNAMIC CUSTOMER REVIEWS CARDS GRID */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-[220px]">
-                    {paginated.map((rev) => (
-                      <div key={rev.id} className="p-4 bg-[#f8f7f2] rounded-3xl border border-gray-200/80 space-y-2 flex flex-col justify-between">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <div className="star-rating text-amber-500 font-bold text-xs">
-                              {'★'.repeat(rev.rating || 5)}{'☆'.repeat(5 - (rev.rating || 5))}
-                            </div>
-                            <span className="text-[10px] text-gray-400 font-medium">{new Date(rev.created_at || Date.now()).toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[#3b6e14] text-white text-[11px] font-black flex items-center justify-center uppercase font-mono">
-                              {rev.user_name ? rev.user_name.charAt(0) : 'U'}
-                            </span>
-                            <span className="font-extrabold text-xs text-gray-900">{rev.user_name}</span>
-                            <span className="bg-amber-100 text-amber-900 text-[9px] font-bold px-1.5 py-0.5 rounded">Verified</span>
-                          </div>
-                          <h5 className="font-extrabold text-xs text-gray-800 pt-0.5">{rev.title}</h5>
-                          <p className="text-xs text-gray-700 font-medium leading-relaxed">
-                            {rev.comment}
-                          </p>
-
-                          {rev.images && rev.images.length > 0 && (
-                            <div className="flex gap-2 pt-2 overflow-x-auto">
-                              {rev.images.map((imgUrl, idx) => (
-                                <div 
-                                  key={idx} 
-                                  onClick={() => setPreviewReviewImage(resolveImgUrl(imgUrl))}
-                                  className="relative w-16 h-16 rounded-xl border border-gray-200 overflow-hidden cursor-pointer group flex-shrink-0 shadow-sm"
-                                  title="Click to view full size"
-                                >
-                                  <img 
-                                    src={resolveImgUrl(imgUrl)} 
-                                    alt={`Review attachment ${idx + 1}`}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
-                                    onError={(e) => {
-                                      e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=300';
-                                    }}
-                                  />
-                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                    <span className="text-white text-[10px]">🔍</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {rev.admin_reply && (
-                          <div className="mt-2 bg-emerald-50 border border-emerald-200 p-2 rounded-2xl text-[11px] text-emerald-900 font-medium">
-                            💬 <strong>ValueLife Essentials Reply:</strong> "{rev.admin_reply}"
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* PAGINATION NUMBERS */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-2.5 pt-6 pb-2">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
-                        <button
-                          key={pNum}
-                          type="button"
-                          onClick={() => {
-                            setReviewPage(pNum);
-                            const el = document.getElementById('customer-reviews-section');
-                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                          }}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center font-extrabold text-xs transition-all cursor-pointer ${
-                            reviewPage === pNum
-                              ? 'bg-[#3b6e14] text-white shadow-md scale-105'
-                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                          }`}
-                        >
-                          {pNum}
-                        </button>
-                      ))}
-
-                      {/* NEXT PAGE BUTTON */}
-                      <button
-                        type="button"
-                        disabled={reviewPage >= totalPages}
-                        onClick={() => {
-                          setReviewPage(prev => Math.min(prev + 1, totalPages));
-                          const el = document.getElementById('customer-reviews-section');
-                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+              {/* REVIEWS LIST HEADER & SORT */}
+              <div id="customer-reviews-section" className="space-y-6 border-t pt-4">
+                {totalReviews > 0 ? (
+                  <>
+                    <div className="flex justify-between items-center border-b pb-3">
+                      <span className="text-xs font-black text-gray-800">{sorted.length} Customer Reviews</span>
+                      <select 
+                        value={reviewSort}
+                        onChange={(e) => {
+                          setReviewSort(e.target.value);
+                          setReviewPage(1);
                         }}
-                        className="w-7 h-7 rounded-full border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-30 text-gray-700 flex items-center justify-center font-black text-xs transition-all cursor-pointer shadow-sm"
-                        title="Next Page"
+                        className="bg-white border border-gray-300 text-xs font-bold text-gray-700 rounded-full px-3.5 py-1.5 focus:outline-none cursor-pointer shadow-sm"
                       >
-                        &rsaquo;
-                      </button>
-
-                      {/* LAST PAGE BUTTON */}
-                      <button
-                        type="button"
-                        disabled={reviewPage >= totalPages}
-                        onClick={() => {
-                          setReviewPage(totalPages);
-                          const el = document.getElementById('customer-reviews-section');
-                          if (el) el.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="w-7 h-7 rounded-full border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-30 text-gray-700 flex items-center justify-center font-black text-xs transition-all cursor-pointer shadow-sm"
-                        title="Last Page"
-                      >
-                        &raquo;
-                      </button>
+                        <option value="highest">Highest Rating ▾</option>
+                        <option value="lowest">Lowest Rating</option>
+                        <option value="recent">Most Recent</option>
+                      </select>
                     </div>
-                  )}
-                </div>
+
+                    {/* DYNAMIC CUSTOMER REVIEWS CARDS GRID */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-[160px]">
+                      {paginated.map((rev) => (
+                        <div key={rev.id} className="p-4 bg-[#f8f7f2] rounded-3xl border border-gray-200/80 space-y-2 flex flex-col justify-between">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <div className="star-rating text-amber-500 font-bold text-xs">
+                                {'★'.repeat(rev.rating || 5)}{'☆'.repeat(5 - (rev.rating || 5))}
+                              </div>
+                              <span className="text-[10px] text-gray-400 font-medium">{new Date(rev.created_at || Date.now()).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-full bg-[#3b6e14] text-white text-[11px] font-black flex items-center justify-center uppercase font-mono">
+                                {rev.user_name ? rev.user_name.charAt(0) : 'U'}
+                              </span>
+                              <span className="font-extrabold text-xs text-gray-900">{rev.user_name}</span>
+                              <span className="bg-amber-100 text-amber-900 text-[9px] font-bold px-1.5 py-0.5 rounded">Verified</span>
+                            </div>
+                            {rev.title && <h5 className="font-extrabold text-xs text-gray-800 pt-0.5">{rev.title}</h5>}
+                            <p className="text-xs text-gray-700 font-medium leading-relaxed">
+                              {rev.comment}
+                            </p>
+
+                            {rev.images && rev.images.length > 0 && (
+                              <div className="flex gap-2 pt-2 overflow-x-auto">
+                                {rev.images.map((imgUrl, iIdx) => (
+                                  <img 
+                                    key={iIdx} 
+                                    src={resolveImgUrl(imgUrl)} 
+                                    alt="Review thumbnail" 
+                                    onClick={() => setPreviewReviewImage(resolveImgUrl(imgUrl))}
+                                    className="w-12 h-12 object-cover rounded-xl border border-gray-200 cursor-pointer hover:scale-105 transition-transform" 
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            {rev.admin_reply && (
+                              <div className="mt-3 p-2.5 bg-emerald-950/10 border-l-2 border-emerald-600 rounded-r-xl text-[11px] text-emerald-900">
+                                <span className="font-extrabold block text-emerald-800">ValueLife Official Reply:</span>
+                                <span>{rev.admin_reply}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* PAGINATION */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-center items-center gap-2 pt-4">
+                        <button 
+                          onClick={() => setReviewPage(p => Math.max(1, p - 1))}
+                          disabled={reviewPage === 1}
+                          className="px-3 py-1 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-40 cursor-pointer"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-xs font-bold text-gray-600">Page {reviewPage} of {totalPages}</span>
+                        <button 
+                          onClick={() => setReviewPage(p => Math.min(totalPages, p + 1))}
+                          disabled={reviewPage === totalPages}
+                          className="px-3 py-1 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-40 cursor-pointer"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-10 bg-[#f8f7f2] rounded-3xl border border-dashed border-gray-300 space-y-3">
+                    <span className="text-3xl">🌿</span>
+                    <h4 className="font-extrabold text-sm text-gray-800">Be the first to review this product!</h4>
+                    <p className="text-xs text-gray-500 max-w-sm mx-auto">Help other organic wellness enthusiasts by sharing your genuine experience.</p>
+                    <button 
+                      onClick={() => setShowReviewModal(true)}
+                      className="bg-[#3b6e14] hover:bg-[#2e5710] text-white font-extrabold text-xs px-6 py-2.5 rounded-full shadow-md cursor-pointer transition-all uppercase tracking-wider"
+                    >
+                      Write First Review ✍️
+                    </button>
+                  </div>
+                )}
               </div>
-            );
-          })()}
+            </div>
+          );
+        })()}
+
         </div>
 
       {/* WRITE A REVIEW MODAL OVERLAY */}
@@ -1393,7 +1450,6 @@ export default function ProductDetailPage({
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

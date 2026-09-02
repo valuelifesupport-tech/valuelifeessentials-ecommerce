@@ -2,14 +2,15 @@
 export const getApiUrl = (path) => {
   let base = '';
 
-  if (typeof window !== 'undefined' && import.meta.env.VITE_API_URL) {
-    base = import.meta.env.VITE_API_URL.trim().replace(/\/$/, '');
-  }
-
-  // Automatic Hostinger Production Backend URL Resolution Fallback
-  if (!base && typeof window !== 'undefined') {
+  if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    if (host.includes('hostingersite.com') || host.includes('valuelifeessentials.com')) {
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    
+    if (isLocal) {
+      base = ''; // Uses Vite proxy to local port 5000 smoothly
+    } else if (import.meta.env.VITE_API_URL) {
+      base = import.meta.env.VITE_API_URL.trim().replace(/\/$/, '');
+    } else if (host.includes('hostingersite.com') || host.includes('valuelifeessentials.com')) {
       base = 'https://aliceblue-loris-851812.hostingersite.com';
     }
   }
@@ -18,11 +19,11 @@ export const getApiUrl = (path) => {
   return base ? `${base}${cleanPath}` : cleanPath;
 };
 
-export const API_BASE = (typeof window !== 'undefined' && import.meta.env.VITE_API_URL)
-  ? import.meta.env.VITE_API_URL.trim().replace(/\/$/, '')
-  : (typeof window !== 'undefined' && (window.location.hostname.includes('hostingersite.com') || window.location.hostname.includes('valuelifeessentials.com')))
-    ? 'https://aliceblue-loris-851812.hostingersite.com'
-    : '';
+export const API_BASE = (typeof window !== 'undefined')
+  ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? ''
+    : (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.trim().replace(/\/$/, '') : 'https://aliceblue-loris-851812.hostingersite.com')
+  : '';
 
 export const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=300&q=80') => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;

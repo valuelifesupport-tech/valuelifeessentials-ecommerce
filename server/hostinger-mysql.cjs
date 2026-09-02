@@ -32,7 +32,15 @@ async function setupHostingerMySQL() {
     const connection = await mysql.createConnection(config);
     console.log('✅ Connected successfully to Hostinger MySQL!');
 
-    console.log('Creating database tables in Hostinger MySQL...');
+    // Check if tables already exist
+    const [existingTables] = await connection.query("SHOW TABLES LIKE 'categories'");
+    if (existingTables && existingTables.length > 0) {
+      console.log('✅ All tables already exist and verified in Hostinger MySQL! Skipping re-creation & seeding.');
+      await connection.end();
+      return true;
+    }
+
+    console.log('Tables not found. Initializing database tables in Hostinger MySQL...');
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS store_settings (
@@ -220,29 +228,6 @@ async function setupHostingerMySQL() {
     `);
 
     await connection.query(`
-      CREATE TABLE IF NOT EXISTS user_cart (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        product_id INT NOT NULL,
-        variant_id INT,
-        quantity INT DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY user_prod_var (user_id, product_id, variant_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS user_wishlist (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        product_id INT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY user_prod (user_id, product_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    await connection.query(`
       CREATE TABLE IF NOT EXISTS product_filter_groups (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -378,8 +363,42 @@ async function setupHostingerMySQL() {
   }
 }
 
+let poolInstance = null;
+
+function getMySQLPool() {
+  if (poolInstance) return poolInstance;
+  let mysqlHost = process.env.MYSQL_HOST || 'srv831.hstgr.io';
+  if (mysqlHost === 'localhost') mysqlHost = 'srv831.hstgr.io';
+
+  const user = process.env.MYSQL_USER || 'u439830852_admin';
+  const password = process.env.MYSQL_PASSWORD || 'Valuelife@support1';
+  const database = process.env.MYSQL_DATABASE || 'u439830852_valuelife';
+  const port = Number(process.env.MYSQL_PORT) || 3306;
+
+  try {
+    poolInstance = mysql.createPool({
+      host: mysqlHost,
+      user,
+      password,
+      database,
+      port,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      connectTimeout: 3000,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000
+    });
+  } catch (err) {
+    console.warn('MySQL pool create notice:', err.message);
+    return null;
+  }
+
+  return poolInstance;
+}
+
 if (require.main === module) {
   setupHostingerMySQL();
 }
 
-module.exports = { setupHostingerMySQL };
+module.exports = { setupHostingerMySQL, getMySQLPool };

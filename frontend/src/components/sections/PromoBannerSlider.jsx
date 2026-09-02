@@ -140,35 +140,49 @@ export default function PromoBannerSlider({ navigateTo, sectionsConfig, banners 
 export function SalesTickerNotification({ sectionsConfig }) {
   if (sectionsConfig && Number(sectionsConfig.show_sales_ticker) === 0) return null;
 
-  const defaultTickers = [
-    { name: 'Rohan Sharma', city: 'New Delhi', item: '5kg Organic Vermicompost', time: '2m ago' },
-    { name: 'Priya Patel', city: 'Bengaluru', item: '1L Liquid Seaweed Extract', time: '4m ago' },
-    { name: 'Amit Verma', city: 'Mumbai', item: '2kg Neem Cake Powder', time: '6m ago' },
-    { name: 'Neha Gupta', city: 'Pune', item: 'Organic Epsom Salt Booster', time: '8m ago' }
-  ];
-
-  let liveTickers = defaultTickers;
-  if (sectionsConfig && sectionsConfig.sales_ticker_json) {
-    try {
-      const parsed = typeof sectionsConfig.sales_ticker_json === 'string' 
-        ? JSON.parse(sectionsConfig.sales_ticker_json) 
-        : sectionsConfig.sales_ticker_json;
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        liveTickers = parsed;
-      }
-    } catch(e) {}
-  }
-
+  const [liveTickers, setLiveTickers] = useState([]);
   const [tickerIndex, setTickerIndex] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+    const fetchRecentOrders = async () => {
+      try {
+        const res = await fetch(getApiUrl('/api/orders/recent-activity'));
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data) && data.length > 0) {
+            setLiveTickers(data);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      if (sectionsConfig && sectionsConfig.sales_ticker_json) {
+        try {
+          const parsed = typeof sectionsConfig.sales_ticker_json === 'string' 
+            ? JSON.parse(sectionsConfig.sales_ticker_json) 
+            : sectionsConfig.sales_ticker_json;
+          if (isMounted && Array.isArray(parsed) && parsed.length > 0) {
+            setLiveTickers(parsed);
+          }
+        } catch(e) {}
+      }
+    };
+
+    fetchRecentOrders();
+    return () => { isMounted = false; };
+  }, [sectionsConfig]);
+
+  useEffect(() => {
+    if (liveTickers.length <= 1) return;
     const tickerTimer = setInterval(() => {
       setTickerIndex((prev) => (prev + 1) % liveTickers.length);
     }, 4500);
     return () => clearInterval(tickerTimer);
   }, [liveTickers.length]);
 
-  const ticker = liveTickers[tickerIndex] || defaultTickers[0];
+  if (liveTickers.length === 0) return null;
+  const ticker = liveTickers[tickerIndex] || liveTickers[0];
 
   return (
     <div className="max-w-7xl mx-auto px-4 my-3">

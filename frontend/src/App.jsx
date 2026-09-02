@@ -315,19 +315,7 @@ export default function App() {
         data = [...data].sort((a, b) => (b.id || 0) - (a.id || 0));
       }
 
-      if (route.collection) {
-        const cleanColl = String(route.collection);
-        const targetColl = (collections || []).find(c => String(c.id) === cleanColl || c.slug === cleanColl);
-        const targetId = targetColl ? String(targetColl.id) : cleanColl;
-
-        data = data.filter(p => {
-          if (!p) return false;
-          if (Array.isArray(p.collection_ids)) {
-            return p.collection_ids.some(cid => String(cid) === targetId);
-          }
-          return false;
-        });
-      }
+      // Backend /api/products?collection=... already filters by collection accurately
 
       setProducts(data);
       setBestProducts(data.filter(p => p && p.is_best_product === 1));
@@ -1496,11 +1484,17 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-4 gap-8 text-xs">
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <img src="/valuelife_logo.png" alt="ValueLife Essentials Logo" className="h-9 w-auto object-contain bg-white/90 p-1 rounded-lg shadow-sm" />
-              <span className="font-extrabold text-lg text-white font-['Outfit'] tracking-tight uppercase">VALUELIFE ESSENTIALS</span>
+              <img 
+                src={settings?.logo_url ? resolveImgUrl(settings.logo_url) : "/valuelife_logo.png"} 
+                alt={`${settings?.store_name || 'ValueLife Essentials'} Logo`} 
+                className="h-9 w-auto object-contain bg-white/90 p-1 rounded-lg shadow-sm" 
+              />
+              <span className="font-extrabold text-lg text-white font-['Outfit'] tracking-tight uppercase">
+                {settings?.store_name || 'VALUELIFE ESSENTIALS'}
+              </span>
             </div>
             <p className="text-emerald-200/80 leading-relaxed">
-              Your 100% trusted online organic & wellness store. Supplying certified organic superfoods, seeds, pure supplements, and natural wellness products.
+              {settings?.store_description || settings?.store_tagline || 'Your 100% trusted online organic & wellness store. Supplying certified organic superfoods, seeds, pure supplements, and natural wellness products.'}
             </p>
 
             {/* SOCIAL MEDIA ICONS BAR */}
@@ -1526,20 +1520,28 @@ export default function App() {
           <div className="space-y-2">
             <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">Quick Navigation</h4>
             <ul className="space-y-1.5 text-emerald-200/80">
-              <li><a href="#" onClick={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })} className="hover:text-white">Home Page</a></li>
-              <li><a href="#" onClick={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })} className="hover:text-white">All Products Catalog</a></li>
-              <li><a href="#" onClick={() => navigateTo('/category/organic-fertilizers', { view: 'catalog', slug: null, category: 'organic-fertilizers', collection: null })} className="hover:text-white">Organic Superfoods</a></li>
-              <li><a href="#" onClick={() => navigateTo('/category/seeds-and-gardening', { view: 'catalog', slug: null, category: 'seeds-and-gardening', collection: null })} className="hover:text-white">Wellness & Seeds</a></li>
+              <li><button onClick={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })} className="hover:text-white transition-colors text-left cursor-pointer">Home Page</button></li>
+              <li><button onClick={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })} className="hover:text-white transition-colors text-left cursor-pointer">All Products Catalog</button></li>
+              {(categories || []).slice(0, 4).map((cat) => (
+                <li key={cat.id}>
+                  <button 
+                    onClick={() => navigateTo(`/category/${cat.slug}`, { view: 'catalog', slug: null, category: cat.slug, collection: null })} 
+                    className="hover:text-white transition-colors text-left cursor-pointer truncate max-w-full block"
+                  >
+                    {cat.name}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div className="space-y-2">
             <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">Company & Policies</h4>
             <ul className="space-y-1.5 text-emerald-200/80">
-              <li><button onClick={() => navigateTo('/pages/about-us', { view: 'page', slug: 'about-us', category: null, collection: null })} className="hover:text-white transition-colors text-left">About Us</button></li>
-              <li><button onClick={() => navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us', category: null, collection: null })} className="hover:text-white transition-colors text-left">Contact Us</button></li>
-              <li><button onClick={() => navigateTo('/pages/shipping-policy', { view: 'page', slug: 'shipping-policy', category: null, collection: null })} className="hover:text-white transition-colors text-left">Shipping & Delivery Policy</button></li>
-              <li><button onClick={() => navigateTo('/pages/privacy-policy', { view: 'page', slug: 'privacy-policy', category: null, collection: null })} className="hover:text-white transition-colors text-left">Privacy & Cookie Policy</button></li>
+              <li><button onClick={() => navigateTo('/pages/about-us', { view: 'page', slug: 'about-us', category: null, collection: null })} className="hover:text-white transition-colors text-left cursor-pointer">About Us</button></li>
+              <li><button onClick={() => navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us', category: null, collection: null })} className="hover:text-white transition-colors text-left cursor-pointer">Contact Us</button></li>
+              <li><button onClick={() => navigateTo('/pages/shipping-policy', { view: 'page', slug: 'shipping-policy', category: null, collection: null })} className="hover:text-white transition-colors text-left cursor-pointer">Shipping & Delivery Policy</button></li>
+              <li><button onClick={() => navigateTo('/pages/privacy-policy', { view: 'page', slug: 'privacy-policy', category: null, collection: null })} className="hover:text-white transition-colors text-left cursor-pointer">Privacy & Cookie Policy</button></li>
             </ul>
           </div>
 
@@ -1548,15 +1550,15 @@ export default function App() {
             <ul className="space-y-2 text-emerald-200/80">
               <li className="flex items-center gap-2 font-medium">
                 <span>📞</span>
-                <span>+91 98765 43210</span>
+                <span>{settings?.phone_number || settings?.support_phone || '+91 98765 43210'}</span>
               </li>
               <li className="flex items-center gap-2 font-medium">
                 <span>✉️</span>
-                <span>support@valuelifeessentials.com</span>
+                <span>{settings?.support_email || settings?.email || 'support@valuelifeessentials.com'}</span>
               </li>
               <li className="flex items-center gap-2 font-medium text-[11px] text-emerald-300">
                 <span>🌐</span>
-                <span>valuelifeessentials.com</span>
+                <span>{settings?.store_url || 'valuelifeessentials.com'}</span>
               </li>
             </ul>
             <div className="pt-2">

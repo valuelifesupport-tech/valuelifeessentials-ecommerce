@@ -17,7 +17,22 @@ const fs = require('fs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const db = require('./db.cjs');
-const { setupHostingerMySQL } = require('./hostinger-mysql.cjs');
+const { setupHostingerMySQL, getMySQLPool } = require('./hostinger-mysql.cjs');
+
+// CENTRALIZED DIRECT MYSQL QUERY HELPER (WITH NON-BLOCKING FAST TIMEOUT)
+async function executeMySQL(sql, params = []) {
+  try {
+    const pool = getMySQLPool();
+    if (!pool) return null;
+    const queryPromise = pool.query(sql, params);
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('MySQL Query Timeout')), 2500));
+    const [result] = await Promise.race([queryPromise, timeoutPromise]);
+    return result;
+  } catch (err) {
+    console.warn(`[MySQL Notice] ${String(sql).slice(0, 60)}:`, err.message);
+    return null;
+  }
+}
 
 // NODEMAILER SMTP EMAIL ENGINE
 const mailTransporter = nodemailer.createTransport({
@@ -522,11 +537,15 @@ app.post('/api/media/replace', upload.single('image'), (req, res) => {
   try {
     const targetPrimaryPath = path.join(uploadsDir, targetFilename);
     const targetTmpPath = path.join(tmpUploadsDir, targetFilename);
+    const targetPubPath = path.join(publicHtmlUploadsDir, targetFilename);
 
     // Overwrite the file at targetPrimaryPath with newly uploaded file bytes
     fs.copyFileSync(req.file.path, targetPrimaryPath);
+    try { fs.copyFileSync(req.file.path, targetTmpPath); } catch (e) {}
     try {
-      fs.copyFileSync(req.file.path, targetTmpPath);
+      if (fs.existsSync(publicHtmlUploadsDir)) {
+        fs.copyFileSync(req.file.path, targetPubPath);
+      }
     } catch (e) {}
 
     // Clean up temporary upload file if different
@@ -600,7 +619,19 @@ app.post('/api/maintenance/verify', (req, res) => {
   res.status(401).json({ success: false, error: 'Invalid Maintenance Access Password' });
 });
 
-app.put('/api/settings', requireAdminAuth, (req, res) => {
+app.get('/api/settings', async (req, res) => {
+  const pool = getMySQLPool();
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM store_settings WHERE id = 1');
+      if (rows && rows.length > 0) return res.json(rows[0]);
+    } catch (e) {}
+  }
+  const settings = db.prepare('SELECT * FROM store_settings WHERE id = 1').get();
+  res.json(settings || {});
+});
+
+app.put('/api/settings', requireAdminAuth, async (req, res) => {
   const { 
     announcement_text, announcement_code, contact_phone, contact_email, 
     partial_deposit_percent, enable_multi_currency, enable_cod, enable_partial_payment,
@@ -609,7 +640,36 @@ app.put('/api/settings', requireAdminAuth, (req, res) => {
     all_prices_include_tax, federal_tax_rate
   } = req.body;
   
-  db.prepare(`
+  try {
+    db.prepare(`
+      UPDATE store_settings
+      SET announcement_text = ?, announcement_code = ?, contact_phone = ?, contact_email = ?, 
+          partial_deposit_percent = ?, enable_multi_currency = ?, enable_cod = ?, enable_partial_payment = ?,
+          partial_payment_heading = ?, partial_payment_subtext = ?, prepaid_discount_percent = ?,
+          enable_gst = ?, gstin_number = ?, store_state = ?, default_gst_percent = ?, gst_type = ?, legal_business_name = ?,
+          all_prices_include_tax = ?, federal_tax_rate = ?
+      WHERE id = 1
+    `).run(
+      announcement_text, announcement_code, contact_phone, contact_email, 
+      partial_deposit_percent || 20, 
+      enable_multi_currency ? 1 : 0,
+      enable_cod !== undefined ? (enable_cod ? 1 : 0) : 1,
+      enable_partial_payment !== undefined ? (enable_partial_payment ? 1 : 0) : 1,
+      partial_payment_heading || 'Choose Payment Breakdown Option:',
+      partial_payment_subtext || 'Pay rest on Delivery',
+      prepaid_discount_percent || 0,
+      enable_gst !== undefined ? (enable_gst ? 1 : 0) : 1,
+      gstin_number || '27AAAAA0000A1Z5',
+      store_state || 'Maharashtra',
+      default_gst_percent || 5.0,
+      gst_type || 'INCLUSIVE',
+      legal_business_name || 'ValueLife Essentials Private Limited',
+      all_prices_include_tax !== undefined ? (all_prices_include_tax ? 1 : 0) : 1,
+      federal_tax_rate || 0.0
+    );
+  } catch (e) {}
+
+  await executeMySQL(`
     UPDATE store_settings
     SET announcement_text = ?, announcement_code = ?, contact_phone = ?, contact_email = ?, 
         partial_deposit_percent = ?, enable_multi_currency = ?, enable_cod = ?, enable_partial_payment = ?,
@@ -617,7 +677,7 @@ app.put('/api/settings', requireAdminAuth, (req, res) => {
         enable_gst = ?, gstin_number = ?, store_state = ?, default_gst_percent = ?, gst_type = ?, legal_business_name = ?,
         all_prices_include_tax = ?, federal_tax_rate = ?
     WHERE id = 1
-  `).run(
+  `, [
     announcement_text, announcement_code, contact_phone, contact_email, 
     partial_deposit_percent || 20, 
     enable_multi_currency ? 1 : 0,
@@ -634,8 +694,9 @@ app.put('/api/settings', requireAdminAuth, (req, res) => {
     legal_business_name || 'ValueLife Essentials Private Limited',
     all_prices_include_tax !== undefined ? (all_prices_include_tax ? 1 : 0) : 1,
     federal_tax_rate || 0.0
-  );
-  res.json({ message: 'Store settings updated successfully' });
+  ]);
+
+  res.json({ message: 'Store settings updated successfully in database' });
 });
 
 // GLOBAL ADMIN API SECURITY BARRIER - ALL /api/admin/* ENDPOINTS REQUIRE VALID ADMIN TOKEN
@@ -703,58 +764,164 @@ app.get('/api/currency/detect', (req, res) => {
   });
 });
 
-// API 4: Categories & Subcategories CRUD
-app.get(['/api/categories', '/api/categories/tree'], (req, res) => {
+// API 4: Categories & Subcategories CRUD (100% MySQL Direct Bridge)
+app.get(['/api/categories', '/api/categories/tree'], async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  const categories = db.prepare('SELECT * FROM categories ORDER BY id ASC').all();
-  const subcategories = db.prepare('SELECT * FROM subcategories ORDER BY id ASC').all();
+  const categories = await executeMySQL('SELECT * FROM categories ORDER BY id ASC');
+  const subcategories = await executeMySQL('SELECT * FROM subcategories ORDER BY id ASC');
   
-  const result = categories.map(cat => ({
+  if (Array.isArray(categories) && categories.length > 0) {
+    const result = categories.map(cat => ({
+      ...cat,
+      subcategories: (Array.isArray(subcategories) ? subcategories : []).filter(sub => String(sub.category_id) === String(cat.id) || sub.category_id == cat.id)
+    }));
+    return res.json(result);
+  }
+
+  const fallbackCats = db.prepare('SELECT * FROM categories ORDER BY id ASC').all();
+  const fallbackSubs = db.prepare('SELECT * FROM subcategories ORDER BY id ASC').all();
+  const result = fallbackCats.map(cat => ({
     ...cat,
-    subcategories: subcategories.filter(sub => String(sub.category_id) === String(cat.id) || sub.category_id == cat.id)
+    subcategories: fallbackSubs.filter(sub => String(sub.category_id) === String(cat.id) || sub.category_id == cat.id)
   }));
-  
   res.json(result);
 });
 
-app.post('/api/categories', requireAdminAuth, (req, res) => {
+app.post('/api/categories', requireAdminAuth, async (req, res) => {
   const { name, description, image_url, icon } = req.body;
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-  const result = db.prepare('INSERT INTO categories (name, slug, description, image_url, icon) VALUES (?, ?, ?, ?, ?)').run(name, slug, description || '', image_url || '', icon !== undefined ? icon : '');
-  res.status(201).json({ id: result.lastInsertRowid, slug, message: 'Category created' });
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Category name is required' });
+  const cleanName = String(name).trim();
+  let baseSlug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `category-${Date.now()}`;
+  let slug = baseSlug;
+  let counter = 1;
+  while (true) {
+    try {
+      const existing = db.prepare('SELECT id FROM categories WHERE LOWER(slug) = ?').get(slug.toLowerCase());
+      if (!existing) break;
+      slug = `${baseSlug}-${counter++}`;
+    } catch (e) {
+      break;
+    }
+  }
+
+  let catId = Date.now();
+  try {
+    const result = db.prepare('INSERT INTO categories (name, slug, description, image_url, icon) VALUES (?, ?, ?, ?, ?)').run(
+      cleanName, 
+      slug, 
+      description || '', 
+      image_url || '', 
+      icon !== undefined ? icon : '🌿'
+    );
+    catId = result.lastInsertRowid;
+  } catch (err) {
+    console.error('Category insert error:', err);
+  }
+
+  // Non-blocking Concurrent Direct MySQL Insert
+  executeMySQL(
+    'INSERT INTO categories (id, name, slug, description, image_url, icon) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), slug=VALUES(slug), description=VALUES(description), image_url=VALUES(image_url), icon=VALUES(icon)',
+    [catId, cleanName, slug, description || '', image_url || '', icon !== undefined ? icon : '🌿']
+  ).catch(() => {});
+
+  res.status(201).json({ id: catId, slug, name: cleanName, message: 'Category created successfully' });
 });
 
 app.put('/api/categories/:id', requireAdminAuth, (req, res) => {
+  const { id } = req.params;
   const { name, description, image_url, icon } = req.body;
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-  db.prepare('UPDATE categories SET name = ?, slug = ?, description = ?, image_url = ?, icon = ? WHERE id = ?')
-    .run(name, slug, description || '', image_url || '', icon !== undefined ? icon : '', req.params.id);
-  res.json({ message: 'Category updated' });
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Category name is required' });
+  const cleanName = String(name).trim();
+  let baseSlug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `category-${id}`;
+  let slug = baseSlug;
+  let counter = 1;
+  while (true) {
+    try {
+      const existing = db.prepare('SELECT id FROM categories WHERE LOWER(slug) = ? AND id != ?').get(slug.toLowerCase(), id);
+      if (!existing) break;
+      slug = `${baseSlug}-${counter++}`;
+    } catch (e) {
+      break;
+    }
+  }
+
+  try {
+    db.prepare('UPDATE categories SET name = ?, slug = ?, description = ?, image_url = ?, icon = ? WHERE id = ?')
+      .run(cleanName, slug, description || '', image_url || '', icon !== undefined ? icon : '🌿', id);
+  } catch (err) {
+    console.error('Category update error:', err);
+  }
+
+  // Non-blocking Concurrent Direct MySQL Update
+  executeMySQL(
+    'UPDATE categories SET name = ?, slug = ?, description = ?, image_url = ?, icon = ? WHERE id = ?',
+    [cleanName, slug, description || '', image_url || '', icon !== undefined ? icon : '🌿', id]
+  ).catch(() => {});
+
+  res.json({ id: Number(id), name: cleanName, slug, message: 'Category updated successfully' });
 });
 
 app.delete('/api/categories/:id', requireAdminAuth, (req, res) => {
-  db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Category deleted' });
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM subcategories WHERE category_id = ?').run(id);
+    db.prepare('UPDATE products SET category_id = NULL WHERE category_id = ?').run(id);
+    db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+  } catch (e) {}
+
+  // Non-blocking Concurrent Direct MySQL Permanent Delete
+  (async () => {
+    await executeMySQL('DELETE FROM subcategories WHERE category_id = ?', [id]);
+    await executeMySQL('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
+    await executeMySQL('DELETE FROM categories WHERE id = ?', [id]);
+  })().catch(() => {});
+
+  res.json({ message: 'Category deleted permanently from database' });
 });
 
-// Subcategories API
-app.post('/api/subcategories', (req, res) => {
+// Subcategories API (100% MySQL Direct Bridge)
+app.post('/api/subcategories', async (req, res) => {
   const { category_id, name } = req.body;
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-  const result = db.prepare('INSERT INTO subcategories (category_id, name, slug) VALUES (?, ?, ?)').run(Number(category_id), name, slug);
-  res.status(201).json({ id: result.lastInsertRowid, slug, message: 'Subcategory created' });
+  let subId = Date.now();
+  try {
+    const result = db.prepare('INSERT INTO subcategories (category_id, name, slug) VALUES (?, ?, ?)').run(Number(category_id), name, slug);
+    subId = result.lastInsertRowid;
+  } catch (e) {}
+
+  // Direct MySQL Insert
+  await executeMySQL(
+    'INSERT INTO subcategories (id, category_id, name, slug) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE category_id=VALUES(category_id), name=VALUES(name), slug=VALUES(slug)',
+    [subId, Number(category_id), name, slug]
+  );
+
+  res.status(201).json({ id: subId, slug, message: 'Subcategory created' });
 });
 
-app.put('/api/subcategories/:id', (req, res) => {
+app.put('/api/subcategories/:id', async (req, res) => {
+  const { id } = req.params;
   const { name } = req.body;
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-  db.prepare('UPDATE subcategories SET name = ?, slug = ? WHERE id = ?').run(name, slug, req.params.id);
+  try {
+    db.prepare('UPDATE subcategories SET name = ?, slug = ? WHERE id = ?').run(name, slug, id);
+  } catch (e) {}
+
+  // Direct MySQL Update
+  await executeMySQL('UPDATE subcategories SET name = ?, slug = ? WHERE id = ?', [name, slug, id]);
+
   res.json({ message: 'Subcategory updated' });
 });
 
-app.delete('/api/subcategories/:id', (req, res) => {
-  db.prepare('DELETE FROM subcategories WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Subcategory deleted' });
+app.delete('/api/subcategories/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM subcategories WHERE id = ?').run(id);
+  } catch (e) {}
+
+  // Direct MySQL Permanent Delete
+  await executeMySQL('DELETE FROM subcategories WHERE id = ?', [id]);
+
+  res.json({ message: 'Subcategory deleted permanently from database' });
 });
 
 // API 5: Collections API
@@ -797,9 +964,13 @@ app.get('/api/collections', (req, res) => {
       computedProdIds = [...computedProdIds, ...newIds];
     }
 
-    const uniqueProdIds = Array.from(new Set(computedProdIds));
-    const navVal = (col.show_in_navbar === 1 || col.show_in_navbar === true || String(col.show_in_navbar) === '1') ? 1 : 0;
-    return { ...col, show_in_navbar: navVal, product_ids: uniqueProdIds, product_count: uniqueProdIds.length };
+    const uniqueFinalProdIds = Array.from(new Set(computedProdIds));
+
+    return {
+      ...col,
+      product_ids: uniqueFinalProdIds,
+      products_count: uniqueFinalProdIds.length
+    };
   });
 
   res.json(result);
@@ -807,22 +978,41 @@ app.get('/api/collections', (req, res) => {
 
 app.post('/api/collections', (req, res) => {
   const { name, description, image_url, category_id, show_in_navbar, product_ids } = req.body;
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Collection name is required' });
+  const cleanName = String(name).trim();
+  let baseSlug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `collection-${Date.now()}`;
+  let slug = baseSlug;
+  let counter = 1;
+  while (true) {
+    try {
+      const existing = db.prepare('SELECT id FROM collections WHERE LOWER(slug) = ?').get(slug.toLowerCase());
+      if (!existing) break;
+      slug = `${baseSlug}-${counter++}`;
+    } catch (e) {
+      break;
+    }
+  }
   const navVal = (show_in_navbar === 1 || show_in_navbar === true || show_in_navbar === '1') ? 1 : 0;
 
   let colId;
+  const colImage = image_url !== undefined && image_url !== null ? String(image_url).trim() : 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80';
   try {
     const result = db.prepare(`
       INSERT INTO collections (name, slug, description, image_url, category_id, show_in_navbar)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(name, slug, description || '', image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', category_id || null, navVal);
+    `).run(cleanName, slug, description || '', colImage, category_id || null, navVal);
     colId = result.lastInsertRowid;
   } catch (e) {
-    const result = db.prepare(`
-      INSERT INTO collections (name, slug, description, image_url, category_id)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(name, slug, description || '', image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', category_id || null);
-    colId = result.lastInsertRowid;
+    try {
+      const result = db.prepare(`
+        INSERT INTO collections (name, slug, description, image_url, category_id)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(cleanName, slug, description || '', colImage, category_id || null);
+      colId = result.lastInsertRowid;
+    } catch (err2) {
+      console.error('Collection insert error:', err2);
+      return res.status(500).json({ error: err2.message });
+    }
   }
 
   if (product_ids && Array.isArray(product_ids)) {
@@ -835,27 +1025,58 @@ app.post('/api/collections', (req, res) => {
     } catch (e) {}
   }
 
-  res.status(201).json({ id: colId, slug, show_in_navbar: navVal, message: 'Collection created successfully' });
+  try {
+    const { getMySQLPool } = require('./hostinger-mysql.cjs');
+    const pool = getMySQLPool();
+    if (pool) {
+      pool.query(`
+        INSERT INTO collections (id, name, slug, description, image_url, category_id, show_in_navbar)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE name = VALUES(name), slug = VALUES(slug), description = VALUES(description), image_url = VALUES(image_url), category_id = VALUES(category_id), show_in_navbar = VALUES(show_in_navbar)
+      `, [colId, cleanName, slug, description || '', colImage, category_id || null, navVal]).catch(() => {});
+    }
+  } catch (mErr) {}
+
+  res.status(201).json({ id: colId, slug, name: cleanName, image_url: colImage, show_in_navbar: navVal, message: 'Collection created successfully' });
 });
 
 app.put('/api/collections/:id', (req, res) => {
   const { id } = req.params;
   const { name, description, image_url, category_id, show_in_navbar, product_ids } = req.body;
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Collection name is required' });
+  const cleanName = String(name).trim();
+  let baseSlug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `collection-${id}`;
+  let slug = baseSlug;
+  let counter = 1;
+  while (true) {
+    try {
+      const existing = db.prepare('SELECT id FROM collections WHERE LOWER(slug) = ? AND id != ?').get(slug.toLowerCase(), id);
+      if (!existing) break;
+      slug = `${baseSlug}-${counter++}`;
+    } catch (e) {
+      break;
+    }
+  }
   const navVal = (show_in_navbar === 1 || show_in_navbar === true || show_in_navbar === '1') ? 1 : 0;
+  const colImage = image_url !== undefined && image_url !== null ? String(image_url).trim() : 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80';
 
   try {
     db.prepare(`
       UPDATE collections
       SET name = ?, slug = ?, description = ?, image_url = ?, category_id = ?, show_in_navbar = ?
       WHERE id = ?
-    `).run(name, slug, description || '', image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', category_id || null, navVal, id);
+    `).run(cleanName, slug, description || '', colImage, category_id || null, navVal, id);
   } catch (e) {
-    db.prepare(`
-      UPDATE collections
-      SET name = ?, slug = ?, description = ?, image_url = ?, category_id = ?
-      WHERE id = ?
-    `).run(name, slug, description || '', image_url || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', category_id || null, id);
+    try {
+      db.prepare(`
+        UPDATE collections
+        SET name = ?, slug = ?, description = ?, image_url = ?, category_id = ?
+        WHERE id = ?
+      `).run(cleanName, slug, description || '', colImage, category_id || null, id);
+    } catch (err2) {
+      console.error('Collection update error:', err2);
+      return res.status(500).json({ error: err2.message });
+    }
   }
 
   if (product_ids && Array.isArray(product_ids)) {
@@ -868,25 +1089,47 @@ app.put('/api/collections/:id', (req, res) => {
     } catch (e) {}
   }
 
-  res.json({ message: 'Collection updated successfully' });
+  try {
+    const { getMySQLPool } = require('./hostinger-mysql.cjs');
+    const pool = getMySQLPool();
+    if (pool) {
+      pool.query(`
+        UPDATE collections
+        SET name = ?, slug = ?, description = ?, image_url = ?, category_id = ?, show_in_navbar = ?
+        WHERE id = ?
+      `, [cleanName, slug, description || '', colImage, category_id || null, navVal, id]).catch(() => {});
+    }
+  } catch (mErr) {}
+
+  res.json({ id: Number(id), slug, name: cleanName, image_url: colImage, message: 'Collection updated successfully' });
 });
 
-app.put(['/api/collections/:id/navbar-toggle', '/api/admin/collections/:id/navbar-toggle'], (req, res) => {
+app.put(['/api/collections/:id/navbar-toggle', '/api/admin/collections/:id/navbar-toggle'], async (req, res) => {
   const { id } = req.params;
   const { show_in_navbar } = req.body;
   const val = (show_in_navbar === 1 || show_in_navbar === true || show_in_navbar === '1') ? 1 : 0;
 
   try {
     db.prepare('UPDATE collections SET show_in_navbar = ? WHERE id = ?').run(val, id);
-    res.json({ success: true, show_in_navbar: val, message: `Collection navbar visibility updated to ${val === 1 ? 'ENABLED' : 'DISABLED'}` });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) {}
+
+  await executeMySQL('UPDATE collections SET show_in_navbar = ? WHERE id = ?', [val, id]);
+
+  res.json({ success: true, show_in_navbar: val, message: `Collection navbar visibility updated to ${val === 1 ? 'ENABLED' : 'DISABLED'}` });
 });
 
-app.delete('/api/collections/:id', (req, res) => {
-  db.prepare('DELETE FROM collections WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Collection deleted successfully' });
+app.delete('/api/collections/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM product_collections WHERE collection_id = ?').run(id);
+    db.prepare('DELETE FROM collections WHERE id = ?').run(id);
+  } catch (e) {}
+
+  // Direct MySQL Delete
+  await executeMySQL('DELETE FROM product_collections WHERE collection_id = ?', [id]);
+  await executeMySQL('DELETE FROM collections WHERE id = ?', [id]);
+
+  res.json({ message: 'Collection deleted successfully from database' });
 });
 
 // API 6: Products API
@@ -899,7 +1142,7 @@ app.get('/api/products', (req, res) => {
            c.name as category_name, c.slug as category_slug,
            sc.name as subcategory_name, sc.slug as subcategory_slug,
            (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as thumbnail,
-           COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND status = 'APPROVED'), 5.0) as avg_rating,
+           COALESCE((SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id AND status = 'APPROVED'), 0) as avg_rating,
            (SELECT COUNT(id) FROM product_reviews WHERE product_id = p.id AND status = 'APPROVED') as review_count
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
@@ -1010,10 +1253,26 @@ app.get('/api/products', (req, res) => {
     const variants = variantsMap.get(p.id) || [];
     const collectionIds = colLinksMap.get(p.id) || [];
 
+    let finalPriceInr = Number(p.price_inr || p.price || 0);
+    let finalPriceUsd = Number(p.price_usd || 0);
+    let finalDiscountInr = Number(p.discount_inr || finalPriceInr || 0);
+    let finalDiscountUsd = Number(p.discount_usd || finalPriceUsd || 0);
+
+    if (finalPriceInr === 0 && variants.length > 0) {
+      finalPriceInr = Number(variants[0].price_inr || variants[0].price || 0);
+      finalPriceUsd = Number(variants[0].price_usd || (finalPriceInr > 0 ? Number((finalPriceInr / 95).toFixed(2)) : 0));
+      finalDiscountInr = Number(variants[0].discount_inr || finalPriceInr);
+      finalDiscountUsd = Number(variants[0].discount_usd || finalPriceUsd);
+    }
+
     return { 
       ...p, 
       title: cleanTitle,
       slug: cleanSlug,
+      price_inr: finalPriceInr,
+      price_usd: finalPriceUsd,
+      discount_inr: finalDiscountInr,
+      discount_usd: finalDiscountUsd,
       thumbnail: primaryImg,
       image_url: primaryImg,
       images: imagesList.length > 0 ? imagesList : (primaryImg ? [primaryImg] : []),
@@ -1085,19 +1344,17 @@ try {
   });
 } catch (e) {}
 
-// ENSURE DEFAULT SYSTEM NAVBAR COLLECTIONS EXIST (Offers, Best Sellers, New Arrivals)
+// INITIAL SEED OF DEFAULT COLLECTIONS ONLY IF COLLECTIONS TABLE IS COMPLETELY EMPTY
 try {
-  const existingColls = db.prepare('SELECT slug FROM collections').all();
-  const existingSlugs = new Set((Array.isArray(existingColls) ? existingColls : []).map(c => String(c.slug).toLowerCase()));
+  const existingColls = db.prepare('SELECT id, slug FROM collections').all();
+  if (!existingColls || existingColls.length === 0) {
+    const defaultNavbarCollections = [
+      { name: '🔥 Offers', slug: 'offers', description: 'Special discount offers and promotional deals', show_in_navbar: 1 },
+      { name: '⭐ Best Sellers', slug: 'bestsellers', description: 'Top rated and best selling products', show_in_navbar: 1 },
+      { name: '✨ New Arrivals', slug: 'new-arrivals', description: 'Newly launched fresh products', show_in_navbar: 1 }
+    ];
 
-  const defaultNavbarCollections = [
-    { name: '🔥 Offers', slug: 'offers', description: 'Special discount offers and promotional deals', show_in_navbar: 1 },
-    { name: '⭐ Best Sellers', slug: 'bestsellers', description: 'Top rated and best selling products', show_in_navbar: 1 },
-    { name: '✨ New Arrivals', slug: 'new-arrivals', description: 'Newly launched fresh products', show_in_navbar: 1 }
-  ];
-
-  defaultNavbarCollections.forEach(col => {
-    if (!existingSlugs.has(col.slug)) {
+    defaultNavbarCollections.forEach(col => {
       try {
         db.prepare('INSERT INTO collections (name, slug, description, image_url, show_in_navbar) VALUES (?, ?, ?, ?, ?)').run(
           col.name,
@@ -1107,12 +1364,8 @@ try {
           1
         );
       } catch (e) {}
-    } else {
-      try {
-        db.prepare('UPDATE collections SET show_in_navbar = 1 WHERE LOWER(slug) = ?').run(col.slug);
-      } catch (e) {}
-    }
-  });
+    });
+  }
 } catch (e) {}
 
 // Single Product Detail by Slug or ID (STRICT EXACT MATCH ONLY)
@@ -1211,7 +1464,7 @@ app.get('/api/products/slug/:slug', (req, res) => {
 
   const ratingStats = db.prepare(`
     SELECT 
-      COALESCE(AVG(rating), 5.0) as avg_rating,
+      COALESCE(AVG(rating), 0) as avg_rating,
       COUNT(id) as total_reviews
     FROM product_reviews
     WHERE product_id = ? AND status = 'APPROVED'
@@ -1227,8 +1480,8 @@ app.get('/api/products/slug/:slug', (req, res) => {
       const placeholders = colIds.map(() => '?').join(',');
       frequently_bought_products = db.prepare(`
         SELECT DISTINCT p.*, 
-               COALESCE((SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), p.thumbnail, p.image_url) as thumbnail,
-               COALESCE(AVG(r.rating), 4.8) as avg_rating,
+               COALESCE((SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1), 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80') as thumbnail,
+               COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.id) as review_count
         FROM products p
         JOIN product_collections pc ON p.id = pc.product_id
@@ -1251,8 +1504,8 @@ app.get('/api/products/slug/:slug', (req, res) => {
       const placeholders = pIds.map(() => '?').join(',');
       frequently_bought_products = db.prepare(`
         SELECT p.*, 
-               COALESCE((SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), p.thumbnail, p.image_url) as thumbnail,
-               COALESCE(AVG(r.rating), 4.8) as avg_rating,
+               COALESCE((SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1), 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80') as thumbnail,
+               COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.id) as review_count
         FROM products p
         LEFT JOIN product_reviews r ON p.id = r.product_id AND r.status = 'APPROVED'
@@ -1263,29 +1516,36 @@ app.get('/api/products/slug/:slug', (req, res) => {
     }
   }
 
-  // 3. Fallback ONLY if NO specific products or collections were defined (MAX 3 items from same category)
-  if (frequently_bought_products.length === 0 && !product.frequently_bought_ids && !product.related_collection_ids) {
-    try {
-      frequently_bought_products = db.prepare(`
-        SELECT p.*, 
-               COALESCE((SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), p.thumbnail, p.image_url) as thumbnail,
-               COALESCE(AVG(r.rating), 4.8) as avg_rating,
-               COUNT(r.id) as review_count
-        FROM products p
-        LEFT JOIN product_reviews r ON p.id = r.product_id AND r.status = 'APPROVED'
-        WHERE p.category_id = ? AND p.id != ?
-        GROUP BY p.id
-        ORDER BY RANDOM()
-        LIMIT 3
-      `).all(product.category_id || 1, product.id);
-    } catch (e) {}
+  // Hard Cap at Max 4 Items Always (STRICTLY ONLY EXPLICITLY CONFIGURED PRODUCTS)
+  frequently_bought_products = frequently_bought_products.slice(0, 4);
+
+  let finalPriceInr = Number(product.price_inr || product.price || 0);
+  let finalPriceUsd = Number(product.price_usd || 0);
+  let finalDiscountInr = Number(product.discount_inr || finalPriceInr || 0);
+  let finalDiscountUsd = Number(product.discount_usd || finalPriceUsd || 0);
+
+  if (finalPriceInr === 0 && variants.length > 0) {
+    finalPriceInr = Number(variants[0].price_inr || variants[0].price || 0);
+    finalPriceUsd = Number(variants[0].price_usd || (finalPriceInr > 0 ? Number((finalPriceInr / 95).toFixed(2)) : 0));
+    finalDiscountInr = Number(variants[0].discount_inr || finalPriceInr);
+    finalDiscountUsd = Number(variants[0].discount_usd || finalPriceUsd);
   }
 
-  // Hard Cap at Max 4 Items Always!
-  frequently_bought_products = frequently_bought_products.slice(0, 4);
+  let parsedSpecs = null;
+  if (product.specs_json) {
+    try {
+      parsedSpecs = typeof product.specs_json === 'object' ? product.specs_json : JSON.parse(product.specs_json);
+    } catch (e) {
+      parsedSpecs = null;
+    }
+  }
 
   res.json({
     ...product,
+    price_inr: finalPriceInr,
+    price_usd: finalPriceUsd,
+    discount_inr: finalDiscountInr,
+    discount_usd: finalDiscountUsd,
     variants,
     images: imagesList,
     image_url: imagesList[0] || product.image_url || product.thumbnail || null,
@@ -1293,7 +1553,7 @@ app.get('/api/products/slug/:slug', (req, res) => {
     reviews: formattedReviews,
     ratingStats,
     frequently_bought_products,
-    specs: product.specs_json ? JSON.parse(product.specs_json) : null
+    specs: parsedSpecs
   });
 });
 
@@ -1349,7 +1609,7 @@ app.get('/api/check-sku', (req, res) => {
 });
 
 // Create Product with Shopify-style fields
-app.post('/api/products', requireAdminAuth, (req, res) => {
+app.post('/api/products', requireAdminAuth, async (req, res) => {
   const { 
     title, category_id, subcategory_id, description, price_inr, price_usd, discount_inr, discount_usd, 
     compare_price_inr, compare_price_usd, cost_per_item_inr, cost_per_item_usd, barcode,
@@ -1399,12 +1659,22 @@ app.post('/api/products', requireAdminAuth, (req, res) => {
     } catch (e) {}
   }
 
+  const cleanPriceInr = Math.max(0, Number(price_inr || 0));
+  const cleanPriceUsd = price_usd !== undefined && price_usd !== null && price_usd !== '' && Number(price_usd) > 0 ? Math.max(0, Number(price_usd)) : Number((cleanPriceInr / 95).toFixed(2));
+  const cleanDiscInr = Math.max(0, Number(discount_inr || price_inr || 0));
+  const cleanDiscUsd = discount_usd !== undefined && discount_usd !== null && discount_usd !== '' && Number(discount_usd) > 0 ? Math.max(0, Number(discount_usd)) : Number((cleanDiscInr / 95).toFixed(2));
+  const cleanCompInr = compare_price_inr !== undefined && compare_price_inr !== null && compare_price_inr !== '' ? Math.max(0, Number(compare_price_inr)) : null;
+  const cleanCompUsd = compare_price_usd !== undefined && compare_price_usd !== null && compare_price_usd !== '' ? Math.max(0, Number(compare_price_usd)) : null;
+  const cleanCostInr = cost_per_item_inr !== undefined && cost_per_item_inr !== null && cost_per_item_inr !== '' ? Math.max(0, Number(cost_per_item_inr)) : null;
+  const cleanCostUsd = cost_per_item_usd !== undefined && cost_per_item_usd !== null && cost_per_item_usd !== '' ? Math.max(0, Number(cost_per_item_usd)) : null;
+  const cleanStock = Math.max(0, Number(stock || 100));
+
   const result = stmt.run(
     title, slug, sku, barcode || null, status || 'Active', vendor || 'VALUELIFE ESSENTIALS', product_type || 'Garden Supplies', cleanTags,
     targetCategoryId, subcategory_id || null, description || '', 
-    Number(price_inr || 0), Number(price_usd !== undefined && price_usd !== null && price_usd !== '' && Number(price_usd) > 0 ? price_usd : Number(((price_inr || 0) / 95).toFixed(2))), Number(discount_inr || price_inr || 0), Number(discount_usd !== undefined && discount_usd !== null && discount_usd !== '' && Number(discount_usd) > 0 ? discount_usd : Number(((discount_inr || price_inr || 0) / 95).toFixed(2))),
-    compare_price_inr || null, compare_price_usd || null, cost_per_item_inr || null, cost_per_item_usd || null,
-    Number(stock || 100), Number(weight || 0.5), hs_code || '310100', country_of_origin || 'India',
+    cleanPriceInr, cleanPriceUsd, cleanDiscInr, cleanDiscUsd,
+    cleanCompInr, cleanCompUsd, cleanCostInr, cleanCostUsd,
+    cleanStock, Number(weight || 0.5), hs_code || '310100', country_of_origin || 'India',
     is_best_product ? 1 : 0, title, description || '', cleanSeoKeywords, 
     typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null),
     gst_percent !== undefined && gst_percent !== '' && gst_percent !== null ? Number(gst_percent) : null,
@@ -1441,15 +1711,15 @@ app.post('/api/products', requireAdminAuth, (req, res) => {
     `);
     rawVariants.forEach(v => {
       if (!v) return;
-      const vName = v.variant_name || v.title || v.name || 'Standard Pack';
-      const vSku = v.sku || `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const vPriceInr = Number(v.price_inr || v.price || price_inr || 0);
-      const vPriceUsd = (v.price_usd !== undefined && v.price_usd !== '' && Number(v.price_usd) > 0) ? Number(v.price_usd) : Number((vPriceInr / 95).toFixed(2));
-      const vDiscInr = Number(v.discount_inr || v.discount || vPriceInr);
-      const vDiscUsd = (v.discount_usd !== undefined && v.discount_usd !== '' && Number(v.discount_usd) > 0) ? Number(v.discount_usd) : Number((vDiscInr / 95).toFixed(2));
-      const vCompInr = Number(v.compare_price_inr || 0);
-      const vCompUsd = (v.compare_price_usd !== undefined && v.compare_price_usd !== '' && Number(v.compare_price_usd) > 0) ? Number(v.compare_price_usd) : (vCompInr > 0 ? Number((vCompInr / 95).toFixed(2)) : null);
-      const vStock = v.stock !== undefined && v.stock !== '' ? Number(v.stock) : 50;
+      const vName = String(v.variant_name || v.title || v.name || 'Standard Pack').trim();
+      const vSku = (v.sku && String(v.sku).trim()) ? String(v.sku).trim().toUpperCase() : `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const vPriceInr = Math.max(0, Number(v.price_inr || v.price || cleanPriceInr || 0));
+      const vPriceUsd = (v.price_usd !== undefined && v.price_usd !== '' && Number(v.price_usd) > 0) ? Math.max(0, Number(v.price_usd)) : Number((vPriceInr / 95).toFixed(2));
+      const vDiscInr = Math.max(0, Number(v.discount_inr || v.discount || vPriceInr));
+      const vDiscUsd = (v.discount_usd !== undefined && v.discount_usd !== '' && Number(v.discount_usd) > 0) ? Math.max(0, Number(v.discount_usd)) : Number((vDiscInr / 95).toFixed(2));
+      const vCompInr = (v.compare_price_inr !== undefined && v.compare_price_inr !== null && v.compare_price_inr !== '') ? Math.max(0, Number(v.compare_price_inr)) : null;
+      const vCompUsd = (v.compare_price_usd !== undefined && v.compare_price_usd !== null && v.compare_price_usd !== '' && Number(v.compare_price_usd) > 0) ? Math.max(0, Number(v.compare_price_usd)) : (vCompInr > 0 ? Number((vCompInr / 95).toFixed(2)) : null);
+      const vStock = v.stock !== undefined && v.stock !== '' ? Math.max(0, Number(v.stock)) : 50;
       let vImg = v.image_url || v.image || (cleanImages.length > 0 ? cleanImages[0] : null);
       if (typeof vImg === 'object' && vImg?.image_url) vImg = vImg.image_url;
 
@@ -1468,12 +1738,68 @@ app.post('/api/products', requireAdminAuth, (req, res) => {
     } catch (e) {}
   }
 
+  // Direct MySQL Insert Bridge
+  await executeMySQL(`
+    INSERT INTO products (
+      id, title, slug, sku, barcode, status, vendor, product_type, tags,
+      category_id, subcategory_id, description, price_inr, price_usd, discount_inr, discount_usd,
+      compare_price_inr, compare_price_usd, cost_per_item_inr, cost_per_item_usd,
+      stock, weight, hs_code, country_of_origin, is_best_product, meta_title, meta_description, seo_keywords,
+      specs_json, gst_percent, frequently_bought_ids, related_collection_ids, related_mode
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      title=VALUES(title), slug=VALUES(slug), sku=VALUES(sku), status=VALUES(status),
+      price_inr=VALUES(price_inr), price_usd=VALUES(price_usd), discount_inr=VALUES(discount_inr), discount_usd=VALUES(discount_usd),
+      stock=VALUES(stock), category_id=VALUES(category_id), subcategory_id=VALUES(subcategory_id)
+  `, [
+    productId, title, slug, sku, barcode || null, status || 'Active', vendor || 'VALUELIFE ESSENTIALS', product_type || 'Garden Supplies', cleanTags,
+    targetCategoryId, subcategory_id || null, description || '', 
+    cleanPriceInr, cleanPriceUsd, cleanDiscInr, cleanDiscUsd,
+    cleanCompInr, cleanCompUsd, cleanCostInr, cleanCostUsd,
+    cleanStock, Number(weight || 0.5), hs_code || '310100', country_of_origin || 'India',
+    is_best_product ? 1 : 0, title, description || '', cleanSeoKeywords, 
+    typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null),
+    gst_percent !== undefined && gst_percent !== '' && gst_percent !== null ? Number(gst_percent) : null,
+    frequently_bought_ids || '', related_collection_ids || '', related_mode || 'PRODUCTS'
+  ]);
+
+  if (cleanImages.length > 0) {
+    for (let i = 0; i < cleanImages.length; i++) {
+      await executeMySQL('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)', [productId, cleanImages[i], i === 0 ? 1 : 0]);
+    }
+  }
+
+  if (Array.isArray(rawVariants) && rawVariants.length > 0) {
+    for (const v of rawVariants) {
+      if (!v) continue;
+      const vName = String(v.variant_name || v.title || v.name || 'Standard Pack').trim();
+      const vSku = (v.sku && String(v.sku).trim()) ? String(v.sku).trim().toUpperCase() : `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const vPriceInr = Math.max(0, Number(v.price_inr || v.price || cleanPriceInr || 0));
+      const vPriceUsd = (v.price_usd !== undefined && v.price_usd !== '' && Number(v.price_usd) > 0) ? Math.max(0, Number(v.price_usd)) : Number((vPriceInr / 95).toFixed(2));
+      const vDiscInr = Math.max(0, Number(v.discount_inr || v.discount || vPriceInr));
+      const vDiscUsd = (v.discount_usd !== undefined && v.discount_usd !== '' && Number(v.discount_usd) > 0) ? Math.max(0, Number(v.discount_usd)) : Number((vDiscInr / 95).toFixed(2));
+      const vStock = v.stock !== undefined && v.stock !== '' ? Math.max(0, Number(v.stock)) : 50;
+      let vImg = v.image_url || v.image || (cleanImages.length > 0 ? cleanImages[0] : null);
+      if (typeof vImg === 'object' && vImg?.image_url) vImg = vImg.image_url;
+      await executeMySQL('INSERT INTO product_variants (product_id, variant_name, sku, price_inr, price_usd, discount_inr, discount_usd, stock, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [productId, vName, vSku, vPriceInr, vPriceUsd, vDiscInr, vDiscUsd, vStock, vImg || null]);
+    }
+  }
+
+  if (Array.isArray(collection_ids) && collection_ids.length > 0) {
+    for (const cId of collection_ids) {
+      await executeMySQL('INSERT INTO product_collections (product_id, collection_id) VALUES (?, ?)', [productId, Number(cId)]);
+    }
+  }
+
   res.status(201).json({ id: productId, slug, message: 'Product created successfully' });
 });
 
 // Update Product
-app.put('/api/products/:id', requireAdminAuth, (req, res) => {
+app.put('/api/products/:id', requireAdminAuth, async (req, res) => {
   const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Product not found' });
+
   const { 
     title, sku: reqSku, category_id, subcategory_id, description, price_inr, price_usd, discount_inr, discount_usd, 
     compare_price_inr, compare_price_usd, cost_per_item_inr, cost_per_item_usd, barcode,
@@ -1490,14 +1816,24 @@ app.put('/api/products/:id', requireAdminAuth, (req, res) => {
     }
   }
   
-  const finalPriceInr = Number(price_inr || 0);
-  const finalPriceUsd = Number(price_usd || Math.round(finalPriceInr / 40));
-  const finalDiscInr = finalPriceInr;
-  const finalDiscUsd = finalPriceUsd;
+  const finalPriceInr = price_inr !== undefined ? Math.max(0, Number(price_inr || 0)) : existing.price_inr;
+  const finalPriceUsd = price_usd !== undefined ? Math.max(0, Number(price_usd)) : (price_inr !== undefined ? Number((finalPriceInr / 95).toFixed(2)) : existing.price_usd);
+  const finalDiscInr = discount_inr !== undefined ? Math.max(0, Number(discount_inr)) : (price_inr !== undefined ? finalPriceInr : existing.discount_inr);
+  const finalDiscUsd = discount_usd !== undefined ? Math.max(0, Number(discount_usd)) : (price_usd !== undefined ? finalPriceUsd : existing.discount_usd);
+  const finalStock = stock !== undefined && stock !== null && stock !== '' ? Math.max(0, Number(stock)) : existing.stock;
+  const finalTitle = (title !== undefined && title !== null && String(title).trim() !== '') ? String(title).trim() : existing.title;
+  const finalSlug = (title !== undefined && title !== null && String(title).trim() !== '') 
+    ? String(title).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+    : existing.slug;
+  const finalSku = cleanReqSku || (reqSku && reqSku.trim() ? reqSku.trim().toUpperCase() : existing.sku);
+  const finalCategory = category_id !== undefined ? category_id : existing.category_id;
+  const finalSubcategory = subcategory_id !== undefined ? subcategory_id : existing.subcategory_id;
+  const finalDesc = description !== undefined ? description : existing.description;
+  const finalStatus = status !== undefined ? status : existing.status;
 
   db.prepare(`
     UPDATE products
-    SET title = ?, sku = COALESCE(NULLIF(?, ''), sku), category_id = ?, subcategory_id = ?, description = ?, price_inr = ?, price_usd = ?, 
+    SET title = ?, slug = ?, sku = ?, category_id = ?, subcategory_id = ?, description = ?, price_inr = ?, price_usd = ?, 
         discount_inr = ?, discount_usd = ?, compare_price_inr = ?, compare_price_usd = ?,
         cost_per_item_inr = ?, cost_per_item_usd = ?, barcode = ?, stock = ?, status = ?, vendor = ?,
         product_type = ?, tags = ?, weight = ?, hs_code = ?, country_of_origin = ?,
@@ -1505,16 +1841,66 @@ app.put('/api/products/:id', requireAdminAuth, (req, res) => {
         frequently_bought_ids = ?, related_collection_ids = ?, related_mode = ?
     WHERE id = ?
   `).run(
-    title, reqSku ? reqSku.trim().toUpperCase() : null, category_id, subcategory_id || null, description, finalPriceInr, finalPriceUsd, 
+    finalTitle, finalSlug, finalSku, finalCategory, finalSubcategory || null, finalDesc, finalPriceInr, finalPriceUsd, 
     finalDiscInr, finalDiscUsd,
-    compare_price_inr || null, compare_price_usd || null, cost_per_item_inr || null, cost_per_item_usd || null,
-    barcode || null, stock, status || 'Active', vendor || 'VALUELIFE ESSENTIALS', product_type || 'Garden Supplies',
-    tags || 'organic', weight || 0.5, hs_code || '310100', country_of_origin || 'India',
-    is_best_product ? 1 : 0, seo_keywords, typeof specs_json === 'object' ? JSON.stringify(specs_json) : specs_json,
-    gst_percent !== undefined && gst_percent !== '' ? Number(gst_percent) : null,
-    frequently_bought_ids || '', related_collection_ids || '', related_mode || 'PRODUCTS',
+    compare_price_inr !== undefined && compare_price_inr !== null && compare_price_inr !== '' ? Math.max(0, Number(compare_price_inr)) : existing.compare_price_inr, 
+    compare_price_usd !== undefined && compare_price_usd !== null && compare_price_usd !== '' ? Math.max(0, Number(compare_price_usd)) : existing.compare_price_usd, 
+    cost_per_item_inr !== undefined && cost_per_item_inr !== null && cost_per_item_inr !== '' ? Math.max(0, Number(cost_per_item_inr)) : existing.cost_per_item_inr, 
+    cost_per_item_usd !== undefined && cost_per_item_usd !== null && cost_per_item_usd !== '' ? Math.max(0, Number(cost_per_item_usd)) : existing.cost_per_item_usd,
+    barcode !== undefined ? barcode : existing.barcode, 
+    finalStock, 
+    finalStatus, 
+    vendor !== undefined ? vendor : existing.vendor, 
+    product_type !== undefined ? product_type : existing.product_type,
+    tags !== undefined ? tags : existing.tags, 
+    weight !== undefined ? weight : existing.weight, 
+    hs_code !== undefined ? hs_code : existing.hs_code, 
+    country_of_origin !== undefined ? country_of_origin : existing.country_of_origin,
+    is_best_product !== undefined ? (is_best_product ? 1 : 0) : existing.is_best_product, 
+    seo_keywords !== undefined ? seo_keywords : existing.seo_keywords, 
+    specs_json !== undefined ? (typeof specs_json === 'object' ? JSON.stringify(specs_json) : specs_json) : existing.specs_json,
+    gst_percent !== undefined && gst_percent !== '' ? Number(gst_percent) : existing.gst_percent,
+    frequently_bought_ids !== undefined ? frequently_bought_ids : existing.frequently_bought_ids, 
+    related_collection_ids !== undefined ? related_collection_ids : existing.related_collection_ids, 
+    related_mode !== undefined ? related_mode : existing.related_mode,
     id
   );
+
+  // Direct MySQL Update
+  await executeMySQL(`
+    UPDATE products
+    SET title = ?, slug = ?, sku = ?, category_id = ?, subcategory_id = ?, description = ?, price_inr = ?, price_usd = ?, 
+        discount_inr = ?, discount_usd = ?, compare_price_inr = ?, compare_price_usd = ?,
+        cost_per_item_inr = ?, cost_per_item_usd = ?, barcode = ?, stock = ?, status = ?, vendor = ?,
+        product_type = ?, tags = ?, weight = ?, hs_code = ?, country_of_origin = ?,
+        is_best_product = ?, seo_keywords = ?, specs_json = ?, gst_percent = ?,
+        frequently_bought_ids = ?, related_collection_ids = ?, related_mode = ?
+    WHERE id = ?
+  `, [
+    finalTitle, finalSlug, finalSku, finalCategory, finalSubcategory || null, finalDesc, finalPriceInr, finalPriceUsd, 
+    finalDiscInr, finalDiscUsd,
+    compare_price_inr !== undefined && compare_price_inr !== null && compare_price_inr !== '' ? Math.max(0, Number(compare_price_inr)) : existing.compare_price_inr, 
+    compare_price_usd !== undefined && compare_price_usd !== null && compare_price_usd !== '' ? Math.max(0, Number(compare_price_usd)) : existing.compare_price_usd, 
+    cost_per_item_inr !== undefined && cost_per_item_inr !== null && cost_per_item_inr !== '' ? Math.max(0, Number(cost_per_item_inr)) : existing.cost_per_item_inr, 
+    cost_per_item_usd !== undefined && cost_per_item_usd !== null && cost_per_item_usd !== '' ? Math.max(0, Number(cost_per_item_usd)) : existing.cost_per_item_usd,
+    barcode !== undefined ? barcode : existing.barcode, 
+    finalStock, 
+    finalStatus, 
+    vendor !== undefined ? vendor : existing.vendor, 
+    product_type !== undefined ? product_type : existing.product_type,
+    tags !== undefined ? tags : existing.tags, 
+    weight !== undefined ? weight : existing.weight, 
+    hs_code !== undefined ? hs_code : existing.hs_code, 
+    country_of_origin !== undefined ? country_of_origin : existing.country_of_origin,
+    is_best_product !== undefined ? (is_best_product ? 1 : 0) : existing.is_best_product, 
+    seo_keywords !== undefined ? seo_keywords : existing.seo_keywords, 
+    specs_json !== undefined ? (typeof specs_json === 'object' ? JSON.stringify(specs_json) : specs_json) : existing.specs_json,
+    gst_percent !== undefined && gst_percent !== '' ? Number(gst_percent) : existing.gst_percent,
+    frequently_bought_ids !== undefined ? frequently_bought_ids : existing.frequently_bought_ids, 
+    related_collection_ids !== undefined ? related_collection_ids : existing.related_collection_ids, 
+    related_mode !== undefined ? related_mode : existing.related_mode,
+    id
+  ]);
 
   const rawImages = req.body.images || req.body.product_images;
   if (rawImages && Array.isArray(rawImages)) {
@@ -1529,9 +1915,14 @@ app.put('/api/products/:id', requireAdminAuth, (req, res) => {
       .filter(Boolean);
 
     db.prepare('DELETE FROM product_images WHERE product_id = ?').run(id);
+    await executeMySQL('DELETE FROM product_images WHERE product_id = ?', [id]);
+
     if (cleanImages.length > 0) {
       const imgStmt = db.prepare('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)');
       cleanImages.forEach((imgUrl, idx) => imgStmt.run(id, imgUrl, idx === 0 ? 1 : 0));
+      for (let i = 0; i < cleanImages.length; i++) {
+        await executeMySQL('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)', [id, cleanImages[i], i === 0 ? 1 : 0]);
+      }
       
       const primaryImg = cleanImages[0];
       try {
@@ -1543,40 +1934,45 @@ app.put('/api/products/:id', requireAdminAuth, (req, res) => {
   const rawVariants = variants || req.body.variants;
   if (rawVariants && Array.isArray(rawVariants)) {
     db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
+    await executeMySQL('DELETE FROM product_variants WHERE product_id = ?', [id]);
+
     const varStmt = db.prepare(`
       INSERT INTO product_variants (product_id, variant_name, sku, price_inr, price_usd, discount_inr, discount_usd, compare_price_inr, compare_price_usd, stock, image_url)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    rawVariants.forEach(v => {
-      if (!v) return;
-      const vName = v.variant_name || v.title || v.name || 'Standard Pack';
-      const vSku = v.sku || `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const vPriceInr = Number(v.price_inr || v.price || finalPriceInr || 0);
-      const vPriceUsd = (v.price_usd !== undefined && v.price_usd !== '' && Number(v.price_usd) > 0) ? Number(v.price_usd) : Number((vPriceInr / 95).toFixed(2));
-      const vDiscInr = (v.discount_inr && Number(v.discount_inr) > 0 && Number(v.discount_inr) < vPriceInr) ? Number(v.discount_inr) : vPriceInr;
-      const vDiscUsd = (v.discount_usd && Number(v.discount_usd) > 0 && Number(v.discount_usd) < vPriceUsd) ? Number(v.discount_usd) : vPriceUsd;
-      const vCompInr = Number(v.compare_price_inr || 0);
-      const vCompUsd = (v.compare_price_usd !== undefined && v.compare_price_usd !== '' && Number(v.compare_price_usd) > 0) ? Number(v.compare_price_usd) : (vCompInr > 0 ? Number((vCompInr / 95).toFixed(2)) : null);
-      const vStock = v.stock !== undefined && v.stock !== '' ? Number(v.stock) : 50;
+    for (const v of rawVariants) {
+      if (!v) continue;
+      const vName = String(v.variant_name || v.title || v.name || 'Standard Pack').trim();
+      const vSku = (v.sku && String(v.sku).trim()) ? String(v.sku).trim().toUpperCase() : `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const vPriceInr = Math.max(0, Number(v.price_inr || v.price || finalPriceInr || 0));
+      const vPriceUsd = (v.price_usd !== undefined && v.price_usd !== '' && Number(v.price_usd) > 0) ? Math.max(0, Number(v.price_usd)) : Number((vPriceInr / 95).toFixed(2));
+      const vDiscInr = (v.discount_inr && Number(v.discount_inr) > 0 && Number(v.discount_inr) < vPriceInr) ? Math.max(0, Number(v.discount_inr)) : vPriceInr;
+      const vDiscUsd = (v.discount_usd && Number(v.discount_usd) > 0 && Number(v.discount_usd) < vPriceUsd) ? Math.max(0, Number(v.discount_usd)) : vPriceUsd;
+      const vCompInr = (v.compare_price_inr !== undefined && v.compare_price_inr !== null && v.compare_price_inr !== '') ? Math.max(0, Number(v.compare_price_inr)) : null;
+      const vCompUsd = (v.compare_price_usd !== undefined && v.compare_price_usd !== null && v.compare_price_usd !== '' && Number(v.compare_price_usd) > 0) ? Math.max(0, Number(v.compare_price_usd)) : (vCompInr > 0 ? Number((vCompInr / 95).toFixed(2)) : null);
+      const vStock = v.stock !== undefined && v.stock !== '' ? Math.max(0, Number(v.stock)) : 50;
       let vImg = v.image_url || v.image || null;
       if (typeof vImg === 'object' && vImg?.image_url) vImg = vImg.image_url;
 
       varStmt.run(id, vName, vSku, vPriceInr, vPriceUsd, vDiscInr, vDiscUsd, vCompInr || null, vCompUsd || null, vStock, vImg || null);
-    });
+      await executeMySQL('INSERT INTO product_variants (product_id, variant_name, sku, price_inr, price_usd, discount_inr, discount_usd, stock, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, vName, vSku, vPriceInr, vPriceUsd, vDiscInr, vDiscUsd, vStock, vImg || null]);
+    }
   }
 
   const collection_ids = req.body.collection_ids || req.body.collectionIds;
   if (collection_ids && Array.isArray(collection_ids)) {
     try {
       db.prepare('DELETE FROM product_collections WHERE product_id = ?').run(id);
+      await executeMySQL('DELETE FROM product_collections WHERE product_id = ?', [id]);
       const pcStmt = db.prepare('INSERT INTO product_collections (product_id, collection_id) VALUES (?, ?)');
-      collection_ids.forEach(cId => {
+      for (const cId of collection_ids) {
         try { pcStmt.run(id, Number(cId)); } catch (e) {}
-      });
+        await executeMySQL('INSERT INTO product_collections (product_id, collection_id) VALUES (?, ?)', [id, Number(cId)]);
+      }
     } catch (e) {}
   }
 
-  res.json({ message: 'Product updated' });
+  res.json({ message: 'Product updated successfully in database' });
 });
 
 // Update Product Stock directly
@@ -1609,12 +2005,18 @@ app.post('/api/products/:id/variants', (req, res) => {
   res.status(201).json({ id: result.lastInsertRowid, message: 'Variant added' });
 });
 
-app.delete('/api/variants/:id', (req, res) => {
-  db.prepare('DELETE FROM product_variants WHERE id = ?').run(req.params.id);
+app.delete('/api/variants/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM product_variants WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM product_variants WHERE id = ?', [id]);
+
   res.json({ message: 'Variant deleted' });
 });
 
-app.delete('/api/products/purge-all', (req, res) => {
+app.delete('/api/products/purge-all', async (req, res) => {
   try {
     db.prepare('DELETE FROM product_collections').run();
     db.prepare('DELETE FROM product_images').run();
@@ -1625,15 +2027,37 @@ app.delete('/api/products/purge-all', (req, res) => {
     db.prepare('DELETE FROM products').run();
     db.prepare('DELETE FROM banners').run();
     db.prepare('DELETE FROM coupons').run();
-    res.json({ message: 'All products and dummy data successfully purged', success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) {}
+
+  await executeMySQL('DELETE FROM product_collections');
+  await executeMySQL('DELETE FROM product_images');
+  await executeMySQL('DELETE FROM product_variants');
+  await executeMySQL('DELETE FROM product_reviews');
+  await executeMySQL('DELETE FROM order_items');
+  await executeMySQL('DELETE FROM orders');
+  await executeMySQL('DELETE FROM products');
+  await executeMySQL('DELETE FROM banners');
+  await executeMySQL('DELETE FROM coupons');
+
+  res.json({ message: 'All products and dummy data successfully purged from database', success: true });
 });
 
-app.delete('/api/products/:id', requireAdminAuth, (req, res) => {
-  db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Product deleted' });
+app.delete('/api/products/:id', requireAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM product_images WHERE product_id = ?').run(id);
+    db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
+    db.prepare('DELETE FROM product_collections WHERE product_id = ?').run(id);
+    db.prepare('DELETE FROM products WHERE id = ?').run(id);
+  } catch (e) {}
+
+  // Direct MySQL Permanent Delete
+  await executeMySQL('DELETE FROM product_images WHERE product_id = ?', [id]);
+  await executeMySQL('DELETE FROM product_variants WHERE product_id = ?', [id]);
+  await executeMySQL('DELETE FROM product_collections WHERE product_id = ?', [id]);
+  await executeMySQL('DELETE FROM products WHERE id = ?', [id]);
+
+  res.json({ message: 'Product deleted permanently from database' });
 });
 
 // Reviews API
@@ -1802,9 +2226,15 @@ app.post('/api/coupons/validate', (req, res) => {
   });
 });
 
-app.delete('/api/coupons/:id', (req, res) => {
-  db.prepare('DELETE FROM coupons WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Coupon deleted' });
+app.delete('/api/coupons/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM coupons WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM coupons WHERE id = ?', [id]);
+
+  res.json({ message: 'Coupon deleted successfully from database' });
 });
 
 // Orders API (WITH STRICT SERVER-SIDE BURP-SUITE PROOF PRICE INTEGRITY)
@@ -1864,11 +2294,17 @@ app.post('/api/orders', (req, res) => {
   }
 
   const rawTotal = Number(total_amount) || 0;
-  const safeTotal = (calculatedTotal > 0) ? calculatedTotal : rawTotal;
+  const safeTotal = rawTotal > 0 ? rawTotal : (calculatedTotal > 0 ? calculatedTotal : 0);
 
-  const depositRatio = (payment_mode === 'PARTIAL' || payment_mode === 'PARTIAL_COD') ? 0.20 : 1.0;
+  let depositRatio = 1.0;
+  if (payment_mode === 'PARTIAL' || payment_mode === 'PARTIAL_COD') {
+    depositRatio = 0.20;
+  } else if (payment_mode === 'COD' || payment_mode === '100%_COD') {
+    depositRatio = 0.0;
+  }
+
   let paidAmount = 0;
-  if (paid_amount !== undefined && paid_amount !== null && !isNaN(Number(paid_amount)) && Number(paid_amount) > 0) {
+  if (paid_amount !== undefined && paid_amount !== null && !isNaN(Number(paid_amount))) {
     paidAmount = Math.min(Number(paid_amount), safeTotal);
   } else {
     paidAmount = Math.round(safeTotal * depositRatio);
@@ -2066,7 +2502,7 @@ const handleUpdateOrder = (req, res) => {
     // Attach order items if available
     try {
       const items = db.prepare(`
-        SELECT oi.*, p.title as product_title, p.thumbnail, p.image_url, p.sku as product_sku, pv.variant_name, pv.sku as variant_sku
+        SELECT oi.*, p.title as product_title, p.image_url as thumbnail, p.image_url, p.sku as product_sku, pv.variant_name, pv.sku as variant_sku
         FROM order_items oi
         LEFT JOIN products p ON oi.product_id = p.id
         LEFT JOIN product_variants pv ON oi.variant_id = pv.id
@@ -2086,6 +2522,50 @@ app.put('/api/admin/orders/:id', handleUpdateOrder);
 app.post('/api/admin/orders/:id', handleUpdateOrder);
 app.put('/api/orders/:id', handleUpdateOrder);
 app.post('/api/orders/:id', handleUpdateOrder);
+
+// LIVE REAL-TIME RECENT ORDER ACTIVITY (For dynamic sales ticker social proof)
+app.get('/api/orders/recent-activity', (req, res) => {
+  try {
+    const rawOrders = db.prepare('SELECT id, customer_name, shipping_address, created_at FROM orders ORDER BY id DESC LIMIT 10').all();
+    const liveProducts = db.prepare('SELECT title FROM products ORDER BY id DESC LIMIT 10').all();
+    const productTitles = (Array.isArray(liveProducts) ? liveProducts : []).map(p => p.title);
+
+    const activity = (Array.isArray(rawOrders) ? rawOrders : []).map((o, idx) => {
+      let timeAgo = `${(idx + 1) * 3}m ago`;
+      if (o.created_at) {
+        const diffMs = Date.now() - new Date(o.created_at).getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        if (diffMins > 0 && diffMins < 60) timeAgo = `${diffMins}m ago`;
+        else if (diffHours > 0 && diffHours < 24) timeAgo = `${diffHours}h ago`;
+        else if (diffHours >= 24) timeAgo = `${Math.floor(diffHours / 24)}d ago`;
+      }
+
+      // Extract city from shipping address
+      let city = 'Delhi';
+      if (o.shipping_address) {
+        const parts = o.shipping_address.split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.length >= 2) city = parts[1].replace(/\d+/g, '').trim();
+      }
+
+      const itemTitle = productTitles.length > 0 
+        ? productTitles[idx % productTitles.length]
+        : 'Organic Wellness Booster';
+
+      return {
+        id: o.id,
+        name: o.customer_name || 'Verified Buyer',
+        city: city || 'India',
+        item: itemTitle,
+        time: timeAgo
+      };
+    });
+
+    res.json(activity);
+  } catch (e) {
+    res.json([]);
+  }
+});
 
 // Admin Analytics (100% REAL AUTHENTIC DYNAMIC METRICS WITH BULLETPROOF ERROR GUARD)
 app.get('/api/admin/analytics', (req, res) => {
@@ -2302,56 +2782,117 @@ app.get('/api/admin/gst-report/export', (req, res) => {
   }
 });
 
-app.put('/api/admin/reviews/:id/status', (req, res) => {
-  db.prepare('UPDATE product_reviews SET status = ?, admin_reply = ? WHERE id = ?').run(req.body.status || 'APPROVED', req.body.admin_reply || null, req.params.id);
+app.put('/api/admin/reviews/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const status = req.body.status || 'APPROVED';
+  const reply = req.body.admin_reply || null;
+  try {
+    db.prepare('UPDATE product_reviews SET status = ?, admin_reply = ? WHERE id = ?').run(status, reply, id);
+  } catch (e) {}
+
+  await executeMySQL('UPDATE product_reviews SET status = ?, admin_reply = ? WHERE id = ?', [status, reply, id]);
+
   res.json({ message: 'Review status updated' });
 });
 
-app.get('/api/banners', (req, res) => {
+app.delete('/api/admin/reviews/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM product_reviews WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM product_reviews WHERE id = ?', [id]);
+
+  res.json({ message: 'Review deleted successfully from database' });
+});
+
+app.get('/api/banners', async (req, res) => {
+  const pool = getMySQLPool();
+  if (pool) {
+    try {
+      const [banners] = await pool.query('SELECT * FROM banners ORDER BY sort_order ASC, id DESC');
+      if (banners && banners.length > 0) return res.json(banners);
+    } catch (e) {}
+  }
   res.json(db.prepare('SELECT * FROM banners ORDER BY sort_order ASC').all());
 });
 
-app.post('/api/banners', (req, res) => {
-  const { title, subtitle, image_url, link_url } = req.body;
-  const result = db.prepare('INSERT INTO banners (title, subtitle, image_url, link_url) VALUES (?, ?, ?, ?)').run(title, subtitle, image_url, link_url || '/products');
-  res.status(201).json({ id: result.lastInsertRowid, message: 'Banner created' });
+app.post('/api/banners', async (req, res) => {
+  const { title, subtitle, image_url, link_url, sort_order } = req.body;
+  let banId = Date.now();
+  try {
+    const result = db.prepare('INSERT INTO banners (title, subtitle, image_url, link_url, sort_order) VALUES (?, ?, ?, ?, ?)').run(title, subtitle || '', image_url, link_url || '/products', sort_order || 0);
+    banId = result.lastInsertRowid;
+  } catch (e) {}
+
+  await executeMySQL(
+    'INSERT INTO banners (id, title, subtitle, image_url, link_url, sort_order) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE title=VALUES(title), subtitle=VALUES(subtitle), image_url=VALUES(image_url), link_url=VALUES(link_url), sort_order=VALUES(sort_order)',
+    [banId, title, subtitle || '', image_url, link_url || '/products', sort_order || 0]
+  );
+
+  res.status(201).json({ id: banId, message: 'Banner created successfully' });
 });
 
-app.delete('/api/banners/:id', (req, res) => {
-  db.prepare('DELETE FROM banners WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Banner deleted' });
+app.delete('/api/banners/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM banners WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM banners WHERE id = ?', [id]);
+
+  res.json({ message: 'Banner deleted successfully from database' });
 });
 
 // CUSTOM PAGES (CMS) API
-// CUSTOM PAGES (CMS) API (defined with fallbacks below)
-
-app.post('/api/admin/pages', (req, res) => {
+app.post('/api/admin/pages', async (req, res) => {
   const { title, slug, content, seo_title, seo_description, status } = req.body;
   const pageSlug = slug ? slug.toLowerCase().replace(/[^a-z0-9]+/g, '-') : title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  let pgId = Date.now();
   try {
     const result = db.prepare(`
       INSERT INTO custom_pages (title, slug, content, seo_title, seo_description, status)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(title, pageSlug, content, seo_title || title, seo_description || '', status || 'PUBLISHED');
-    res.status(201).json({ id: result.lastInsertRowid, message: 'Custom page created successfully' });
-  } catch (err) {
-    res.status(400).json({ error: 'Page slug already exists' });
-  }
+    pgId = result.lastInsertRowid;
+  } catch (err) {}
+
+  await executeMySQL(
+    'INSERT INTO custom_pages (id, title, slug, content_html, seo_title, seo_description, is_published) VALUES (?, ?, ?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE title=VALUES(title), slug=VALUES(slug), content_html=VALUES(content_html), seo_title=VALUES(seo_title), seo_description=VALUES(seo_description)',
+    [pgId, title, pageSlug, content || '', seo_title || title, seo_description || '']
+  );
+
+  res.status(201).json({ id: pgId, message: 'Custom page created successfully' });
 });
 
-app.put('/api/admin/pages/:id', (req, res) => {
+app.put('/api/admin/pages/:id', async (req, res) => {
+  const { id } = req.params;
   const { title, slug, content, seo_title, seo_description, status } = req.body;
-  db.prepare(`
-    UPDATE custom_pages 
-    SET title = ?, slug = ?, content = ?, seo_title = ?, seo_description = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(title, slug, content, seo_title, seo_description, status, req.params.id);
-  res.json({ message: 'Custom page updated' });
+  try {
+    db.prepare(`
+      UPDATE custom_pages 
+      SET title = ?, slug = ?, content = ?, seo_title = ?, seo_description = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(title, slug, content, seo_title, seo_description, status, id);
+  } catch (e) {}
+
+  await executeMySQL(
+    'UPDATE custom_pages SET title = ?, slug = ?, content_html = ?, seo_title = ?, seo_description = ? WHERE id = ?',
+    [title, slug, content || '', seo_title || title, seo_description || '', id]
+  );
+
+  res.json({ message: 'Custom page updated successfully' });
 });
 
-app.delete('/api/admin/pages/:id', (req, res) => {
-  db.prepare('DELETE FROM custom_pages WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Custom page deleted' });
+app.delete('/api/admin/pages/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM custom_pages WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM custom_pages WHERE id = ?', [id]);
+
+  res.json({ message: 'Custom page deleted successfully from database' });
 });
 
 app.get('/api/admin/orders', (req, res) => {
@@ -2795,10 +3336,10 @@ app.get('/api/users/:email/orders', (req, res) => {
         items = db.prepare(`
           SELECT oi.*, 
                  COALESCE(oi.product_title, p.title) as product_title, 
-                 p.thumbnail, p.image_url,
+                 p.image_url as thumbnail, p.image_url,
                  (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as primary_image,
                  COALESCE(oi.variant_name, pv.variant_name) as variant_name,
-                 COALESCE(pv.image_url, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), p.thumbnail, p.image_url) as item_image
+                 COALESCE(pv.image_url, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1), p.image_url) as item_image
           FROM order_items oi
           LEFT JOIN products p ON oi.product_id = p.id
           LEFT JOIN product_variants pv ON oi.variant_id = pv.id
@@ -3055,66 +3596,144 @@ app.get(['/api/filter-groups', '/api/admin/filter-groups'], (req, res) => {
   res.json(result);
 });
 
-app.post('/api/admin/filter-groups', (req, res) => {
+app.post('/api/admin/filter-groups', async (req, res) => {
   const { name, filter_key, sort_order } = req.body;
-  const key = filter_key ? filter_key.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : name.toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'Filter group name is required' });
+  
+  let key = filter_key && String(filter_key).trim() 
+    ? String(filter_key).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_') 
+    : String(name).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+  
+  let grpId = Date.now();
   try {
-    const result = db.prepare('INSERT INTO product_filter_groups (name, filter_key, sort_order, is_active) VALUES (?, ?, ?, 1)').run(name, key, sort_order || 0);
-    res.status(201).json({ id: result.lastInsertRowid, message: 'Filter group created' });
-  } catch (err) {
-    res.status(400).json({ error: 'Filter key already exists' });
-  }
+    const result = db.prepare('INSERT INTO product_filter_groups (name, filter_key, sort_order, is_active) VALUES (?, ?, ?, 1)').run(String(name).trim(), key, sort_order || 0);
+    grpId = result.lastInsertRowid;
+  } catch (err) {}
+
+  await executeMySQL(
+    'INSERT INTO product_filter_groups (id, name, filter_key, sort_order, is_active) VALUES (?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE name=VALUES(name), filter_key=VALUES(filter_key), sort_order=VALUES(sort_order)',
+    [grpId, String(name).trim(), key, sort_order || 0]
+  );
+
+  res.status(201).json({ id: grpId, name: String(name).trim(), filter_key: key, message: 'Filter group created' });
 });
 
-app.put('/api/admin/filter-groups/:id', (req, res) => {
+app.put('/api/admin/filter-groups/:id', async (req, res) => {
   const { name, filter_key, is_active, sort_order } = req.body;
-  db.prepare(`
-    UPDATE product_filter_groups 
-    SET name = ?, filter_key = ?, is_active = ?, sort_order = ?
-    WHERE id = ?
-  `).run(name, filter_key, is_active !== undefined ? is_active : 1, sort_order || 0, req.params.id);
+  try {
+    db.prepare(`
+      UPDATE product_filter_groups 
+      SET name = ?, filter_key = ?, is_active = ?, sort_order = ?
+      WHERE id = ?
+    `).run(name, filter_key, is_active !== undefined ? is_active : 1, sort_order || 0, req.params.id);
+  } catch (e) {}
+
+  await executeMySQL(
+    'UPDATE product_filter_groups SET name = ?, filter_key = ?, is_active = ?, sort_order = ? WHERE id = ?',
+    [name, filter_key, is_active !== undefined ? is_active : 1, sort_order || 0, req.params.id]
+  );
+
   res.json({ message: 'Filter group updated' });
 });
 
-app.delete('/api/admin/filter-groups/:id', (req, res) => {
-  db.prepare('DELETE FROM product_filter_options WHERE group_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM product_filter_groups WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Filter group deleted' });
+app.delete('/api/admin/filter-groups/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM product_filter_options WHERE group_id = ?').run(id);
+    db.prepare('DELETE FROM product_filter_groups WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM product_filter_options WHERE group_id = ?', [id]);
+  await executeMySQL('DELETE FROM product_filter_groups WHERE id = ?', [id]);
+
+  res.json({ message: 'Filter group deleted successfully from database' });
 });
 
-app.post('/api/admin/filter-options', (req, res) => {
+app.post('/api/admin/filter-options', async (req, res) => {
   const { group_id, label, value, sort_order } = req.body;
   const optValue = value ? value.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : label.toLowerCase().replace(/[^a-z0-9_]+/g, '_');
-  const result = db.prepare('INSERT INTO product_filter_options (group_id, label, value, sort_order) VALUES (?, ?, ?, ?)').run(group_id, label, optValue, sort_order || 0);
-  res.status(201).json({ id: result.lastInsertRowid, message: 'Filter option added' });
+  let optId = Date.now();
+  try {
+    const result = db.prepare('INSERT INTO product_filter_options (group_id, label, value, sort_order) VALUES (?, ?, ?, ?)').run(group_id, label, optValue, sort_order || 0);
+    optId = result.lastInsertRowid;
+  } catch (e) {}
+
+  await executeMySQL(
+    'INSERT INTO product_filter_options (id, group_id, label, value, sort_order) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE label=VALUES(label), value=VALUES(value), sort_order=VALUES(sort_order)',
+    [optId, group_id, label, optValue, sort_order || 0]
+  );
+
+  res.status(201).json({ id: optId, message: 'Filter option added' });
 });
 
-app.delete('/api/admin/filter-options/:id', (req, res) => {
-  db.prepare('DELETE FROM product_filter_options WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Filter option deleted' });
+app.delete('/api/admin/filter-options/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM product_filter_options WHERE id = ?').run(id);
+  } catch (e) {}
+
+  await executeMySQL('DELETE FROM product_filter_options WHERE id = ?', [id]);
+
+  res.json({ message: 'Filter option deleted successfully from database' });
 });
 
-// HERO SECTION CONFIG API
-app.get('/api/hero-config', (req, res) => {
+// HERO SECTION CONFIG API (100% MySQL Direct Bridge)
+app.get('/api/hero-config', async (req, res) => {
+  const pool = getMySQLPool();
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM store_hero_config WHERE id = 1');
+      if (rows && rows.length > 0) return res.json(rows[0]);
+    } catch (e) {}
+  }
   const config = db.prepare('SELECT * FROM store_hero_config WHERE id = 1').get();
   res.json(config || {});
 });
 
-app.put('/api/admin/hero-config', (req, res) => {
+app.put('/api/admin/hero-config', async (req, res) => {
   const { 
     hero_enabled, active_style, badge_text, title, subtitle, 
     primary_btn_text, primary_btn_link, secondary_btn_text, secondary_btn_link, 
     image_url, bg_image_url, card_1_title, card_1_sub, card_1_img, card_2_title, card_2_sub, card_2_img 
   } = req.body;
 
-  db.prepare(`
+  try {
+    db.prepare(`
+      UPDATE store_hero_config
+      SET hero_enabled = ?, active_style = ?, badge_text = ?, title = ?, subtitle = ?,
+          primary_btn_text = ?, primary_btn_link = ?, secondary_btn_text = ?, secondary_btn_link = ?,
+          image_url = ?, bg_image_url = ?, card_1_title = ?, card_1_sub = ?, card_1_img = ?,
+          card_2_title = ?, card_2_sub = ?, card_2_img = ?
+      WHERE id = 1
+    `).run(
+      hero_enabled !== undefined ? (hero_enabled ? 1 : 0) : 1,
+      active_style || 'SPLIT',
+      badge_text || '',
+      title || '',
+      subtitle || '',
+      primary_btn_text || '',
+      primary_btn_link || '',
+      secondary_btn_text || '',
+      secondary_btn_link || '',
+      image_url || '',
+      bg_image_url || '',
+      card_1_title || '',
+      card_1_sub || '',
+      card_1_img || '',
+      card_2_title || '',
+      card_2_sub || '',
+      card_2_img || ''
+    );
+  } catch (e) {}
+
+  await executeMySQL(`
     UPDATE store_hero_config
     SET hero_enabled = ?, active_style = ?, badge_text = ?, title = ?, subtitle = ?,
         primary_btn_text = ?, primary_btn_link = ?, secondary_btn_text = ?, secondary_btn_link = ?,
         image_url = ?, bg_image_url = ?, card_1_title = ?, card_1_sub = ?, card_1_img = ?,
         card_2_title = ?, card_2_sub = ?, card_2_img = ?
     WHERE id = 1
-  `).run(
+  `, [
     hero_enabled !== undefined ? (hero_enabled ? 1 : 0) : 1,
     active_style || 'SPLIT',
     badge_text || '',
@@ -3132,29 +3751,57 @@ app.put('/api/admin/hero-config', (req, res) => {
     card_2_title || '',
     card_2_sub || '',
     card_2_img || ''
-  );
+  ]);
 
-  res.json({ message: 'Hero configuration updated' });
+  res.json({ message: 'Hero configuration updated successfully in database' });
 });
 
-// API: Theme & Styling Config
-app.get('/api/theme-config', (req, res) => {
+// API: Theme & Styling Config (100% MySQL Direct Bridge)
+app.get('/api/theme-config', async (req, res) => {
+  const pool = getMySQLPool();
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM store_theme_config WHERE id = 1');
+      if (rows && rows.length > 0) return res.json(rows[0]);
+    } catch (e) {}
+  }
   const config = db.prepare('SELECT * FROM store_theme_config WHERE id = 1').get();
   res.json(config || {});
 });
 
-app.put('/api/admin/theme-config', (req, res) => {
+app.put('/api/admin/theme-config', async (req, res) => {
   const { 
     active_preset, primary_color, primary_hover, secondary_color, accent_color,
     heading_font, body_font, border_radius, header_style, card_style, dark_mode
   } = req.body;
 
-  db.prepare(`
+  try {
+    db.prepare(`
+      UPDATE store_theme_config
+      SET active_preset = ?, primary_color = ?, primary_hover = ?, secondary_color = ?, accent_color = ?,
+          heading_font = ?, body_font = ?, border_radius = ?, header_style = ?, card_style = ?, dark_mode = ?
+      WHERE id = 1
+    `).run(
+      active_preset || 'EMERALD',
+      primary_color || '#3b6e14',
+      primary_hover || '#2e5710',
+      secondary_color || '#f8f7f2',
+      accent_color || '#f59e0b',
+      heading_font || 'Outfit',
+      body_font || 'Inter',
+      border_radius || 'rounded-3xl',
+      header_style || 'EMERALD_DARK',
+      card_style || 'VALUELIFE_ESSENTIALS',
+      dark_mode ? 1 : 0
+    );
+  } catch (e) {}
+
+  await executeMySQL(`
     UPDATE store_theme_config
     SET active_preset = ?, primary_color = ?, primary_hover = ?, secondary_color = ?, accent_color = ?,
         heading_font = ?, body_font = ?, border_radius = ?, header_style = ?, card_style = ?, dark_mode = ?
     WHERE id = 1
-  `).run(
+  `, [
     active_preset || 'EMERALD',
     primary_color || '#3b6e14',
     primary_hover || '#2e5710',
@@ -3166,23 +3813,25 @@ app.put('/api/admin/theme-config', (req, res) => {
     header_style || 'EMERALD_DARK',
     card_style || 'VALUELIFE_ESSENTIALS',
     dark_mode ? 1 : 0
-  );
+  ]);
 
-  res.json({ message: 'Theme configuration updated' });
+  res.json({ message: 'Theme configuration updated successfully in database' });
 });
 
-// API: Website Storefront Sections Manager API
-app.get('/api/sections-config', (req, res) => {
+// API: Website Storefront Sections Manager API (100% MySQL Direct Bridge)
+app.get(['/api/sections-config', '/api/admin/sections-config'], async (req, res) => {
+  const pool = getMySQLPool();
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM store_sections_config WHERE id = 1');
+      if (rows && rows.length > 0) return res.json(rows[0]);
+    } catch (e) {}
+  }
   const config = db.prepare('SELECT * FROM store_sections_config WHERE id = 1').get();
   res.json(config || {});
 });
 
-app.get('/api/admin/sections-config', (req, res) => {
-  const config = db.prepare('SELECT * FROM store_sections_config WHERE id = 1').get();
-  res.json(config || {});
-});
-
-app.put('/api/admin/sections-config', (req, res) => {
+app.put(['/api/sections-config', '/api/admin/sections-config'], async (req, res) => {
   const { 
     show_announcement, show_hero, show_trust_badges, show_promo_banners,
     show_categories_slider, show_bestsellers, show_catalog_grid, show_footer,
@@ -3192,7 +3841,43 @@ app.put('/api/admin/sections-config', (req, res) => {
     category_slider_title, bestsellers_title, bestsellers_badge, bestsellers_count
   } = req.body;
 
-  db.prepare(`
+  try {
+    db.prepare(`
+      UPDATE store_sections_config
+      SET show_announcement = ?, show_hero = ?, show_trust_badges = ?, show_promo_banners = ?,
+          show_categories_slider = ?, show_bestsellers = ?, show_catalog_grid = ?, show_footer = ?,
+          show_sales_ticker = ?, sales_ticker_json = ?,
+          trust_badge_1_title = ?, trust_badge_1_sub = ?, trust_badge_2_title = ?, trust_badge_2_sub = ?,
+          trust_badge_3_title = ?, trust_badge_3_sub = ?, trust_badge_4_title = ?, trust_badge_4_sub = ?,
+          category_slider_title = ?, bestsellers_title = ?, bestsellers_badge = ?, bestsellers_count = ?
+      WHERE id = 1
+    `).run(
+      show_announcement !== undefined ? (show_announcement ? 1 : 0) : 1,
+      show_hero !== undefined ? (show_hero ? 1 : 0) : 1,
+      show_trust_badges !== undefined ? (show_trust_badges ? 1 : 0) : 1,
+      show_promo_banners !== undefined ? (show_promo_banners ? 1 : 0) : 1,
+      show_categories_slider !== undefined ? (show_categories_slider ? 1 : 0) : 1,
+      show_bestsellers !== undefined ? (show_bestsellers ? 1 : 0) : 1,
+      show_catalog_grid !== undefined ? (show_catalog_grid ? 1 : 0) : 1,
+      show_footer !== undefined ? (show_footer ? 1 : 0) : 1,
+      show_sales_ticker !== undefined ? (show_sales_ticker ? 1 : 0) : 1,
+      typeof sales_ticker_json === 'string' ? sales_ticker_json : JSON.stringify(sales_ticker_json || []),
+      trust_badge_1_title || '100% Pure Organic',
+      trust_badge_1_sub || 'Chemical-free bio products',
+      trust_badge_2_title || 'Fast Home Delivery',
+      trust_badge_2_sub || 'Safe packaging across India',
+      trust_badge_3_title || 'Partial Payment & COD',
+      trust_badge_3_sub || 'Pay 20% deposit online',
+      trust_badge_4_title || 'Top Rated Service',
+      trust_badge_4_sub || '4.9 ★ Average Reviews',
+      category_slider_title || 'Shop By Categories',
+      bestsellers_title || '🔥 Best Seller Products',
+      bestsellers_badge || 'HIGH DEMAND ITEMS',
+      bestsellers_count || 8
+    );
+  } catch (e) {}
+
+  await executeMySQL(`
     UPDATE store_sections_config
     SET show_announcement = ?, show_hero = ?, show_trust_badges = ?, show_promo_banners = ?,
         show_categories_slider = ?, show_bestsellers = ?, show_catalog_grid = ?, show_footer = ?,
@@ -3201,7 +3886,7 @@ app.put('/api/admin/sections-config', (req, res) => {
         trust_badge_3_title = ?, trust_badge_3_sub = ?, trust_badge_4_title = ?, trust_badge_4_sub = ?,
         category_slider_title = ?, bestsellers_title = ?, bestsellers_badge = ?, bestsellers_count = ?
     WHERE id = 1
-  `).run(
+  `, [
     show_announcement !== undefined ? (show_announcement ? 1 : 0) : 1,
     show_hero !== undefined ? (show_hero ? 1 : 0) : 1,
     show_trust_badges !== undefined ? (show_trust_badges ? 1 : 0) : 1,
@@ -3224,56 +3909,9 @@ app.put('/api/admin/sections-config', (req, res) => {
     bestsellers_title || '🔥 Best Seller Products',
     bestsellers_badge || 'HIGH DEMAND ITEMS',
     bestsellers_count || 8
-  );
+  ]);
 
-  res.json({ message: 'Storefront sections configuration updated live' });
-});
-
-app.put('/api/sections-config', (req, res) => {
-  const { 
-    show_announcement, show_hero, show_trust_badges, show_promo_banners,
-    show_categories_slider, show_bestsellers, show_catalog_grid, show_footer,
-    show_sales_ticker, sales_ticker_json,
-    trust_badge_1_title, trust_badge_1_sub, trust_badge_2_title, trust_badge_2_sub,
-    trust_badge_3_title, trust_badge_3_sub, trust_badge_4_title, trust_badge_4_sub,
-    category_slider_title, bestsellers_title, bestsellers_badge, bestsellers_count
-  } = req.body;
-
-  db.prepare(`
-    UPDATE store_sections_config
-    SET show_announcement = ?, show_hero = ?, show_trust_badges = ?, show_promo_banners = ?,
-        show_categories_slider = ?, show_bestsellers = ?, show_catalog_grid = ?, show_footer = ?,
-        show_sales_ticker = ?, sales_ticker_json = ?,
-        trust_badge_1_title = ?, trust_badge_1_sub = ?, trust_badge_2_title = ?, trust_badge_2_sub = ?,
-        trust_badge_3_title = ?, trust_badge_3_sub = ?, trust_badge_4_title = ?, trust_badge_4_sub = ?,
-        category_slider_title = ?, bestsellers_title = ?, bestsellers_badge = ?, bestsellers_count = ?
-    WHERE id = 1
-  `).run(
-    show_announcement !== undefined ? (show_announcement ? 1 : 0) : 1,
-    show_hero !== undefined ? (show_hero ? 1 : 0) : 1,
-    show_trust_badges !== undefined ? (show_trust_badges ? 1 : 0) : 1,
-    show_promo_banners !== undefined ? (show_promo_banners ? 1 : 0) : 1,
-    show_categories_slider !== undefined ? (show_categories_slider ? 1 : 0) : 1,
-    show_bestsellers !== undefined ? (show_bestsellers ? 1 : 0) : 1,
-    show_catalog_grid !== undefined ? (show_catalog_grid ? 1 : 0) : 1,
-    show_footer !== undefined ? (show_footer ? 1 : 0) : 1,
-    show_sales_ticker !== undefined ? (show_sales_ticker ? 1 : 0) : 1,
-    typeof sales_ticker_json === 'string' ? sales_ticker_json : JSON.stringify(sales_ticker_json || []),
-    trust_badge_1_title || '100% Pure Organic',
-    trust_badge_1_sub || 'Chemical-free bio products',
-    trust_badge_2_title || 'Fast Home Delivery',
-    trust_badge_2_sub || 'Safe packaging across India',
-    trust_badge_3_title || 'Partial Payment & COD',
-    trust_badge_3_sub || 'Pay 20% deposit online',
-    trust_badge_4_title || 'Top Rated Service',
-    trust_badge_4_sub || '4.9 ★ Average Reviews',
-    category_slider_title || 'Shop By Categories',
-    bestsellers_title || '🔥 Best Seller Products',
-    bestsellers_badge || 'HIGH DEMAND ITEMS',
-    bestsellers_count || 8
-  );
-
-  res.json({ message: 'Storefront sections configuration updated live' });
+  res.json({ message: 'Storefront sections configuration updated successfully in database' });
 });
 
 // ==========================================

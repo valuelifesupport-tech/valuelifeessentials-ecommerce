@@ -37,13 +37,16 @@ export default function ProductCard({
 }) {
   const p = product;
   const isINR = currency === 'INR';
-  const rawPrice = isINR ? (Number(p.price_inr) || 0) : (Number(p.price_usd) || 0);
+  const firstVariant = Array.isArray(p.variants) && p.variants.length > 0 ? p.variants[0] : null;
+  const pPriceInr = Number(p.price_inr || p.price || (firstVariant ? (firstVariant.price_inr || firstVariant.price) : 0)) || 0;
+  const pPriceUsd = Number(p.price_usd) || (pPriceInr > 0 ? Number((pPriceInr / 95).toFixed(2)) : (firstVariant ? Number(firstVariant.price_usd || 0) : 0));
+  const rawPrice = isINR ? pPriceInr : pPriceUsd;
   const rawDiscount = isINR 
     ? (p.discount_inr !== undefined && p.discount_inr !== null && Number(p.discount_inr) > 0 && Number(p.discount_inr) < rawPrice ? Number(p.discount_inr) : null)
     : (p.discount_usd !== undefined && p.discount_usd !== null && Number(p.discount_usd) > 0 && Number(p.discount_usd) < rawPrice ? Number(p.discount_usd) : null);
   const rawCompare = isINR
-    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : null)
-    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : null);
+    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : (firstVariant?.compare_price_inr ? Number(firstVariant.compare_price_inr) : null))
+    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : (firstVariant?.compare_price_usd ? Number(firstVariant.compare_price_usd) : null));
 
   let pPrice = rawPrice;
   if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
@@ -58,6 +61,14 @@ export default function ProductCard({
   }
 
   const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+
+  const allVariantPrices = Array.isArray(p.variants) && p.variants.length > 0
+    ? p.variants.map(v => isINR ? Number(v.price_inr || v.price || v.discount_inr || 0) : Number(v.price_usd || v.discount_usd || 0)).filter(pr => pr > 0)
+    : [];
+
+  const minVarPrice = allVariantPrices.length > 0 ? Math.min(...allVariantPrices) : null;
+  const maxVarPrice = allVariantPrices.length > 0 ? Math.max(...allVariantPrices) : null;
+  const hasPriceRange = minVarPrice !== null && maxVarPrice !== null && minVarPrice < maxVarPrice;
 
   // 1. LIST VIEW CARD (Horizontal 2-Column Layout matching Screenshot 2)
   if (viewMode === 'list') {
@@ -98,17 +109,23 @@ export default function ProductCard({
 
             <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
               <span>★★★★★</span>
-              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
-              <span className="text-gray-400 font-medium">| {p.review_count || 56}</span>
+              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(1)}</span>
+              <span className="text-gray-400 font-medium">| {p.review_count || 0} reviews</span>
             </div>
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice}.00</span>
-                {pOriginal > pPrice && (
-                  <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal}.00</span>
+                {hasPriceRange ? (
+                  <span className="text-base sm:text-lg font-black text-gray-900">
+                    {currencySymbol}{minVarPrice.toFixed(0)} - {currencySymbol}{maxVarPrice.toFixed(0)}
+                  </span>
+                ) : (
+                  <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice.toFixed(2)}</span>
                 )}
-                {pct > 0 && (
+                {!hasPriceRange && pOriginal > pPrice && (
+                  <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal.toFixed(2)}</span>
+                )}
+                {!hasPriceRange && pct > 0 && (
                   <span className="bg-[#4a7729] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                     -{pct}% Off
                   </span>
@@ -182,17 +199,23 @@ export default function ProductCard({
 
           <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
             <span>★★★★★</span>
-            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(2)}</span>
-            <span className="text-gray-400 font-medium">| {p.review_count || 24}</span>
+            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(1)}</span>
+            <span className="text-gray-400 font-medium">| {p.review_count || 0} reviews</span>
           </div>
 
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice}.00</span>
-              {pOriginal > pPrice && (
-                <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal}.00</span>
+              {hasPriceRange ? (
+                <span className="text-base sm:text-lg font-black text-gray-900">
+                  {currencySymbol}{minVarPrice.toFixed(0)} - {currencySymbol}{maxVarPrice.toFixed(0)}
+                </span>
+              ) : (
+                <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice.toFixed(2)}</span>
               )}
-              {pct > 0 && (
+              {!hasPriceRange && pOriginal > pPrice && (
+                <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal.toFixed(2)}</span>
+              )}
+              {!hasPriceRange && pct > 0 && (
                 <span className="bg-[#4a7729] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                   -{pct}% Off
                 </span>

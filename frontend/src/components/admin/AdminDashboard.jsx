@@ -49,7 +49,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       'x-admin-token': token,
       ...(options.headers || {})
     };
-    return window.fetch(targetUrl, { ...options, headers });
+    return window.fetch(targetUrl, { cache: 'no-store', ...options, headers });
   };
 
     const handleAdminLogin = async (e) => {
@@ -208,6 +208,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     is_best_product: false, 
     seo_title: '', seo_description: '', url_handle: '',
     images: [], 
+    variants: [],
     specs_json: '{"material":"100% Certified Organic","ideal_for":"Health & Wellness","durability":"2 Years Shelf Life"}'
   };
 
@@ -246,6 +247,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [mediaSearch, setMediaSearch] = useState('');
   const [mediaFilter, setMediaFilter] = useState('ALL');
   const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaCacheBuster, setMediaCacheBuster] = useState(Date.now());
   const [previewMediaItem, setPreviewMediaItem] = useState(null);
   const [showProductMediaPickerModal, setShowProductMediaPickerModal] = useState(false);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState(null);
@@ -678,9 +680,18 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       safeFetchJson('/api/settings')
     ]);
 
-    if (prods) setProducts(prods);
-    if (cats) setCategories(cats);
-    if (colls) setCollections(colls);
+    if (prods) {
+      const seen = new Set();
+      setProducts(prods.filter(p => { const k = p.id; if (seen.has(k)) return false; seen.add(k); return true; }));
+    }
+    if (cats) {
+      const seen = new Set();
+      setCategories(cats.filter(c => { const k = c.id; if (seen.has(k)) return false; seen.add(k); return true; }));
+    }
+    if (colls) {
+      const seen = new Set();
+      setCollections(colls.filter(c => { const k = c.id; if (seen.has(k)) return false; seen.add(k); return true; }));
+    }
     if (ords) setOrders(ords);
     if (sets) {
       setSettings(sets);
@@ -1011,7 +1022,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
     let finalSku = productForm.sku;
     if (isDuplicateSku || !finalSku || !finalSku.trim()) {
-      finalSku = `VLE-PROD-${Math.floor(100 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
+      const titleSlug = (productForm.title || 'PROD').trim().replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 10).toUpperCase().replace(/(^-|-$)+/g, '');
+      finalSku = `VLE-${titleSlug || 'PROD'}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
     try {
@@ -1023,7 +1035,31 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         .map(img => (typeof img === 'object' && img?.image_url) ? img.image_url : img)
         .filter(Boolean);
 
-      const cleanFormVariants = (productForm.variants || []).map(v => {
+      // Auto-commit any pending unadded variant form inputs
+      let mergedVariants = [...(productForm.variants || [])];
+      if (newVariantForm && newVariantForm.variant_name && newVariantForm.variant_name.trim()) {
+        const vPrice = Number(newVariantForm.price_inr || productForm.price_inr || 0);
+        const vPriceUsd = newVariantForm.price_usd !== '' && Number(newVariantForm.price_usd) > 0 ? Number(newVariantForm.price_usd) : Number((vPrice / 95).toFixed(2));
+        const vCompInr = Number(newVariantForm.compare_price_inr || 0);
+        const vCompUsd = newVariantForm.compare_price_usd !== '' && Number(newVariantForm.compare_price_usd) > 0 ? Number(newVariantForm.compare_price_usd) : (vCompInr > 0 ? Number((vCompInr / 95).toFixed(2)) : 0);
+        const vStock = Number(newVariantForm.stock || 100);
+        mergedVariants.push({
+          id: `var_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          variant_name: newVariantForm.variant_name.trim(),
+          price_inr: vPrice,
+          price: vPrice,
+          discount_inr: vPrice,
+          price_usd: vPriceUsd,
+          discount_usd: vPriceUsd,
+          compare_price_inr: vCompInr || null,
+          compare_price_usd: vCompUsd || null,
+          stock: vStock,
+          sku: `OB-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          image_url: productForm.images && productForm.images.length > 0 ? (typeof productForm.images[0] === 'object' ? productForm.images[0].image_url : productForm.images[0]) : null
+        });
+      }
+
+      const cleanFormVariants = mergedVariants.map(v => {
         const vPriceInr = Number(v.price_inr !== undefined && v.price_inr !== '' ? v.price_inr : (v.price || productForm.price_inr || 0));
         const vPriceUsd = (v.price_usd !== undefined && v.price_usd !== '' && Number(v.price_usd) > 0) ? Number(v.price_usd) : (vPriceInr > 0 ? Number((vPriceInr / 95).toFixed(2)) : 0);
         const vCompInr = (v.compare_price_inr !== undefined && v.compare_price_inr !== '' && Number(v.compare_price_inr) > 0) ? Number(v.compare_price_inr) : null;
@@ -1042,8 +1078,25 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         };
       });
 
+      // Auto-fallback base price if base price was not entered but variants exist
+      let submitPriceInr = productForm.price_inr !== '' && productForm.price_inr !== undefined ? Number(productForm.price_inr) : 0;
+      let submitPriceUsd = productForm.price_usd !== '' && productForm.price_usd !== undefined ? Number(productForm.price_usd) : 0;
+      let submitDiscInr = productForm.discount_inr !== '' && productForm.discount_inr !== undefined ? Number(productForm.discount_inr) : submitPriceInr;
+      let submitDiscUsd = productForm.discount_usd !== '' && productForm.discount_usd !== undefined ? Number(productForm.discount_usd) : submitPriceUsd;
+
+      if (submitPriceInr === 0 && cleanFormVariants.length > 0) {
+        submitPriceInr = cleanFormVariants[0].price_inr;
+        submitPriceUsd = cleanFormVariants[0].price_usd;
+        submitDiscInr = cleanFormVariants[0].discount_inr || submitPriceInr;
+        submitDiscUsd = cleanFormVariants[0].discount_usd || submitPriceUsd;
+      }
+
       const payload = {
         ...productForm,
+        price_inr: submitPriceInr,
+        price_usd: submitPriceUsd,
+        discount_inr: submitDiscInr,
+        discount_usd: submitDiscUsd,
         images: cleanFormImages,
         variants: cleanFormVariants,
         tags: Array.isArray(productForm.tags) ? productForm.tags.join(', ') : productForm.tags,
@@ -1058,7 +1111,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       if (res.ok) {
         setShowProductModal(false);
         setEditingProduct(null);
-        fetchAdminData();
+        setNewVariantForm({ variant_name: '', price_inr: '', price_usd: '', compare_price_inr: '', compare_price_usd: '', stock: '100' });
+        await fetchAdminData();
         if (showToast) showToast('success', 'Product Saved', isEdit ? 'Product updated!' : 'New product created!');
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -1118,7 +1172,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       });
       if (res.ok) {
         setVariantForm({ variant_name: '', price_inr: 149, price_usd: 4, discount_inr: 99, discount_usd: 3, stock: 50 });
-        fetchAdminData();
+        const updatedProds = await safeFetchJson('/api/products?includeDrafts=true');
+        if (updatedProds) {
+          setProducts(updatedProds);
+          const found = updatedProds.find(p => p.id === selectedProductForVariants.id);
+          if (found) setSelectedProductForVariants(found);
+        }
         if (showToast) showToast('success', 'Variant Created', 'Added new variant pill.');
       }
     } catch (err) {}
@@ -1154,7 +1213,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleDeleteVariant = async (id) => {
     await adminFetch(`/api/variants/${id}`, { method: 'DELETE' });
-    fetchAdminData();
+    const updatedProds = await safeFetchJson('/api/products?includeDrafts=true');
+    if (updatedProds) {
+      setProducts(updatedProds);
+      const found = updatedProds.find(p => p.id === selectedProductForVariants?.id);
+      if (found) setSelectedProductForVariants(found);
+    }
     if (showToast) showToast('info', 'Variant Deleted', 'Variant deleted.');
   };
 
@@ -1176,6 +1240,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         setCategoryForm({ name: '', description: '', image_url: '', icon: '' });
         await fetchAdminData();
         if (showToast) showToast('success', isEdit ? 'Category Updated' : 'Category Created', `Category "${categoryForm.name}" saved successfully.`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Category Save Failed', errData.error || `Server returned error (${res.status})`);
       }
     } catch (err) {
       if (showToast) showToast('error', 'Category Save Failed', err.message);
@@ -1198,11 +1265,24 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       });
 
       if (res.ok) {
+        const savedCol = await res.json().catch(() => null);
         setShowCollectionModal(false);
         setEditingCollection(null);
         setCollectionForm({ name: '', description: '', image_url: '', category_id: '', product_ids: [] });
+        if (savedCol && savedCol.id) {
+          setCollections(prev => {
+            const exists = prev.some(c => c.id === savedCol.id);
+            if (exists) {
+              return prev.map(c => c.id === savedCol.id ? { ...c, ...savedCol, image_url: savedCol.image_url || collectionForm.image_url } : c);
+            }
+            return [savedCol, ...prev];
+          });
+        }
         await fetchAdminData();
         if (showToast) showToast('success', isEdit ? 'Collection Updated' : 'Collection Created', `Collection "${collectionForm.name}" saved successfully.`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Failed to Save Collection', errData.error || `Server returned error (${res.status})`);
       }
     } catch (err) {
       if (showToast) showToast('error', 'Failed to Save Collection', err.message);
@@ -1236,8 +1316,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         body: JSON.stringify(bannerForm)
       });
       if (res.ok) {
+        const saved = await res.json().catch(() => null);
         setShowBannerModal(false);
-        fetchAdminData();
+        setBannerForm({ title: '', subtitle: '', image_url: '', link_url: '/products' });
+        // Re-fetch banners from API to get fresh list
+        const fresh = await safeFetchJson('/api/banners');
+        if (fresh) setBanners(fresh);
         if (showToast) showToast('success', 'Banner Saved', 'New banner created.');
       }
     } catch (err) {}
@@ -1259,7 +1343,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       });
       if (res.ok) {
         setShowCouponModal(false);
-        fetchAdminData();
+        // Re-fetch coupons from API to get fresh list
+        const fresh = await safeFetchJson('/api/coupons');
+        if (fresh) setCoupons(fresh);
         if (showToast) showToast('success', 'Coupon Created', `Code ${couponForm.code} active.`);
       }
     } catch (err) {}
@@ -1322,6 +1408,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         setShowPageModal(false);
         setEditingPage(null);
         fetchAdminData();
+        const freshPages = await safeFetchJson('/api/pages');
+        if (freshPages) setPages(freshPages);
         if (showToast) showToast('success', 'Page Saved', isEdit ? 'Custom page updated!' : 'New custom page created!');
       }
     } catch (err) {}
@@ -1335,7 +1423,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       danger: true,
       onConfirm: async () => {
         await adminFetch(`/api/admin/pages/${id}`, { method: 'DELETE' });
-        fetchAdminData();
+        setPages(prev => prev.filter(p => p.id !== id));
         if (showToast) showToast('info', 'Page Deleted', 'Custom page deleted.');
       }
     });
@@ -1343,16 +1431,24 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleAddFilterGroup = async (e) => {
     e.preventDefault();
-    if (!newGroupForm.name) return;
-    const res = await adminFetch('/api/admin/filter-groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newGroupForm)
-    });
-    if (res.ok) {
-      setNewGroupForm({ name: '', filter_key: '' });
-      await fetchAdminData();
-      if (showToast) showToast('success', 'Filter Group Added', 'New product filter group created!');
+    if (!newGroupForm.name || !newGroupForm.name.trim()) return;
+    try {
+      const res = await adminFetch('/api/admin/filter-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newGroupForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewGroupForm({ name: '', filter_key: '' });
+        const flts = await safeFetchJson('/api/filter-groups');
+        if (flts && Array.isArray(flts)) setFilterGroups(flts);
+        if (showToast) showToast('success', 'Filter Group Added', 'New product filter group created!');
+      } else {
+        if (showToast) showToast('error', 'Creation Failed', data.error || 'Could not create filter group.');
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Creation Error', err.message);
     }
   };
 
@@ -1364,7 +1460,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       danger: true,
       onConfirm: async () => {
         await adminFetch(`/api/admin/filter-groups/${id}`, { method: 'DELETE' });
-        await fetchAdminData();
+        const flts = await safeFetchJson('/api/filter-groups');
+        if (flts && Array.isArray(flts)) setFilterGroups(flts);
         if (showToast) showToast('info', 'Filter Group Deleted', 'Filter group removed.');
       }
     });
@@ -1372,16 +1469,24 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const handleAddFilterOption = async (groupId) => {
     const label = newOptionInputs[groupId];
-    if (!label) return;
-    const res = await adminFetch('/api/admin/filter-options', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: groupId, label })
-    });
-    if (res.ok) {
-      setNewOptionInputs({ ...newOptionInputs, [groupId]: '' });
-      await fetchAdminData();
-      if (showToast) showToast('success', 'Option Added', 'Filter pill option added!');
+    if (!label || !label.trim()) return;
+    try {
+      const res = await adminFetch('/api/admin/filter-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, label: label.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewOptionInputs(prev => ({ ...prev, [groupId]: '' }));
+        const flts = await safeFetchJson('/api/filter-groups');
+        if (flts && Array.isArray(flts)) setFilterGroups(flts);
+        if (showToast) showToast('success', 'Option Added', 'Filter pill option added!');
+      } else {
+        if (showToast) showToast('error', 'Option Failed', data.error || 'Could not add option.');
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Option Error', err.message);
     }
   };
 
@@ -1393,7 +1498,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       danger: true,
       onConfirm: async () => {
         await adminFetch(`/api/admin/filter-options/${optId}`, { method: 'DELETE' });
-        fetchAdminData();
+        const flts = await safeFetchJson('/api/filter-groups');
+        if (flts && Array.isArray(flts)) setFilterGroups(flts);
         if (showToast) showToast('info', 'Option Removed', 'Filter option deleted.');
       }
     });
@@ -2430,8 +2536,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {categories.map(cat => (
-                  <div key={cat.id} className="p-4 border border-slate-800 rounded-xl bg-slate-850 space-y-3">
+                {categories.map((cat, idx) => (
+                  <div key={cat.id ? `cat-${cat.id}-${idx}` : `cat-${idx}`} className="p-4 border border-slate-800 rounded-xl bg-slate-850 space-y-3">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2 font-bold text-white text-sm">
                         <span>{cat.icon || '🌿'}</span> <span>{cat.name}</span>
@@ -2525,6 +2631,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           <img 
                             src={resolveImgUrl(col.image_url)} 
                             alt={col.name}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80';
+                            }}
                             className="w-full h-full object-cover" 
                           />
                         ) : (
@@ -2555,22 +2665,25 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           <button
                             type="button"
                             onClick={async () => {
-                              const newStatus = (col.show_in_navbar === 1 || col.show_in_navbar === true) ? 0 : 1;
-                              await adminFetch(`/api/collections/${col.id}/navbar-toggle`, {
+                              const isCurrentlyOn = col.show_in_navbar === 1 || col.show_in_navbar === true || String(col.show_in_navbar) === '1';
+                              const newStatus = isCurrentlyOn ? 0 : 1;
+                              const res = await adminFetch(`/api/collections/${col.id}/navbar-toggle`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ show_in_navbar: newStatus })
                               });
-                              fetchAdminData();
-                              if (showToast) showToast('success', 'Navbar Visibility Updated', `Collection '${col.name}' navbar link turned ${newStatus === 1 ? 'ON' : 'OFF'}.`);
+                              if (res.ok) {
+                                setCollections(prev => prev.map(c => c.id === col.id ? { ...c, show_in_navbar: newStatus } : c));
+                                if (showToast) showToast('success', 'Navbar Visibility Updated', `Collection '${col.name}' navbar link turned ${newStatus === 1 ? 'ON' : 'OFF'}.`);
+                              }
                             }}
                             className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold cursor-pointer transition-all border ${
-                              col.show_in_navbar === 1
+                              (col.show_in_navbar === 1 || col.show_in_navbar === true || String(col.show_in_navbar) === '1')
                                 ? 'bg-emerald-950 text-emerald-400 border-emerald-700 hover:bg-emerald-900'
                                 : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800 hover:text-white'
                             }`}
                           >
-                            {col.show_in_navbar === 1 ? '🟢 SHOW IN NAVBAR (ON)' : '⚪ HIDDEN FROM NAVBAR (OFF)'}
+                            {(col.show_in_navbar === 1 || col.show_in_navbar === true || String(col.show_in_navbar) === '1') ? '🟢 SHOW IN NAVBAR (ON)' : '⚪ HIDDEN FROM NAVBAR (OFF)'}
                           </button>
                         </div>
                         <div className="space-y-1 text-right">
@@ -2717,7 +2830,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div key={item.id} className="relative group bg-slate-850 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-slate-700 transition-all">
                         <div className="relative h-36 bg-slate-900 overflow-hidden flex items-center justify-center p-1 cursor-pointer" onClick={() => setPreviewMediaItem(item)}>
                           <img 
-                            src={resolveImgUrl(item.url)} 
+                            src={`${resolveImgUrl(item.url)}${item.url && item.url.includes('?') ? '&' : '?'}cb=${mediaCacheBuster}`} 
                             alt={item.filename}
                             className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-300" 
                             onError={(e) => { e.target.style.display = 'none'; }}
@@ -2765,6 +2878,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                         });
                                         const data = await res.json();
                                         if (res.ok) {
+                                          setMediaCacheBuster(Date.now());
                                           await fetchAdminData();
                                           if (showToast) showToast('success', 'Image Replaced', `Image ${item.filename} replaced successfully!`);
                                         } else {
@@ -2854,7 +2968,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               <p className="text-[11px] text-slate-400 leading-tight">{b.subtitle}</p>
                               {b.link_url && <span className="text-[10px] text-emerald-400 font-mono block mt-1">Link: {b.link_url}</span>}
                             </div>
-                            <button onClick={async () => { await adminFetch(`/api/banners/${b.id}`, { method: 'DELETE' }); fetchAdminData(); }} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-950/60 rounded-lg border border-rose-900 text-xs" title="Delete Banner">
+                            <button onClick={async () => { const res = await adminFetch(`/api/banners/${b.id}`, { method: 'DELETE' }); if (res.ok) { setBanners(prev => prev.filter(x => x.id !== b.id)); if (showToast) showToast('success', 'Banner Deleted', `Banner "${b.title}" removed.`); } }} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-950/60 rounded-lg border border-rose-900 text-xs" title="Delete Banner">
                               <Trash2 size={15} />
                             </button>
                           </div>
@@ -2928,7 +3042,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         {c.discount_type === 'PERCENT' ? `${c.discount_value}% OFF` : `₹${c.discount_value} FLAT OFF`}
                       </p>
                     </div>
-                    <button onClick={async () => { await adminFetch(`/api/coupons/${c.id}`, { method: 'DELETE' }); fetchAdminData(); }} className="text-red-400 p-1">
+                    <button onClick={async () => { const res = await adminFetch(`/api/coupons/${c.id}`, { method: 'DELETE' }); if (res.ok) { setCoupons(prev => prev.filter(x => x.id !== c.id)); if (showToast) showToast('success', 'Coupon Deleted', `Coupon "${c.code}" removed.`); } }} className="text-red-400 p-1">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -3096,13 +3210,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               type="button"
                               onClick={async () => {
                                 const newStatus = r.status === 'APPROVED' ? 'REJECTED' : 'APPROVED';
-                                await adminFetch(`/api/admin/reviews/${r.id}/status`, {
+                                const res = await adminFetch(`/api/admin/reviews/${r.id}/status`, {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ status: newStatus })
                                 });
-                                fetchAdminData();
-                                showToast('success', 'Status Updated', `Review set to ${newStatus}`);
+                                if (res.ok) {
+                                  setReviews(prev => prev.map(rev => rev.id === r.id ? { ...rev, status: newStatus } : rev));
+                                  showToast('success', 'Status Updated', `Review set to ${newStatus}`);
+                                }
                               }}
                               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 text-[11px] cursor-pointer"
                             >
@@ -3118,9 +3234,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                                   confirmText: 'Delete Review',
                                   danger: true,
                                   onConfirm: async () => {
-                                    await adminFetch(`/api/admin/reviews/${r.id}`, { method: 'DELETE' });
-                                    fetchAdminData();
-                                    if (showToast) showToast('info', 'Review Deleted', 'Review removed from system');
+                                    const res = await adminFetch(`/api/admin/reviews/${r.id}`, { method: 'DELETE' });
+                                    if (res.ok) {
+                                      setReviews(prev => prev.filter(rev => rev.id !== r.id));
+                                      if (showToast) showToast('info', 'Review Deleted', 'Review removed from system');
+                                    }
                                   }
                                 });
                               }}
@@ -3170,13 +3288,16 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               onKeyDown={async (e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
-                                  await adminFetch(`/api/admin/reviews/${r.id}/reply`, {
+                                  const replyVal = e.target.value;
+                                  const res = await adminFetch(`/api/admin/reviews/${r.id}/reply`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ admin_reply: e.target.value })
+                                    body: JSON.stringify({ admin_reply: replyVal })
                                   });
-                                  fetchAdminData();
-                                  showToast('success', 'Reply Saved', 'Admin response published');
+                                  if (res.ok) {
+                                    setReviews(prev => prev.map(rev => rev.id === r.id ? { ...rev, admin_reply: replyVal } : rev));
+                                    showToast('success', 'Reply Saved', 'Admin response published');
+                                  }
                                 }
                               }}
                               className="flex-1 p-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs"
@@ -6942,10 +7063,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div>
                       <label className="block text-emerald-400 font-bold mb-1 text-xs">Price INR (₹) *</label>
                       <input 
-                        type="number" required placeholder="₹ 0.00"
+                        type="number" min="0" required placeholder="₹ 0.00"
                         value={productForm.price_inr ?? ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                           const autoUsd = (val !== '' && val > 0) ? Number((val / 95).toFixed(2)) : '';
                           setProductForm(prev => ({ 
                             ...prev, 
@@ -6961,10 +7083,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div>
                       <label className="block text-blue-400 font-bold mb-1 text-xs">Price USD ($) *</label>
                       <input 
-                        type="number" required placeholder="$ 0.00" step="0.01"
+                        type="number" min="0" required placeholder="$ 0.00" step="0.01"
                         value={productForm.price_usd ?? ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                           setProductForm(prev => ({ 
                             ...prev, 
                             price_usd: val, 
@@ -6980,10 +7103,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div>
                       <label className="block text-slate-300 font-medium mb-1 text-xs">Compare-at Price INR (₹)</label>
                       <input 
-                        type="number" placeholder="₹ Original / MRP (INR)"
+                        type="number" min="0" placeholder="₹ Original / MRP (INR)"
                         value={productForm.compare_price_inr ?? ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                           const autoUsd = (val !== '' && val > 0) ? Number((val / 95).toFixed(2)) : '';
                           setProductForm(prev => ({ 
                             ...prev, 
@@ -6997,10 +7121,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div>
                       <label className="block text-blue-300 font-medium mb-1 text-xs">Compare-at Price USD ($)</label>
                       <input 
-                        type="number" placeholder="$ Original / MRP (USD)" step="0.01"
+                        type="number" min="0" placeholder="$ Original / MRP (USD)" step="0.01"
                         value={productForm.compare_price_usd ?? ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                           setProductForm(prev => ({ ...prev, compare_price_usd: val }));
                         }}
                         className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-blue-200 text-sm"
@@ -7012,10 +7137,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div>
                       <label className="block text-slate-400 mb-1 text-xs">Cost per item INR (₹)</label>
                       <input 
-                        type="number" placeholder="₹ Supplier Cost (INR)"
+                        type="number" min="0" placeholder="₹ Supplier Cost (INR)"
                         value={productForm.cost_per_item_inr ?? ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                           const autoUsd = (val !== '' && val > 0) ? Number((val / 95).toFixed(2)) : '';
                           setProductForm(prev => ({ 
                             ...prev, 
@@ -7029,10 +7155,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div>
                       <label className="block text-blue-400/80 mb-1 text-xs">Cost per item USD ($)</label>
                       <input 
-                        type="number" placeholder="$ Supplier Cost (USD)" step="0.01"
+                        type="number" min="0" placeholder="$ Supplier Cost (USD)" step="0.01"
                         value={productForm.cost_per_item_usd ?? ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                           setProductForm(prev => ({ ...prev, cost_per_item_usd: val }));
                         }}
                         className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-blue-300 text-xs"
@@ -7138,10 +7265,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number" value={v.price_inr !== undefined ? v.price_inr : (v.price || '')} 
+                                  type="number" min="0" value={v.price_inr !== undefined ? v.price_inr : (v.price || '')} 
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    const pVal = e.target.value === '' ? '' : Number(e.target.value);
+                                    const pVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                                     const autoUsd = (pVal !== '' && pVal > 0) ? Number((pVal / 95).toFixed(2)) : '';
                                     updated[vIdx] = { ...updated[vIdx], price_inr: pVal, price: pVal, discount_inr: pVal, price_usd: autoUsd, discount_usd: autoUsd };
                                     setProductForm({ ...productForm, variants: updated });
@@ -7151,10 +7279,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number" step="0.01" value={v.price_usd !== undefined ? v.price_usd : ''} 
+                                  type="number" min="0" step="0.01" value={v.price_usd !== undefined ? v.price_usd : ''} 
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    const pVal = e.target.value === '' ? '' : Number(e.target.value);
+                                    const pVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                                     updated[vIdx] = { ...updated[vIdx], price_usd: pVal, discount_usd: pVal };
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
@@ -7163,10 +7292,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number" value={v.compare_price_inr !== undefined ? v.compare_price_inr : ''} 
+                                  type="number" min="0" value={v.compare_price_inr !== undefined ? v.compare_price_inr : ''} 
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    const pVal = e.target.value === '' ? '' : Number(e.target.value);
+                                    const pVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                                     const autoUsd = (pVal !== '' && pVal > 0) ? Number((pVal / 95).toFixed(2)) : '';
                                     updated[vIdx] = { ...updated[vIdx], compare_price_inr: pVal, compare_price_usd: autoUsd };
                                     setProductForm({ ...productForm, variants: updated });
@@ -7177,10 +7307,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number" step="0.01" value={v.compare_price_usd !== undefined ? v.compare_price_usd : ''} 
+                                  type="number" min="0" step="0.01" value={v.compare_price_usd !== undefined ? v.compare_price_usd : ''} 
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    const pVal = e.target.value === '' ? '' : Number(e.target.value);
+                                    const pVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                                     updated[vIdx] = { ...updated[vIdx], compare_price_usd: pVal };
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
@@ -7190,10 +7321,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               </td>
                               <td className="p-2.5">
                                 <input 
-                                  type="number" value={v.stock !== undefined ? v.stock : 50} 
+                                  type="number" min="0" value={v.stock !== undefined ? v.stock : 50} 
+                                  onWheel={(e) => e.target.blur()}
                                   onChange={(e) => {
                                     const updated = [...productForm.variants];
-                                    updated[vIdx] = { ...updated[vIdx], stock: Number(e.target.value) };
+                                    const sVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                    updated[vIdx] = { ...updated[vIdx], stock: sVal };
                                     setProductForm({ ...productForm, variants: updated });
                                   }}
                                   className="w-16 p-1.5 bg-slate-800 border border-slate-700 rounded text-white font-bold"
@@ -7234,10 +7367,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div>
                         <label className="block text-[10px] text-emerald-400 mb-0.5 font-bold">Price INR (₹)</label>
                         <input 
-                          type="number" placeholder="₹ Price"
+                          type="number" min="0" placeholder="₹ Price"
                           value={newVariantForm.price_inr || ''}
+                          onWheel={(e) => e.target.blur()}
                           onChange={(e) => {
-                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                            const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                             const autoUsd = (val !== '' && val > 0) ? Number((val / 95).toFixed(2)) : '';
                             setNewVariantForm(prev => ({ ...prev, price_inr: val, price_usd: autoUsd }));
                           }}
@@ -7247,19 +7381,24 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div>
                         <label className="block text-[10px] text-blue-400 mb-0.5 font-bold">Price USD ($)</label>
                         <input 
-                          type="number" step="0.01" placeholder="$ Price"
+                          type="number" min="0" step="0.01" placeholder="$ Price"
                           value={newVariantForm.price_usd || ''}
-                          onChange={(e) => setNewVariantForm({ ...newVariantForm, price_usd: e.target.value })}
+                          onWheel={(e) => e.target.blur()}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                            setNewVariantForm(prev => ({ ...prev, price_usd: val }));
+                          }}
                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-blue-400 font-bold text-xs"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-0.5 font-bold">Compare INR (₹)</label>
                         <input 
-                          type="number" placeholder="₹ MRP"
+                          type="number" min="0" placeholder="₹ MRP"
                           value={newVariantForm.compare_price_inr || ''}
+                          onWheel={(e) => e.target.blur()}
                           onChange={(e) => {
-                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                            const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                             const autoUsd = (val !== '' && val > 0) ? Number((val / 95).toFixed(2)) : '';
                             setNewVariantForm(prev => ({ ...prev, compare_price_inr: val, compare_price_usd: autoUsd }));
                           }}
@@ -7269,9 +7408,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div>
                         <label className="block text-[10px] text-blue-300 mb-0.5 font-bold">Compare USD ($)</label>
                         <input 
-                          type="number" step="0.01" placeholder="$ MRP"
+                          type="number" min="0" step="0.01" placeholder="$ MRP"
                           value={newVariantForm.compare_price_usd || ''}
-                          onChange={(e) => setNewVariantForm({ ...newVariantForm, compare_price_usd: e.target.value })}
+                          onWheel={(e) => e.target.blur()}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                            setNewVariantForm(prev => ({ ...prev, compare_price_usd: val }));
+                          }}
                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-blue-300 text-xs"
                         />
                       </div>
@@ -7281,9 +7424,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div className="w-32">
                         <label className="block text-[10px] text-slate-400 mb-0.5 font-bold">Stock Qty</label>
                         <input 
-                          type="number" placeholder="100"
+                          type="number" min="0" placeholder="100"
                           value={newVariantForm.stock || ''}
-                          onChange={(e) => setNewVariantForm({ ...newVariantForm, stock: e.target.value })}
+                          onWheel={(e) => e.target.blur()}
+                          onChange={(e) => {
+                            const sVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                            setNewVariantForm(prev => ({ ...prev, stock: sVal }));
+                          }}
                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs font-bold"
                         />
                       </div>
@@ -8001,7 +8148,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden max-h-80 flex items-center justify-center p-2">
-              <img src={resolveImgUrl(previewMediaItem.url)} alt="Preview" className="max-h-72 object-contain rounded-xl" />
+              <img 
+                src={`${resolveImgUrl(previewMediaItem.url)}${previewMediaItem.url && previewMediaItem.url.includes('?') ? '&' : '?'}cb=${mediaCacheBuster}`} 
+                alt="Preview" 
+                className="max-h-72 object-contain rounded-xl" 
+              />
             </div>
 
             <div className="space-y-2 text-xs">
@@ -8043,6 +8194,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       });
                       const data = await res.json();
                       if (res.ok) {
+                        setMediaCacheBuster(Date.now());
                         setPreviewMediaItem(null);
                         await fetchAdminData();
                         if (showToast) showToast('success', 'Image Replaced', `Image ${previewMediaItem.filename} replaced successfully!`);
@@ -8123,7 +8275,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       >
                         <div className="h-28 bg-slate-900 overflow-hidden flex items-center justify-center p-1 relative">
                           <img
-                            src={resolveImgUrl(item.url)}
+                            src={`${resolveImgUrl(item.url)}${item.url && item.url.includes('?') ? '&' : '?'}cb=${mediaCacheBuster}`}
                             alt={item.filename}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           />
@@ -8206,9 +8358,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <div>
                     <label className="block text-[10px] font-bold text-emerald-400 mb-1">Offer / Sale Price INR (₹) *</label>
                     <input 
-                      type="number" required placeholder="Offer Price (e.g. 249)"
+                      type="number" min="0" required placeholder="Offer Price (e.g. 249)"
                       value={variantForm.discount_inr || ''}
-                      onChange={(e) => setVariantForm({ ...variantForm, discount_inr: Number(e.target.value) })}
+                      onWheel={(e) => e.target.blur()}
+                      onChange={(e) => setVariantForm({ ...variantForm, discount_inr: Math.max(0, Number(e.target.value)) })}
                       className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                     />
                   </div>
@@ -8216,9 +8369,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 mb-1">Compare At / MRP (₹)</label>
                     <input 
-                      type="number" placeholder="MRP Price (e.g. 349)"
+                      type="number" min="0" placeholder="MRP Price (e.g. 349)"
                       value={variantForm.price_inr || ''}
-                      onChange={(e) => setVariantForm({ ...variantForm, price_inr: Number(e.target.value) })}
+                      onWheel={(e) => e.target.blur()}
+                      onChange={(e) => setVariantForm({ ...variantForm, price_inr: Math.max(0, Number(e.target.value)) })}
                       className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300"
                     />
                   </div>
@@ -8228,9 +8382,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <div>
                     <label className="block text-[10px] font-bold text-blue-400 mb-1">Offer USD ($) *</label>
                     <input 
-                      type="number" required placeholder="Offer USD"
+                      type="number" min="0" step="0.01" required placeholder="Offer USD"
                       value={variantForm.discount_usd || ''}
-                      onChange={(e) => setVariantForm({ ...variantForm, discount_usd: Number(e.target.value) })}
+                      onWheel={(e) => e.target.blur()}
+                      onChange={(e) => setVariantForm({ ...variantForm, discount_usd: Math.max(0, Number(e.target.value)) })}
                       className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
                     />
                   </div>
@@ -8238,9 +8393,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 mb-1">Compare USD ($)</label>
                     <input 
-                      type="number" placeholder="MRP USD"
+                      type="number" min="0" step="0.01" placeholder="MRP USD"
                       value={variantForm.price_usd || ''}
-                      onChange={(e) => setVariantForm({ ...variantForm, price_usd: Number(e.target.value) })}
+                      onWheel={(e) => e.target.blur()}
+                      onChange={(e) => setVariantForm({ ...variantForm, price_usd: Math.max(0, Number(e.target.value)) })}
                       className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300"
                     />
                   </div>
@@ -8248,9 +8404,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <div>
                     <label className="block text-[10px] font-bold text-slate-300 mb-1">Stock Qty *</label>
                     <input 
-                      type="number" required placeholder="Stock"
+                      type="number" min="0" required placeholder="Stock"
                       value={variantForm.stock || ''}
-                      onChange={(e) => setVariantForm({ ...variantForm, stock: Number(e.target.value) })}
+                      onWheel={(e) => e.target.blur()}
+                      onChange={(e) => setVariantForm({ ...variantForm, stock: Math.max(0, Number(e.target.value)) })}
                       className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                     />
                   </div>
