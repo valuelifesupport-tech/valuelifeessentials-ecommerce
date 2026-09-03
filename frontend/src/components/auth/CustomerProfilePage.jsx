@@ -1,4 +1,4 @@
-import { getApiUrl } from '../../api/config';
+import { getApiUrl, resolveImgUrl } from '../../api/config';
 import React, { useState, useEffect } from 'react';
 import { 
   User, Package, MapPin, Lock, FileText, LogOut, ShieldCheck, 
@@ -60,13 +60,18 @@ export default function CustomerProfilePage({
   const fetchOrders = async () => {
     setLoadingOrders(true);
     try {
-      const identifier = currentUser?.email || currentUser?.phone || '';
+      const identifier = currentUser?.email || currentUser?.phone || currentUser?.id || '';
       if (!identifier) {
         setOrders([]);
         setLoadingOrders(false);
         return;
       }
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/orders`));
+      const queryParams = new URLSearchParams();
+      if (currentUser?.email) queryParams.set('email', currentUser.email);
+      if (currentUser?.phone) queryParams.set('phone', currentUser.phone);
+      if (currentUser?.id) queryParams.set('user_id', currentUser.id);
+
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/orders?${queryParams.toString()}`));
       if (res.ok) {
         const text = await res.text();
         if (!text || !text.trim()) {
@@ -529,7 +534,8 @@ export default function CustomerProfilePage({
                             {order.items && order.items.length > 0 && (
                               <div className="divide-y divide-gray-100 bg-gray-50/80 rounded-xl border border-gray-200 overflow-hidden my-2">
                                 {order.items.map((item, itemIdx) => {
-                                  const imgUrl = resolveImgUrl(item.item_image || item.thumbnail || item.primary_image || item.image_url);
+                                  const rawImg = item.item_image || item.thumbnail || item.primary_image || item.image_url;
+                                  const imgUrl = rawImg ? resolveImgUrl(rawImg) : null;
                                   const title = item.product_title || item.title || item.name || 'Organic Product';
                                   const variant = item.variant_name || item.variant_title || null;
                                   const qty = item.quantity || 1;
@@ -542,6 +548,10 @@ export default function CustomerProfilePage({
                                           <img 
                                             src={imgUrl} 
                                             alt={title} 
+                                            onError={(e) => {
+                                              e.target.onerror = null;
+                                              e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80';
+                                            }}
                                             className="w-12 h-12 object-cover rounded-lg border border-gray-200 bg-white shrink-0 shadow-sm" 
                                           />
                                         ) : (

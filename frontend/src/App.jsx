@@ -15,6 +15,7 @@ import CustomerProfilePage from './components/auth/CustomerProfilePage';
 import MaintenancePage from './components/sections/MaintenancePage';
 import BrandLoader from './components/common/BrandLoader';
 import SectionErrorBoundary from './components/common/SectionErrorBoundary';
+import PaymentGatewayModal from './components/payment/PaymentGatewayModal';
 import { getApiUrl } from './api/config';
 import { 
   ShoppingBag, Heart, Star, ShieldCheck, Truck, RotateCcw, CheckCircle, 
@@ -173,6 +174,24 @@ export default function App() {
   const [checkoutData, setCheckoutData] = useState(null);
   const [customerForm, setCustomerForm] = useState({ name: '', email: '', phone: '', address: '' });
   const [orderSuccess, setOrderSuccess] = useState(null);
+
+  // Pluggable Payment Gateway States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingPaymentOrder, setPendingPaymentOrder] = useState(null);
+  const [paymentPayableAmount, setPaymentPayableAmount] = useState(0);
+  const [selectedPaymentGateway, setSelectedPaymentGateway] = useState('razorpay');
+  const [availableGateways, setAvailableGateways] = useState([]);
+
+  useEffect(() => {
+    fetch(getApiUrl('/api/payment/gateways'))
+      .then(res => res.json())
+      .then(data => {
+        if (data?.gateways && Array.isArray(data.gateways)) {
+          setAvailableGateways(data.gateways);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const showToast = (type, title, message) => {
     setToast({ type, title, message });
@@ -483,6 +502,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          user_id: currentUser?.id || null,
           customer_name: finalName,
           customer_email: finalEmail,
           customer_phone: finalPhone,
@@ -494,6 +514,7 @@ export default function App() {
           paid_amount: isOnlinePay ? payableAmount : 0,
           remaining_amount: isOnlinePay ? Math.max(0, (checkoutData?.finalTotal || 0) - payableAmount) : (checkoutData?.finalTotal || 0),
           payment_mode: checkoutData?.paymentMode || 'PARTIAL_COD',
+          payment_gateway: selectedPaymentGateway || 'razorpay',
           items: cart.map(item => ({
             product_id: item.id,
             variant_id: item.variant_id || null,
@@ -520,89 +541,43 @@ export default function App() {
         return;
       }
 
-      // Online payment via Razorpay
-      try {
-        // Load Razorpay script if not already loaded
-        if (!window.Razorpay) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-            script.onload = resolve;
-            script.onerror = reject;
-            document.body.appendChild(script);
-          });
-        }
+      // Online payment via Pluggable Payment Gateway Modal (Supports Razorpay Dummy & Live)
+      setShowCheckoutModal(false);
+      setPendingPaymentOrder(orderData);
+      setPaymentPayableAmount(payableAmount);
+      setShowPaymentModal(true);
 
-        const payOrderRes = await fetch(getApiUrl('/api/payment/razorpay/create-order'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: payableAmount,
-            currency: 'INR',
-            receipt: `rcpt_${orderData.orderId || orderData.order_id}`,
-            notes: { order_number: orderData.orderNumber || orderData.order_number }
-          })
-        });
-        const payOrder = await payOrderRes.json();
-
-        const options = {
-          key: payOrder.key_id || 'rzp_test_valuelife2026',
-          amount: payOrder.amount,
-          currency: payOrder.currency || 'INR',
-          name: 'ValueLife Essentials',
-          description: `Order ${orderData.orderNumber || orderData.order_number} Payment`,
-          order_id: payOrder.id,
-          prefill: {
-            name: finalName,
-            email: finalEmail,
-            contact: finalPhone
-          },
-          theme: {
-            color: '#2d6a4f'
-          },
-          handler: async (response) => {
-            try {
-              await fetch(getApiUrl('/api/payment/razorpay/verify'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  order_id: orderData.orderId || orderData.order_id
-                })
-              });
-            } catch (e) {}
-
-            setShowCheckoutModal(false);
-            setOrderSuccess(orderData);
-            setCart([]);
-            showToast('success', 'Payment Successful!', `Order ${orderData.orderNumber || orderData.order_number} confirmed with payment.`);
-          },
-          modal: {
-            ondismiss: () => {
-              setShowCheckoutModal(false);
-              setOrderSuccess(orderData);
-              setCart([]);
-              showToast('info', 'Order Created', `Order ${orderData.orderNumber || orderData.order_number} saved (Payment Pending).`);
-            }
-          }
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } catch (rzpErr) {
-        // Fallback gracefully if Razorpay script fails to load
-        setShowCheckoutModal(false);
-        setOrderSuccess(orderData);
-        setCart([]);
-        showToast('success', 'Order Confirmed!', `Order ${orderData.orderNumber || orderData.order_number} placed successfully!`);
-      }
     } catch (err) {
       showToast('error', 'Order Error', 'Error connecting to server. Please try again.');
     } finally {
       setIsSubmittingOrder(false);
     }
+  };
+
+  const handlePaymentSuccess = async (paymentResult) => {
+    try {
+      await fetch(getApiUrl('/api/payment/verify'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gateway: paymentResult.gateway || selectedPaymentGateway || 'razorpay',
+          razorpay_order_id: paymentResult.razorpay_order_id,
+          razorpay_payment_id: paymentResult.razorpay_payment_id,
+          razorpay_signature: paymentResult.razorpay_signature,
+          payment_id: paymentResult.payment_id,
+          order_id: pendingPaymentOrder?.orderId || pendingPaymentOrder?.order_id
+        })
+      });
+    } catch (e) {}
+
+    setShowPaymentModal(false);
+    setOrderSuccess(pendingPaymentOrder);
+    setCart([]);
+    showToast('success', 'Payment Successful! 🎉', `Order confirmed with ${paymentResult.gateway?.toUpperCase() || 'RAZORPAY'} test payment.`);
+  };
+
+  const handlePaymentFailure = (err) => {
+    showToast('error', 'Payment Failed', err?.error || 'Payment was declined by gateway simulator.');
   };
 
   const filteredProducts = products.filter(p => {
@@ -1654,6 +1629,41 @@ export default function App() {
                   <span className="text-emerald-700 font-black">{currencySymbol}0 (Pay full cash on delivery)</span>
                 </div>
               )}
+
+              {/* PAYMENT GATEWAY SELECTION FOR ONLINE PAYMENTS */}
+              {checkoutData.paymentMode !== 'COD' && (
+                <div className="pt-2 border-t border-emerald-300/80 space-y-1.5">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="font-extrabold text-emerald-900 flex items-center gap-1">
+                      <span>⚡</span> Gateway Provider:
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-bold uppercase">
+                      {selectedPaymentGateway} (Test Mode)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'razorpay', label: 'Razorpay', badge: 'Active' },
+                      { id: 'phonepe', label: 'PhonePe', badge: 'Ready' },
+                      { id: 'paytm', label: 'Paytm', badge: 'Ready' }
+                    ].map(gw => (
+                      <button
+                        key={gw.id}
+                        type="button"
+                        onClick={() => setSelectedPaymentGateway(gw.id)}
+                        className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                          selectedPaymentGateway === gw.id
+                            ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm ring-1 ring-emerald-600'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <div className="font-extrabold text-[11px] leading-tight">{gw.label}</div>
+                        <div className={`text-[8px] font-bold ${selectedPaymentGateway === gw.id ? 'text-emerald-200' : 'text-gray-400'}`}>{gw.badge}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleOrderSubmit} className="space-y-3 text-xs">
@@ -1804,6 +1814,16 @@ export default function App() {
             {/* DUAL ACTION BUTTONS */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               <button 
+                onClick={() => { 
+                  setOrderSuccess(null); 
+                  setShowCheckoutModal(false); 
+                  navigateTo('/profile', { view: 'profile', slug: null, category: null, collection: null }); 
+                }}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105"
+              >
+                <span>📦 View My Orders</span>
+              </button>
+              <button 
                 onClick={() => { setOrderSuccess(null); setShowCheckoutModal(false); navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null }); }}
                 className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black py-3 px-4 rounded-xl shadow-lg shadow-emerald-950/80 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105"
               >
@@ -1814,6 +1834,25 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* UNIVERSAL PLUGGABLE PAYMENT GATEWAY MODAL (RAZORPAY DUMMY / LIVE + EXTENSIBLE) */}
+      <PaymentGatewayModal 
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        orderData={pendingPaymentOrder}
+        payableAmount={paymentPayableAmount}
+        currency={currency}
+        currencySymbol={currencySymbol}
+        customerInfo={{
+          name: currentUser?.name || customerForm.name,
+          email: currentUser?.email || customerForm.email,
+          phone: currentUser?.phone || customerForm.phone
+        }}
+        activeGateway={selectedPaymentGateway}
+        availableGateways={availableGateways}
+        onPaymentSuccess={handlePaymentSuccess}
+        onPaymentFailure={handlePaymentFailure}
+      />
 
       {/* CUSTOMER AUTHENTICATION & ACCOUNT MODAL */}
       <CustomerAuthModal 
