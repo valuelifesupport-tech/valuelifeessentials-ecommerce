@@ -2,7 +2,7 @@ import { getApiUrl } from '../../api/config';
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const resolveImgUrl = (url, fallback = '') => {
+const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80') => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;
   let clean = url.trim();
 

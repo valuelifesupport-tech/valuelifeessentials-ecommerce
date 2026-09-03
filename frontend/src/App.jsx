@@ -717,7 +717,7 @@ export default function App() {
         showToast={showToast}
       />
 
-      {route.view === 'account' ? (
+      {route.view === 'account' || route.view === 'profile' ? (
         <SectionErrorBoundary name="Customer Profile">
           <CustomerProfilePage 
             currentUser={currentUser}
@@ -1817,7 +1817,7 @@ export default function App() {
                 onClick={() => { 
                   setOrderSuccess(null); 
                   setShowCheckoutModal(false); 
-                  navigateTo('/profile', { view: 'profile', slug: null, category: null, collection: null }); 
+                  navigateTo('/account', { view: 'account', slug: null, category: null, collection: null }); 
                 }}
                 className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105"
               >
