@@ -8024,14 +8024,60 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 </div>
 
                 {adminOrderStatusInput === 'CANCELLED' && (
-                  <div className="space-y-1.5 p-3 bg-rose-950/40 border border-rose-800 rounded-xl">
-                    <label className="block text-rose-300 font-bold">Cancellation Reason & Admin Remarks</label>
+                  <div className="space-y-2 p-3 bg-rose-950/40 border border-rose-800 rounded-xl">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="block text-rose-300 font-bold text-xs">Cancellation Reason & Admin Remarks</label>
+                      <div className="flex items-center gap-2">
+                        {Number(selectedOrderDetails.paid_amount) > 0 && selectedOrderDetails.payment_status !== 'REFUNDED' && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await adminFetch(`/api/admin/orders/${selectedOrderDetails.id}/status`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  order_status: 'CANCELLED',
+                                  payment_status: 'REFUNDED',
+                                  cancellation_notes: 'Refund approved and initiated by Admin'
+                                })
+                              });
+                              fetchAdminData();
+                              setSelectedOrderDetails(prev => ({ ...prev, payment_status: 'REFUNDED' }));
+                              if (showToast) showToast('success', 'Refund Approved', `₹${selectedOrderDetails.paid_amount} marked as REFUNDED.`);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 rounded text-[11px] flex items-center gap-1 shadow cursor-pointer transition-colors"
+                          >
+                            <span>💸 Approve Refund (₹{selectedOrderDetails.paid_amount})</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await adminFetch(`/api/admin/orders/${selectedOrderDetails.id}/status`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                order_status: 'PROCESSING',
+                                cancellation_reason: ''
+                              })
+                            });
+                            fetchAdminData();
+                            setSelectedOrderDetails(prev => ({ ...prev, order_status: 'PROCESSING', cancellation_reason: '' }));
+                            setAdminOrderStatusInput('PROCESSING');
+                            if (showToast) showToast('info', 'Order Restored', 'Order reverted back to PROCESSING status.');
+                          }}
+                          className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-600/50 font-bold px-2 py-1 rounded text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span>↩️ Reject & Restore</span>
+                        </button>
+                      </div>
+                    </div>
                     <input
                       type="text"
                       placeholder="Reason for cancellation (e.g. Customer request, Out of stock)"
                       value={adminCancelReasonInput}
                       onChange={(e) => setAdminCancelReasonInput(e.target.value)}
-                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium"
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium text-xs"
                     />
                   </div>
                 )}
