@@ -222,7 +222,21 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', icon: '', image_url: '' });
   const [subcategoryName, setSubcategoryName] = useState('');
   const [bannerForm, setBannerForm] = useState({ title: '100% Certified Organic & Wellness Products', subtitle: 'Boost your health naturally with ValueLife Essentials', image_url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=1200&q=80', link_url: '/products' });
-  const [couponForm, setCouponForm] = useState({ code: 'VALUELIFE15', discount_type: 'PERCENT', discount_value: 15, min_spend_inr: 300, min_spend_usd: 10, max_uses: 0, one_per_customer: 0, start_date: '', end_date: '', description: '' });
+  const [couponForm, setCouponForm] = useState({ 
+    code: 'VALUELIFE15', 
+    discount_type: 'PERCENT', 
+    discount_value: 15, 
+    min_spend_inr: 300, 
+    min_spend_usd: 10, 
+    max_uses: 0, 
+    one_per_customer: 0, 
+    start_date: '', 
+    end_date: '', 
+    description: '',
+    buy_qty: 1,
+    get_qty: 1,
+    get_discount_type: 'FREE'
+  });
   const [editingCouponId, setEditingCouponId] = useState(null);
   const [settingsForm, setSettingsForm] = useState({ 
     announcement_text: 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15', 
@@ -1331,11 +1345,25 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleCouponSubmit = async (e) => {
     e.preventDefault();
     try {
+      const isFreeShip = selectedDiscountType?.id === 'free_shipping';
+      const isBxGy = selectedDiscountType?.id === 'buy_x_get_y';
+      const isProdOff = selectedDiscountType?.id === 'amount_off_products';
+
+      let targetIds = [];
+      if (isBxGy) {
+        targetIds = (discountSelections.buys || []).map(i => i.id);
+      } else if (isProdOff) {
+        targetIds = (discountSelections.applies_to || []).map(i => i.id);
+      }
+
       const payload = {
         ...couponForm,
+        discount_value: isFreeShip ? 0 : Number(couponForm.discount_value) || 0,
         coupon_category: selectedDiscountType?.id || 'amount_off_order',
         applies_to_type: browseTargetType,
-        target_ids: (discountSelections.applies_to || []).map(i => i.id)
+        target_ids: targetIds,
+        max_uses: limitTotalUses ? Number(limitTotalUsesVal) || 0 : 0,
+        one_per_customer: limitOnePerCustomer ? 1 : 0
       };
 
       const url = editingCouponId ? `/api/coupons/${editingCouponId}` : '/api/coupons';
@@ -1352,7 +1380,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         const fresh = await safeFetchJson('/api/coupons');
         if (fresh) setCoupons(fresh);
         if (showToast) showToast('success', editingCouponId ? 'Coupon Updated' : 'Coupon Created', `Code ${couponForm.code} ${editingCouponId ? 'updated' : 'active'}.`);
-        setCouponForm({ code: '', discount_type: 'PERCENT', discount_value: 15, min_spend_inr: 300, min_spend_usd: 10, max_uses: 0, one_per_customer: 0, start_date: '', end_date: '', description: '' });
+        setCouponForm({ code: '', discount_type: 'PERCENT', discount_value: 15, min_spend_inr: 300, min_spend_usd: 10, max_uses: 0, one_per_customer: 0, start_date: '', end_date: '', description: '', buy_qty: 1, get_qty: 1, get_discount_type: 'FREE' });
       } else {
         const errData = await res.json().catch(() => ({}));
         if (showToast) showToast('error', 'Error', errData.error || 'Failed to save coupon');
@@ -8855,7 +8883,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div className="grid grid-cols-3 gap-3 pt-2">
                         <div>
                           <label className="block font-bold text-slate-400 mb-1">Quantity</label>
-                          <input type="number" defaultValue={1} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" />
+                          <input 
+                            type="number" min="1"
+                            value={couponForm.buy_qty || 1}
+                            onChange={(e) => setCouponForm({ ...couponForm, buy_qty: Math.max(1, Number(e.target.value)) })}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" 
+                          />
                         </div>
                         <div className="col-span-2">
                           <label className="block font-bold text-slate-400 mb-1">Any items from</label>
@@ -8908,7 +8941,12 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="block font-bold text-slate-400 mb-1">Quantity</label>
-                          <input type="number" defaultValue={1} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" />
+                          <input 
+                            type="number" min="1"
+                            value={couponForm.get_qty || 1}
+                            onChange={(e) => setCouponForm({ ...couponForm, get_qty: Math.max(1, Number(e.target.value)) })}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" 
+                          />
                         </div>
                         <div className="col-span-2">
                           <label className="block font-bold text-slate-400 mb-1">Any items from</label>
@@ -8954,16 +8992,31 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                       <div className="pt-2 space-y-2 border-t border-slate-800">
                         <span className="font-extrabold text-xs text-white block">At a discounted value</span>
-                        <label className="flex items-center gap-2 text-slate-200">
-                          <input type="radio" name="getVal" className="accent-emerald-500" />
+                        <label className="flex items-center gap-2 text-slate-200 cursor-pointer">
+                          <input 
+                            type="radio" name="getVal" 
+                            checked={couponForm.get_discount_type === 'PERCENT'}
+                            onChange={() => setCouponForm({ ...couponForm, get_discount_type: 'PERCENT' })}
+                            className="accent-emerald-500" 
+                          />
                           <span>Percentage (%)</span>
                         </label>
-                        <label className="flex items-center gap-2 text-slate-200">
-                          <input type="radio" name="getVal" className="accent-emerald-500" />
+                        <label className="flex items-center gap-2 text-slate-200 cursor-pointer">
+                          <input 
+                            type="radio" name="getVal" 
+                            checked={couponForm.get_discount_type === 'FLAT'}
+                            onChange={() => setCouponForm({ ...couponForm, get_discount_type: 'FLAT' })}
+                            className="accent-emerald-500" 
+                          />
                           <span>Amount off each</span>
                         </label>
-                        <label className="flex items-center gap-2 text-slate-200 font-bold text-emerald-400">
-                          <input type="radio" name="getVal" defaultChecked className="accent-emerald-500" />
+                        <label className="flex items-center gap-2 text-slate-200 font-bold text-emerald-400 cursor-pointer">
+                          <input 
+                            type="radio" name="getVal" 
+                            checked={couponForm.get_discount_type === 'FREE'}
+                            onChange={() => setCouponForm({ ...couponForm, get_discount_type: 'FREE' })}
+                            className="accent-emerald-500" 
+                          />
                           <span>Free 🎁</span>
                         </label>
                       </div>
@@ -9089,22 +9142,34 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 cursor-pointer text-slate-200 font-bold">
-                      <input type="radio" name="minReq" defaultChecked className="accent-emerald-500" />
+                      <input 
+                        type="radio" name="minReq" 
+                        checked={Number(couponForm.min_spend_inr || 0) === 0}
+                        onChange={() => setCouponForm({ ...couponForm, min_spend_inr: 0 })}
+                        className="accent-emerald-500" 
+                      />
                       <span>No minimum requirements</span>
                     </label>
 
                     <div className="space-y-2 pt-1">
                       <label className="flex items-center gap-2 cursor-pointer text-slate-200">
-                        <input type="radio" name="minReq" className="accent-emerald-500" />
+                        <input 
+                          type="radio" name="minReq" 
+                          checked={Number(couponForm.min_spend_inr || 0) > 0}
+                          onChange={() => setCouponForm({ ...couponForm, min_spend_inr: couponForm.min_spend_inr || 300 })}
+                          className="accent-emerald-500" 
+                        />
                         <span>Minimum purchase amount (₹)</span>
                       </label>
-                      <input 
-                        type="number" 
-                        placeholder="₹ 300.00"
-                        value={couponForm.min_spend_inr}
-                        onChange={(e) => setCouponForm({ ...couponForm, min_spend_inr: Number(e.target.value) })}
-                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                      />
+                      {Number(couponForm.min_spend_inr || 0) > 0 && (
+                        <input 
+                          type="number" 
+                          placeholder="₹ 300.00"
+                          value={couponForm.min_spend_inr}
+                          onChange={(e) => setCouponForm({ ...couponForm, min_spend_inr: Math.max(0, Number(e.target.value)) })}
+                          className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -9151,17 +9216,38 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                 {/* COMMON ACTIVE DATES CARD */}
                 <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-3">
-                  <span className="font-extrabold text-sm text-white block">Active dates</span>
+                  <span className="font-extrabold text-sm text-white block">Active dates & Description</span>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block font-bold text-slate-400 mb-1">Start date</label>
-                      <input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white" />
+                      <input 
+                        type="date" 
+                        value={couponForm.start_date || ''}
+                        onChange={(e) => setCouponForm({ ...couponForm, start_date: e.target.value })}
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white" 
+                      />
                     </div>
                     <div>
-                      <label className="block font-bold text-slate-400 mb-1">Start time (IST)</label>
-                      <input type="time" defaultValue="17:15" className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white" />
+                      <label className="block font-bold text-slate-400 mb-1">End date (Optional)</label>
+                      <input 
+                        type="date" 
+                        value={couponForm.end_date || ''}
+                        onChange={(e) => setCouponForm({ ...couponForm, end_date: e.target.value })}
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white" 
+                      />
                     </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="block font-bold text-slate-400 mb-1">Description / Internal Note</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Special promotional discount for festival season"
+                      value={couponForm.description || ''}
+                      onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })}
+                      className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs" 
+                    />
                   </div>
                 </div>
 
