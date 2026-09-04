@@ -2166,7 +2166,8 @@ app.get('/api/coupons', (req, res) => {
 app.post('/api/coupons', (req, res) => {
   const { 
     code, discount_type, discount_value, min_spend_inr, min_spend_usd, min_order_amount,
-    coupon_category, applies_to_type, target_ids, buy_qty, get_qty, get_discount_type 
+    coupon_category, applies_to_type, target_ids, buy_qty, get_qty, get_discount_type,
+    max_uses, one_per_customer, start_date, end_date, description
   } = req.body;
 
   if (!code || !String(code).trim()) {
@@ -2175,27 +2176,83 @@ app.post('/api/coupons', (req, res) => {
 
   try {
     const cleanCode = String(code).trim().toUpperCase();
-    const cleanValue = Number(discount_value) || 0;
-    const cleanMinInr = Number(min_spend_inr || min_order_amount || 0);
-    const cleanMinUsd = Number(min_spend_usd || 0);
+    const existing = db.prepare('SELECT id FROM coupons WHERE UPPER(code) = ?').get(cleanCode);
+    if (existing) return res.status(400).json({ error: `Coupon code '${cleanCode}' already exists` });
 
     const result = db.prepare(`
       INSERT INTO coupons (
         code, discount_type, discount_value, min_spend_inr, min_spend_usd, active,
-        coupon_category, applies_to_type, target_ids, buy_qty, get_qty, get_discount_type
+        coupon_category, applies_to_type, target_ids, buy_qty, get_qty, get_discount_type,
+        max_uses, used_count, one_per_customer, start_date, end_date, description
       )
-      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
     `).run(
-      cleanCode, discount_type || 'PERCENT', cleanValue, 
-      cleanMinInr, cleanMinUsd,
+      cleanCode, discount_type || 'PERCENT', Number(discount_value) || 0, 
+      Number(min_spend_inr || min_order_amount || 0), Number(min_spend_usd || 0),
       coupon_category || 'amount_off_order', applies_to_type || 'all',
-      JSON.stringify(target_ids || []), buy_qty || 1, get_qty || 1, get_discount_type || 'FREE'
+      JSON.stringify(target_ids || []), buy_qty || 1, get_qty || 1, get_discount_type || 'FREE',
+      Number(max_uses) || 0, one_per_customer ? 1 : 0,
+      start_date || null, end_date || null, description || null
     );
 
     res.status(201).json({ id: result.lastInsertRowid, message: 'Coupon created successfully' });
   } catch (err) {
     console.error('Coupon creation error:', err.message);
-    res.status(500).json({ error: 'Failed to create coupon code: ' + err.message });
+    res.status(500).json({ error: 'Failed to create coupon: ' + err.message });
+  }
+});
+
+app.put('/api/coupons/:id', (req, res) => {
+  const { id } = req.params;
+  const { 
+    code, discount_type, discount_value, min_spend_inr, min_spend_usd,
+    coupon_category, applies_to_type, target_ids, buy_qty, get_qty, get_discount_type,
+    max_uses, one_per_customer, start_date, end_date, description, active
+  } = req.body;
+
+  try {
+    const existing = db.prepare('SELECT * FROM coupons WHERE id = ?').get(id);
+    if (!existing) return res.status(404).json({ error: 'Coupon not found' });
+
+    const cleanCode = code ? String(code).trim().toUpperCase() : existing.code;
+    // Check uniqueness if code changed
+    if (cleanCode !== existing.code) {
+      const dup = db.prepare('SELECT id FROM coupons WHERE UPPER(code) = ? AND id != ?').get(cleanCode, id);
+      if (dup) return res.status(400).json({ error: `Coupon code '${cleanCode}' already exists` });
+    }
+
+    db.prepare(`
+      UPDATE coupons SET
+        code = ?, discount_type = ?, discount_value = ?, min_spend_inr = ?, min_spend_usd = ?,
+        coupon_category = ?, applies_to_type = ?, target_ids = ?, buy_qty = ?, get_qty = ?, get_discount_type = ?,
+        max_uses = ?, one_per_customer = ?, start_date = ?, end_date = ?, description = ?, active = ?
+      WHERE id = ?
+    `).run(
+      cleanCode, 
+      discount_type || existing.discount_type, 
+      discount_value !== undefined && discount_value !== null ? Number(discount_value) : existing.discount_value,
+      min_spend_inr !== undefined && min_spend_inr !== null ? Number(min_spend_inr) : existing.min_spend_inr,
+      min_spend_usd !== undefined && min_spend_usd !== null ? Number(min_spend_usd) : existing.min_spend_usd,
+      coupon_category || existing.coupon_category, 
+      applies_to_type || existing.applies_to_type,
+      JSON.stringify(target_ids || JSON.parse(existing.target_ids || '[]')),
+      buy_qty !== undefined && buy_qty !== null ? Number(buy_qty) : existing.buy_qty,
+      get_qty !== undefined && get_qty !== null ? Number(get_qty) : existing.get_qty,
+      get_discount_type || existing.get_discount_type,
+      max_uses !== undefined && max_uses !== null ? Number(max_uses) : existing.max_uses,
+      one_per_customer !== undefined ? (one_per_customer ? 1 : 0) : existing.one_per_customer,
+      start_date !== undefined ? start_date : existing.start_date,
+      end_date !== undefined ? end_date : existing.end_date,
+      description !== undefined ? description : existing.description,
+      active !== undefined ? (active ? 1 : 0) : existing.active,
+      id
+    );
+
+    const updated = db.prepare('SELECT * FROM coupons WHERE id = ?').get(id);
+    res.json({ ...updated, message: 'Coupon updated successfully' });
+  } catch (err) {
+    console.error('Coupon update error:', err.message);
+    res.status(500).json({ error: 'Failed to update coupon: ' + err.message });
   }
 });
 
@@ -2206,6 +2263,20 @@ app.post('/api/coupons/validate', (req, res) => {
 
   const coupon = db.prepare('SELECT * FROM coupons WHERE UPPER(code) = UPPER(?) AND active = 1').get(code);
   if (!coupon) return res.status(404).json({ error: 'Invalid or expired coupon code' });
+
+  // Check date validity
+  const now = new Date();
+  if (coupon.start_date && new Date(coupon.start_date) > now) {
+    return res.status(400).json({ error: `Coupon '${coupon.code}' is not active yet. Starts on ${coupon.start_date}` });
+  }
+  if (coupon.end_date && new Date(coupon.end_date) < now) {
+    return res.status(400).json({ error: `Coupon '${coupon.code}' has expired on ${coupon.end_date}` });
+  }
+
+  // Check max uses
+  if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) {
+    return res.status(400).json({ error: `Coupon '${coupon.code}' has reached its maximum usage limit` });
+  }
 
   if (coupon.min_spend_inr > 0 && order_amount < coupon.min_spend_inr) {
     return res.status(400).json({ error: `Minimum order total of ₹${coupon.min_spend_inr} required for code '${coupon.code}'` });
@@ -2230,6 +2301,7 @@ app.post('/api/coupons/validate', (req, res) => {
     free_shipping,
     discount_type: coupon.discount_type,
     discount_value: coupon.discount_value,
+    description: coupon.description,
     message: `✓ Coupon '${coupon.code}' Applied Successfully!`
   });
 });
@@ -2247,7 +2319,7 @@ app.delete('/api/coupons/:id', async (req, res) => {
 
 // Orders API (WITH STRICT SERVER-SIDE BURP-SUITE PROOF PRICE INTEGRITY)
 app.post('/api/orders', (req, res) => {
-  const { customer_name, customer_email, customer_phone, shipping_address, country, currency, total_amount, paid_amount, remaining_amount, payment_mode, order_notes, customer_gstin, items, user_id, payment_gateway } = req.body;
+  const { customer_name, customer_email, customer_phone, shipping_address, country, currency, total_amount, paid_amount, remaining_amount, payment_mode, order_notes, customer_gstin, items, user_id, payment_gateway, coupon_code, discount_amount } = req.body;
 
   // Validate: Reject empty cart orders
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -2366,9 +2438,10 @@ app.post('/api/orders', (req, res) => {
         order_number, customer_name, customer_email, customer_phone, shipping_address, 
         country, currency, total_amount, paid_amount, remaining_amount, 
         payment_mode, payment_status, order_notes, gst_amount, cgst_amount, 
-        sgst_amount, igst_amount, customer_gstin, user_id, payment_gateway
+        sgst_amount, igst_amount, customer_gstin, user_id, payment_gateway,
+        coupon_code, discount_amount
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const initialStatus = (safeMode === 'COD' || safeMode === '100%_COD')
@@ -2395,10 +2468,18 @@ app.post('/api/orders', (req, res) => {
       igst,
       customer_gstin || '',
       resolvedUserId,
-      safeGateway
+      safeGateway,
+      coupon_code || null,
+      Number(discount_amount) || 0
     );
 
     const orderId = result.lastInsertRowid;
+
+    if (coupon_code) {
+      try {
+        db.prepare('UPDATE coupons SET used_count = used_count + 1 WHERE UPPER(code) = UPPER(?)').run(String(coupon_code).trim());
+      } catch (e) {}
+    }
 
     if (verifiedItems.length > 0) {
       const itemStmt = db.prepare(`

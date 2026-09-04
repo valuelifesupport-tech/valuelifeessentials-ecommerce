@@ -515,6 +515,8 @@ export default function App() {
           remaining_amount: isOnlinePay ? Math.max(0, (checkoutData?.finalTotal || 0) - payableAmount) : (checkoutData?.finalTotal || 0),
           payment_mode: checkoutData?.paymentMode || 'PARTIAL_COD',
           payment_gateway: selectedPaymentGateway || 'razorpay',
+          coupon_code: checkoutData?.appliedCoupon?.code || null,
+          discount_amount: checkoutData?.discountAmount || 0,
           items: cart.map(item => ({
             product_id: item.id,
             variant_id: item.variant_id || null,
