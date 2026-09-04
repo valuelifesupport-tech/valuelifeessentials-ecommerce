@@ -136,10 +136,22 @@ export default function App() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
 
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('organic_cart')) || [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [wishlist, setWishlist] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('organic_cart', JSON.stringify(cart));
+    } catch (e) {}
+  }, [cart]);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => {

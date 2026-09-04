@@ -2288,6 +2288,52 @@ app.post('/api/coupons/validate', (req, res) => {
   if (coupon.coupon_category === 'free_shipping') {
     free_shipping = true;
     discount = 0;
+  } else if (coupon.coupon_category === 'buy_x_get_y') {
+    const totalQty = Array.isArray(cart_items) 
+      ? cart_items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0) 
+      : 1;
+    const buyQty = Math.max(1, Number(coupon.buy_qty) || 1);
+    const getQty = Math.max(1, Number(coupon.get_qty) || 1);
+
+    if (totalQty < buyQty) {
+      return res.status(400).json({ error: `Add at least ${buyQty} items to your cart to qualify for '${coupon.code}'` });
+    }
+
+    let minPrice = order_amount;
+    if (Array.isArray(cart_items) && cart_items.length > 0) {
+      cart_items.forEach(i => {
+        const p = Number(i.price || i.price_inr || i.discount_inr || 0);
+        if (p > 0 && p < minPrice) minPrice = p;
+      });
+    }
+
+    if (coupon.get_discount_type === 'PERCENT') {
+      discount = Math.round((minPrice * getQty * (coupon.discount_value || 100)) / 100);
+    } else if (coupon.get_discount_type === 'FLAT') {
+      discount = Math.min(minPrice * getQty, coupon.discount_value || minPrice);
+    } else {
+      discount = Math.min(order_amount, minPrice * getQty);
+    }
+  } else if (coupon.coupon_category === 'amount_off_products') {
+    let eligibleAmount = order_amount;
+    let targetIds = [];
+    try { targetIds = JSON.parse(coupon.target_ids || '[]'); } catch (e) {}
+
+    if (Array.isArray(targetIds) && targetIds.length > 0 && Array.isArray(cart_items) && cart_items.length > 0) {
+      eligibleAmount = cart_items
+        .filter(item => targetIds.includes(Number(item.id || item.product_id)))
+        .reduce((sum, item) => sum + (Number(item.price || item.price_inr || item.discount_inr || 0) * (item.quantity || 1)), 0);
+
+      if (eligibleAmount <= 0) {
+        return res.status(400).json({ error: `Coupon '${coupon.code}' is only valid for selected products` });
+      }
+    }
+
+    if (coupon.discount_type === 'PERCENT') {
+      discount = Math.round((eligibleAmount * coupon.discount_value) / 100);
+    } else {
+      discount = Math.min(eligibleAmount, coupon.discount_value);
+    }
   } else if (coupon.discount_type === 'PERCENT') {
     discount = Math.round((order_amount * coupon.discount_value) / 100);
   } else {

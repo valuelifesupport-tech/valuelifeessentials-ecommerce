@@ -91,7 +91,7 @@ export default function CartDrawer({
       const res = await fetch(getApiUrl('/api/coupons/validate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode, order_amount: rawSubtotal })
+        body: JSON.stringify({ code: couponCode, order_amount: rawSubtotal, cart_items: cartItems })
       });
       const data = await res.json();
       if (res.ok) {
@@ -429,6 +429,13 @@ export default function CartDrawer({
                 <div className="flex justify-between text-emerald-600 font-bold">
                   <span>Coupon Discount</span>
                   <span>-{currencySymbol}{discountAmount}</span>
+                </div>
+              )}
+
+              {appliedCoupon?.free_shipping && (
+                <div className="flex justify-between text-emerald-600 font-bold">
+                  <span>Delivery / Shipping</span>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-extrabold">FREE 🚚</span>
                 </div>
               )}
 
