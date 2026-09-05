@@ -238,17 +238,28 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     get_discount_type: 'FREE'
   });
   const [editingCouponId, setEditingCouponId] = useState(null);
-  const [settingsForm, setSettingsForm] = useState({ 
-    announcement_text: 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15', 
-    announcement_code: 'VALUELIFE15', 
-    contact_phone: '+91 98765 43210', 
-    contact_email: 'support@valuelifeessentials.com', 
-    partial_deposit_percent: 20, 
-    enable_multi_currency: 1,
-    enable_partial_payment: 1,
-    partial_payment_heading: 'Choose Payment Breakdown Option:',
-    partial_payment_subtext: 'Pay rest on Delivery'
-  });
+  const [settingsForm, setSettingsForm] = useState(() => ({ 
+    announcement_text: propSettings?.announcement_text || 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15', 
+    announcement_code: propSettings?.announcement_code || 'VALUELIFE15', 
+    contact_phone: propSettings?.contact_phone || '+91 98765 43210', 
+    contact_email: propSettings?.contact_email || 'support@valuelifeessentials.com', 
+    partial_deposit_percent: propSettings?.partial_deposit_percent || 20, 
+    enable_multi_currency: Number(propSettings?.enable_multi_currency) === 1 ? 1 : 0,
+    enable_partial_payment: propSettings?.enable_partial_payment ?? 1,
+    partial_payment_heading: propSettings?.partial_payment_heading || 'Choose Payment Breakdown Option:',
+    partial_payment_subtext: propSettings?.partial_payment_subtext || 'Pay rest on Delivery'
+  }));
+
+  useEffect(() => {
+    if (propSettings && typeof propSettings === 'object' && propSettings.enable_multi_currency !== undefined) {
+      const normalized = {
+        ...propSettings,
+        enable_multi_currency: Number(propSettings.enable_multi_currency) === 1 ? 1 : 0
+      };
+      setSettings(prev => ({ ...(prev || {}), ...normalized }));
+      setSettingsForm(prev => ({ ...(prev || {}), ...normalized }));
+    }
+  }, [propSettings]);
 
   const [pages, setPages] = useState([]);
   const [filterGroups, setFilterGroups] = useState([]);
@@ -1389,8 +1400,16 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const updateAndSaveSettingToggle = async (key, newValue) => {
-    const updatedForm = { ...settingsForm, [key]: newValue };
+    const updatedForm = { 
+      ...settingsForm, 
+      [key]: newValue,
+      enable_multi_currency: key === 'enable_multi_currency' ? (Number(newValue) === 1 ? 1 : 0) : Number(settingsForm.enable_multi_currency) === 1 ? 1 : 0
+    };
     setSettingsForm(updatedForm);
+    setSettings(updatedForm);
+    if (typeof onUpdateSettings === 'function') {
+      onUpdateSettings(updatedForm);
+    }
     try {
       const res = await adminFetch('/api/settings', {
         method: 'PUT',
@@ -1399,8 +1418,16 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       });
       if (res.ok) {
         const savedData = await res.json();
+        const finalSettings = {
+          ...updatedForm,
+          ...(savedData && typeof savedData === 'object' ? savedData : {}),
+          [key]: newValue,
+          enable_multi_currency: key === 'enable_multi_currency' ? (Number(newValue) === 1 ? 1 : 0) : (savedData?.enable_multi_currency !== undefined ? (Number(savedData.enable_multi_currency) === 1 ? 1 : 0) : (Number(updatedForm.enable_multi_currency) === 1 ? 1 : 0))
+        };
+        setSettingsForm(finalSettings);
+        setSettings(finalSettings);
         if (typeof onUpdateSettings === 'function') {
-          onUpdateSettings(savedData);
+          onUpdateSettings(finalSettings);
         }
         if (showToast) showToast('success', 'Setting Auto-Saved!', `${key.replace(/_/g, ' ')} updated to ${newValue === 1 ? 'ENABLED' : 'DISABLED'}`);
       }
@@ -1410,7 +1437,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const handleSettingsSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     try {
       const res = await adminFetch('/api/settings', {
         method: 'PUT',
@@ -1419,8 +1446,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       });
       if (res.ok) {
         const savedData = await res.json();
+        const finalSettings = {
+          ...settingsForm,
+          ...(savedData && typeof savedData === 'object' ? savedData : {}),
+          enable_multi_currency: savedData?.enable_multi_currency !== undefined ? (Number(savedData.enable_multi_currency) === 1 ? 1 : 0) : (Number(settingsForm.enable_multi_currency) === 1 ? 1 : 0)
+        };
+        setSettings(finalSettings);
+        setSettingsForm(finalSettings);
         if (typeof onUpdateSettings === 'function') {
-          onUpdateSettings(savedData);
+          onUpdateSettings(finalSettings);
         }
         fetchAdminData();
         if (showToast) showToast('success', 'Settings Saved', 'Store settings updated live!');
@@ -6800,10 +6834,52 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                 <button 
                   type="button"
-                  onClick={() => {
-                    onUpdateSettings(settingsForm);
-                    if (showToast) showToast('success', 'Profile & Settings Saved', 'Master Admin credentials and store settings saved successfully!');
-                    setAdminProfileForm({ ...adminProfileForm, currentPass: '', newPass: '', confirmPass: '' });
+                  onClick={async () => {
+                    try {
+                      const res = await adminFetch('/api/settings', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settingsForm)
+                      });
+                      if (res.ok) {
+                        const savedData = await res.json();
+                        const finalSettings = {
+                          ...settingsForm,
+                          ...(savedData && typeof savedData === 'object' ? savedData : {}),
+                          enable_multi_currency: Number(settingsForm.enable_multi_currency) === 1 ? 1 : 0
+                        };
+                        setSettings(finalSettings);
+                        setSettingsForm(finalSettings);
+                        if (typeof onUpdateSettings === 'function') {
+                          onUpdateSettings(finalSettings);
+                        }
+                      }
+                      // Password update if new password supplied
+                      if (adminProfileForm.newPass) {
+                        if (adminProfileForm.newPass !== adminProfileForm.confirmPass) {
+                          if (showToast) showToast('error', 'Password Mismatch', 'New password and confirm password do not match');
+                          return;
+                        }
+                        const passRes = await adminFetch('/api/auth/change-password', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            email: adminProfileForm.email || 'support@valuelifeessentials.com',
+                            current_password: adminProfileForm.currentPass,
+                            new_password: adminProfileForm.newPass
+                          })
+                        });
+                        const passData = await passRes.json();
+                        if (!passRes.ok) {
+                          if (showToast) showToast('error', 'Password Error', passData.error || 'Failed to update password');
+                          return;
+                        }
+                      }
+                      if (showToast) showToast('success', 'Profile & Settings Saved', 'Master Admin credentials and store settings saved successfully!');
+                      setAdminProfileForm({ ...adminProfileForm, currentPass: '', newPass: '', confirmPass: '' });
+                    } catch (err) {
+                      if (showToast) showToast('error', 'Save Failed', err.message || 'Failed to save settings');
+                    }
                   }}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs tracking-wider shadow-lg uppercase cursor-pointer"
                 >

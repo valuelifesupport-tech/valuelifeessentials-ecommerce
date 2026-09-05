@@ -27,7 +27,7 @@ export default function Header({
   onSearchSubmit,
   onGoHome,
   onOpenPage,
-  settings = { enable_multi_currency: 1 },
+  settings = { enable_multi_currency: 0 },
   sectionsConfig,
   showToast
 }) {

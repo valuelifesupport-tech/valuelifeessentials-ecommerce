@@ -563,32 +563,6 @@ app.post('/api/media/replace', upload.single('image'), (req, res) => {
   }
 });
 
-// API 2: Store Settings (with multi-currency toggle & crash-proof fallback)
-app.get('/api/settings', (req, res) => {
-  try {
-    const settings = db.prepare('SELECT * FROM store_settings WHERE id = 1').get();
-    if (settings) return res.json(settings);
-  } catch (e) {
-    console.warn('GET /api/settings notice:', e.message);
-  }
-
-  res.json({
-    id: 1,
-    announcement_text: 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15',
-    announcement_code: 'VALUELIFE15',
-    contact_phone: '+91 98765 43210',
-    contact_email: 'support@valuelifeessentials.com',
-    store_name: 'ValueLife Essentials',
-    maintenance_mode: 0,
-    partial_deposit_percent: 20,
-    enable_multi_currency: 1,
-    enable_cod: 1,
-    enable_partial_payment: 1,
-    all_prices_include_tax: 1,
-    federal_tax_rate: 5.0
-  });
-});
-
 // MAINTENANCE MODE API ENDPOINTS
 app.get('/api/maintenance/status', (req, res) => {
   const isEnvMaintenance = process.env.MAINTENANCE_MODE === 'true';
@@ -619,16 +593,51 @@ app.post('/api/maintenance/verify', (req, res) => {
   res.status(401).json({ success: false, error: 'Invalid Maintenance Access Password' });
 });
 
+// SINGLE CANONICAL STORE SETTINGS API (DUAL ENGINE: MYSQL + SQLITE)
 app.get('/api/settings', async (req, res) => {
+  let settings = null;
   const pool = getMySQLPool();
   if (pool) {
     try {
       const [rows] = await pool.query('SELECT * FROM store_settings WHERE id = 1');
-      if (rows && rows.length > 0) return res.json(rows[0]);
+      if (rows && rows.length > 0) settings = rows[0];
+    } catch (e) {
+      console.warn('MySQL settings fetch notice:', e.message);
+    }
+  }
+
+  if (!settings) {
+    try {
+      settings = db.prepare('SELECT * FROM store_settings WHERE id = 1').get();
     } catch (e) {}
   }
-  const settings = db.prepare('SELECT * FROM store_settings WHERE id = 1').get();
-  res.json(settings || {});
+
+  if (!settings) {
+    settings = {
+      id: 1,
+      announcement_text: 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15',
+      announcement_code: 'VALUELIFE15',
+      contact_phone: '+91 98765 43210',
+      contact_email: 'support@valuelifeessentials.com',
+      store_name: 'ValueLife Essentials',
+      maintenance_mode: 0,
+      partial_deposit_percent: 20,
+      enable_multi_currency: 0,
+      enable_cod: 1,
+      enable_partial_payment: 1,
+      all_prices_include_tax: 1,
+      federal_tax_rate: 5.0
+    };
+  }
+
+  // Strict normalization
+  settings.enable_multi_currency = Number(settings.enable_multi_currency) === 1 ? 1 : 0;
+  settings.enable_cod = settings.enable_cod !== undefined ? (Number(settings.enable_cod) === 1 ? 1 : 0) : 1;
+  settings.enable_partial_payment = settings.enable_partial_payment !== undefined ? (Number(settings.enable_partial_payment) === 1 ? 1 : 0) : 1;
+  settings.enable_gst = settings.enable_gst !== undefined ? (Number(settings.enable_gst) === 1 ? 1 : 0) : 1;
+  settings.all_prices_include_tax = settings.all_prices_include_tax !== undefined ? (Number(settings.all_prices_include_tax) === 1 ? 1 : 0) : 1;
+
+  res.json(settings);
 });
 
 app.put('/api/settings', requireAdminAuth, async (req, res) => {
@@ -637,9 +646,16 @@ app.put('/api/settings', requireAdminAuth, async (req, res) => {
     partial_deposit_percent, enable_multi_currency, enable_cod, enable_partial_payment,
     partial_payment_heading, partial_payment_subtext, prepaid_discount_percent,
     enable_gst, gstin_number, store_state, default_gst_percent, gst_type, legal_business_name,
-    all_prices_include_tax, federal_tax_rate
+    all_prices_include_tax, federal_tax_rate,
+    instagram_url, facebook_url, youtube_url, whatsapp_number, twitter_url
   } = req.body;
   
+  const multiCurrVal = Number(enable_multi_currency) === 1 ? 1 : 0;
+  const codVal = enable_cod !== undefined ? (Number(enable_cod) === 1 ? 1 : 0) : 1;
+  const partialVal = enable_partial_payment !== undefined ? (Number(enable_partial_payment) === 1 ? 1 : 0) : 1;
+  const gstVal = enable_gst !== undefined ? (Number(enable_gst) === 1 ? 1 : 0) : 1;
+  const taxIncVal = all_prices_include_tax !== undefined ? (Number(all_prices_include_tax) === 1 ? 1 : 0) : 1;
+
   try {
     db.prepare(`
       UPDATE store_settings
@@ -647,56 +663,102 @@ app.put('/api/settings', requireAdminAuth, async (req, res) => {
           partial_deposit_percent = ?, enable_multi_currency = ?, enable_cod = ?, enable_partial_payment = ?,
           partial_payment_heading = ?, partial_payment_subtext = ?, prepaid_discount_percent = ?,
           enable_gst = ?, gstin_number = ?, store_state = ?, default_gst_percent = ?, gst_type = ?, legal_business_name = ?,
-          all_prices_include_tax = ?, federal_tax_rate = ?
+          all_prices_include_tax = ?, federal_tax_rate = ?,
+          instagram_url = ?, facebook_url = ?, youtube_url = ?, whatsapp_number = ?, twitter_url = ?
       WHERE id = 1
     `).run(
-      announcement_text, announcement_code, contact_phone, contact_email, 
-      partial_deposit_percent || 20, 
-      enable_multi_currency ? 1 : 0,
-      enable_cod !== undefined ? (enable_cod ? 1 : 0) : 1,
-      enable_partial_payment !== undefined ? (enable_partial_payment ? 1 : 0) : 1,
+      announcement_text || 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15',
+      announcement_code || 'VALUELIFE15',
+      contact_phone || '+91 98765 43210',
+      contact_email || 'support@valuelifeessentials.com', 
+      Number(partial_deposit_percent) || 20, 
+      multiCurrVal,
+      codVal,
+      partialVal,
       partial_payment_heading || 'Choose Payment Breakdown Option:',
       partial_payment_subtext || 'Pay rest on Delivery',
-      prepaid_discount_percent || 0,
-      enable_gst !== undefined ? (enable_gst ? 1 : 0) : 1,
+      Number(prepaid_discount_percent) || 0,
+      gstVal,
       gstin_number || '27AAAAA0000A1Z5',
       store_state || 'Maharashtra',
-      default_gst_percent || 5.0,
+      parseFloat(default_gst_percent) || 5.0,
       gst_type || 'INCLUSIVE',
       legal_business_name || 'ValueLife Essentials Private Limited',
-      all_prices_include_tax !== undefined ? (all_prices_include_tax ? 1 : 0) : 1,
-      federal_tax_rate || 0.0
+      taxIncVal,
+      parseFloat(federal_tax_rate) || 0.0,
+      instagram_url || null,
+      facebook_url || null,
+      youtube_url || null,
+      whatsapp_number || null,
+      twitter_url || null
     );
-  } catch (e) {}
+  } catch (e) {
+    console.warn('SQLite store_settings update error:', e.message);
+  }
 
-  await executeMySQL(`
-    UPDATE store_settings
-    SET announcement_text = ?, announcement_code = ?, contact_phone = ?, contact_email = ?, 
-        partial_deposit_percent = ?, enable_multi_currency = ?, enable_cod = ?, enable_partial_payment = ?,
-        partial_payment_heading = ?, partial_payment_subtext = ?, prepaid_discount_percent = ?,
-        enable_gst = ?, gstin_number = ?, store_state = ?, default_gst_percent = ?, gst_type = ?, legal_business_name = ?,
-        all_prices_include_tax = ?, federal_tax_rate = ?
-    WHERE id = 1
-  `, [
-    announcement_text, announcement_code, contact_phone, contact_email, 
-    partial_deposit_percent || 20, 
-    enable_multi_currency ? 1 : 0,
-    enable_cod !== undefined ? (enable_cod ? 1 : 0) : 1,
-    enable_partial_payment !== undefined ? (enable_partial_payment ? 1 : 0) : 1,
-    partial_payment_heading || 'Choose Payment Breakdown Option:',
-    partial_payment_subtext || 'Pay rest on Delivery',
-    prepaid_discount_percent || 0,
-    enable_gst !== undefined ? (enable_gst ? 1 : 0) : 1,
-    gstin_number || '27AAAAA0000A1Z5',
-    store_state || 'Maharashtra',
-    default_gst_percent || 5.0,
-    gst_type || 'INCLUSIVE',
-    legal_business_name || 'ValueLife Essentials Private Limited',
-    all_prices_include_tax !== undefined ? (all_prices_include_tax ? 1 : 0) : 1,
-    federal_tax_rate || 0.0
-  ]);
+  try {
+    await executeMySQL(`
+      UPDATE store_settings
+      SET announcement_text = ?, announcement_code = ?, contact_phone = ?, contact_email = ?, 
+          partial_deposit_percent = ?, enable_multi_currency = ?, enable_cod = ?, enable_partial_payment = ?,
+          partial_payment_heading = ?, partial_payment_subtext = ?, prepaid_discount_percent = ?,
+          enable_gst = ?, gstin_number = ?, store_state = ?, default_gst_percent = ?, gst_type = ?, legal_business_name = ?,
+          all_prices_include_tax = ?, federal_tax_rate = ?,
+          instagram_url = ?, facebook_url = ?, youtube_url = ?, whatsapp_number = ?, twitter_url = ?
+      WHERE id = 1
+    `, [
+      announcement_text || 'Get 15% OFF + Free Home Delivery! Use Code: VALUELIFE15',
+      announcement_code || 'VALUELIFE15',
+      contact_phone || '+91 98765 43210',
+      contact_email || 'support@valuelifeessentials.com', 
+      Number(partial_deposit_percent) || 20, 
+      multiCurrVal,
+      codVal,
+      partialVal,
+      partial_payment_heading || 'Choose Payment Breakdown Option:',
+      partial_payment_subtext || 'Pay rest on Delivery',
+      Number(prepaid_discount_percent) || 0,
+      gstVal,
+      gstin_number || '27AAAAA0000A1Z5',
+      store_state || 'Maharashtra',
+      parseFloat(default_gst_percent) || 5.0,
+      gst_type || 'INCLUSIVE',
+      legal_business_name || 'ValueLife Essentials Private Limited',
+      taxIncVal,
+      parseFloat(federal_tax_rate) || 0.0,
+      instagram_url || null,
+      facebook_url || null,
+      youtube_url || null,
+      whatsapp_number || null,
+      twitter_url || null
+    ]);
+  } catch (e) {
+    console.warn('MySQL store_settings update error:', e.message);
+  }
 
-  res.json({ message: 'Store settings updated successfully in database' });
+  // Fetch updated settings to return full fresh data object
+  let updatedSettings = null;
+  const pool = getMySQLPool();
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM store_settings WHERE id = 1');
+      if (rows && rows.length > 0) updatedSettings = rows[0];
+    } catch (e) {}
+  }
+  if (!updatedSettings) {
+    try {
+      updatedSettings = db.prepare('SELECT * FROM store_settings WHERE id = 1').get();
+    } catch (e) {}
+  }
+  if (!updatedSettings) {
+    updatedSettings = { ...req.body };
+  }
+  updatedSettings.enable_multi_currency = multiCurrVal;
+
+  res.json({
+    ...updatedSettings,
+    message: 'Store settings updated successfully in database'
+  });
 });
 
 // GLOBAL ADMIN API SECURITY BARRIER - ALL /api/admin/* ENDPOINTS REQUIRE VALID ADMIN TOKEN

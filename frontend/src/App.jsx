@@ -111,7 +111,7 @@ export default function App() {
   const [filterGroups, setFilterGroups] = useState([]);
   const [selectedFilters, setSelectedFilters] = useState({});
   const [activeFilterDropdown, setActiveFilterDropdown] = useState(null);
-  const [settings, setSettings] = useState({ enable_multi_currency: 1 });
+  const [settings, setSettings] = useState({ enable_multi_currency: 0 });
   const [heroConfig, setHeroConfig] = useState(null);
   const [themeConfig, setThemeConfig] = useState({
     active_preset: 'EMERALD',
@@ -229,7 +229,15 @@ export default function App() {
   useEffect(() => {
     fetch(getApiUrl('/api/settings'))
       .then(res => res.json())
-      .then(data => { if (data) setSettings(data); })
+      .then(data => {
+        if (data && typeof data === 'object') {
+          setSettings(prev => ({
+            ...(prev || {}),
+            ...data,
+            enable_multi_currency: Number(data.enable_multi_currency) === 1 ? 1 : 0
+          }));
+        }
+      })
       .catch(() => {});
 
     fetch(getApiUrl('/api/filter-groups'))
