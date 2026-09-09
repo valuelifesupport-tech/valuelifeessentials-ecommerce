@@ -2,7 +2,7 @@ import { getApiUrl } from '../../api/config';
 import React, { useState, useEffect } from 'react';
 import { 
   Users, DollarSign, ShoppingBag, Eye, Star, Plus, Trash2, Edit, Upload, CheckCircle, XCircle, X,
-  MessageSquare, Tag, Image, Image as ImageIcon, Layers, BarChart2, Globe, TrendingUp, Sparkles, LogOut, ExternalLink, Settings, Wrench, ToggleLeft, ToggleRight, Download, Printer, FileText, Send, Grid, Package, ShieldCheck, HelpCircle, Link as LinkIcon, Search, ChevronRight, ChevronDown, Filter, Heart, Megaphone, RefreshCw, FolderOpen, GripVertical, UploadCloud, Truck, Phone, Mail, MapPin, AlertTriangle, Check, Clock
+  MessageSquare, Tag, Image, Image as ImageIcon, Layers, BarChart2, Globe, TrendingUp, Sparkles, LogOut, ExternalLink, Settings, Wrench, ToggleLeft, ToggleRight, Download, Printer, FileText, Send, Grid, Package, ShieldCheck, HelpCircle, Link as LinkIcon, Search, ChevronRight, ChevronDown, Filter, Heart, Megaphone, RefreshCw, FolderOpen, GripVertical, UploadCloud, Truck, Phone, Mail, MapPin, AlertTriangle, Check, Clock, Menu
 } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, BarElement, Filler } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
@@ -133,6 +133,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [selectedDiscountType, setSelectedDiscountType] = useState({ id: 'amount_off_order', title: 'Amount off order', subtitle: 'Discount the total order amount', icon: '💼' });
   const [discountMethod, setDiscountMethod] = useState('CODE');
   const [selectedProductForVariants, setSelectedProductForVariants] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // REAL DATA BROWSE PICKER MODAL STATES
   const [showBrowseModal, setShowBrowseModal] = useState(false);
@@ -1751,427 +1752,542 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     );
   }
 
+  const renderSidebarHeader = (onClose = null) => (
+    <div className="flex items-center justify-between gap-3 px-2 py-3 border-b border-slate-800 shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <img src="/valuelife_logo.png" alt="ValueLife Essentials Logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl bg-white p-0.5 shadow-lg shrink-0" />
+        <div className="min-w-0">
+          <h2 className="font-extrabold text-sm sm:text-base text-white tracking-tight font-['Outfit'] truncate uppercase">VALUELIFE ESSENTIALS</h2>
+          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block truncate">valuelifeessentials.com</span>
+        </div>
+      </div>
+      {onClose && (
+        <button 
+          onClick={onClose}
+          className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors shrink-0"
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
+      )}
+    </div>
+  );
+
+  const renderNavLinks = (isMobile = false) => {
+    const handleNavSelect = (tab) => {
+      setActiveTab(tab);
+      if (isMobile) setIsMobileMenuOpen(false);
+    };
+
+    return (
+      <nav className="space-y-2 text-xs font-bold">
+        {/* 1. DASHBOARD & ANALYTICS */}
+        <button 
+          onClick={() => handleNavSelect('analytics')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'analytics' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <BarChart2 size={18} className="flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap">Power Analytics</span>
+          </div>
+        </button>
+
+        {/* 1. CATALOG DROPDOWN */}
+        <div className="space-y-1">
+          <button 
+            onClick={() => toggleSubmenu('catalog')}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors uppercase tracking-wider text-[11px] font-black"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Package size={15} className="text-emerald-400 flex-shrink-0" />
+              <span className="truncate whitespace-nowrap">Catalog</span>
+            </div>
+            {openSubmenus.catalog ? <ChevronDown size={14} className="flex-shrink-0" /> : <ChevronRight size={14} className="flex-shrink-0" />}
+          </button>
+
+          {openSubmenus.catalog && (
+            <div className="pl-3.5 space-y-1 border-l-2 border-slate-800 ml-3.5">
+              <button 
+                onClick={() => handleNavSelect('products')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'products' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <ShoppingBag size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Products & Variants</span>
+                </div>
+                <span className="bg-slate-800 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {products.length}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('categories')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'categories' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Layers size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Categories</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {categories.length}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('collections')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'collections' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Sparkles size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Collections</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {collections.length}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => { handleNavSelect('media'); fetchAdminData(); }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'media' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <ImageIcon size={16} className="flex-shrink-0 text-emerald-400" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Media Library</span>
+                </div>
+                <span className="bg-emerald-950 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md border border-emerald-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {mediaFiles.length}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('filters')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'filters' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Filter size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Product Filters</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {filterGroups?.length || 0}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 2. INVENTORY */}
+        <button 
+          onClick={() => handleNavSelect('inventory')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'inventory' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Grid size={17} className="text-amber-400 flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap text-xs font-bold">Inventory & Stock</span>
+          </div>
+        </button>
+
+        {/* 3. SALES */}
+        <button 
+          onClick={() => handleNavSelect('orders')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'orders' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <DollarSign size={17} className="text-emerald-400 flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap text-xs font-bold">Sales & Orders</span>
+          </div>
+          <span className="bg-slate-800 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+            {orders.length}
+          </span>
+        </button>
+
+        {/* 4. CUSTOMERS */}
+        <button 
+          onClick={() => handleNavSelect('users')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'users' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Users size={17} className="text-blue-400 flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap text-xs font-bold">Customers</span>
+          </div>
+          <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+            {users.length}
+          </span>
+        </button>
+
+        {/* 5. MARKETING DROPDOWN */}
+        <div className="space-y-1">
+          <button 
+            onClick={() => toggleSubmenu('marketing')}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors uppercase tracking-wider text-[11px] font-black"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Tag size={15} className="text-purple-400 flex-shrink-0" />
+              <span className="truncate whitespace-nowrap">Marketing</span>
+            </div>
+            {openSubmenus.marketing ? <ChevronDown size={14} className="flex-shrink-0" /> : <ChevronRight size={14} className="flex-shrink-0" />}
+          </button>
+
+          {openSubmenus.marketing && (
+            <div className="pl-3.5 space-y-1 border-l-2 border-slate-800 ml-3.5">
+              <button 
+                onClick={() => handleNavSelect('sections')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'sections' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Grid size={16} className="text-emerald-400 flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-black uppercase tracking-wider text-emerald-400">🎛️ Store Sections Control</span>
+                </div>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('hero')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'hero' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Sparkles size={16} className="text-emerald-400 flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Hero Section Manager</span>
+                </div>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('announcement')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'announcement' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Megaphone size={16} className="text-amber-400 flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Header Announcement Bar</span>
+                </div>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('banners')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'banners' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Image size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Banners & Sliders</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {banners.length}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('coupons')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'coupons' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Tag size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Coupons & Discounts</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {coupons.length}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 6. CONTENT DROPDOWN */}
+        <div className="space-y-1">
+          <button 
+            onClick={() => toggleSubmenu('content')}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors uppercase tracking-wider text-[11px] font-black"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText size={15} className="text-amber-400 flex-shrink-0" />
+              <span className="truncate whitespace-nowrap">Content</span>
+            </div>
+            {openSubmenus.content ? <ChevronDown size={14} className="flex-shrink-0" /> : <ChevronRight size={14} className="flex-shrink-0" />}
+          </button>
+
+          {openSubmenus.content && (
+            <div className="pl-3.5 space-y-1 border-l-2 border-slate-800 ml-3.5">
+              <button 
+                onClick={() => handleNavSelect('reviews')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'reviews' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Star size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Customer Reviews</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {reviews.length}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('pages')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'pages' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileText size={16} className="flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Pages (CMS)</span>
+                </div>
+                <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                  {pages?.length || 0}
+                </span>
+              </button>
+
+              <button 
+                onClick={() => handleNavSelect('theme')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'theme' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Sparkles size={16} className="text-amber-400 flex-shrink-0" /> 
+                  <span className="truncate whitespace-nowrap text-xs font-bold">Theme & Styling Studio</span>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 7. PAYMENT */}
+        <button 
+          onClick={() => handleNavSelect('payment')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'payment' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <DollarSign size={17} className="text-emerald-400 flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap text-xs font-bold">Payment & Partial COD</span>
+          </div>
+        </button>
+
+        {/* 8. TAXES & GST MANAGER */}
+        <button 
+          onClick={() => handleNavSelect('taxes')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'taxes' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <FileText size={17} className="text-amber-400 flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap text-xs font-bold">Taxes & GST Manager</span>
+          </div>
+          <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[10px] px-2 py-0.5 rounded-md font-extrabold flex-shrink-0 whitespace-nowrap">
+            36 States
+          </span>
+        </button>
+
+        {/* 9. STORE SETTINGS */}
+        <button 
+          onClick={() => handleNavSelect('settings')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            activeTab === 'settings' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Settings size={17} className="flex-shrink-0" /> 
+            <span className="truncate whitespace-nowrap text-xs font-bold">Store Settings</span>
+          </div>
+        </button>
+      </nav>
+    );
+  };
+
+  const renderSidebarFooter = (isMobile = false) => (
+    <div className="pt-4 border-t border-slate-800 space-y-2 shrink-0">
+      <button 
+        onClick={() => {
+          if (isMobile) setIsMobileMenuOpen(false);
+          onExitAdmin();
+        }}
+        className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition-colors cursor-pointer"
+      >
+        <ExternalLink size={16} /> Return to Storefront
+      </button>
+      <button 
+        onClick={() => {
+          if (isMobile) setIsMobileMenuOpen(false);
+          handleAdminLogout();
+        }}
+        className="w-full flex items-center justify-center gap-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-rose-100 text-xs font-bold py-2.5 rounded-xl border border-rose-800/80 transition-all cursor-pointer shadow-sm"
+      >
+        <LogOut size={16} /> Logout Admin Session
+      </button>
+    </div>
+  );
+
   return (
     <div className="h-screen bg-slate-950 text-slate-100 flex overflow-hidden">
-      {/* 100% FIXED / STUCK SIDEBAR WITH PERFECT ALIGNMENT & WIDER LAYOUT */}
+      {/* 100% FIXED / STUCK SIDEBAR WITH PERFECT ALIGNMENT & WIDER LAYOUT (DESKTOP) */}
       <aside className="w-72 h-full bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-4 flex-shrink-0 hidden md:flex overflow-y-auto custom-scrollbar z-40">
         <div className="space-y-6">
-          <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-800">
-            <img src="/valuelife_logo.png" alt="ValueLife Essentials Logo" className="w-10 h-10 object-contain rounded-xl bg-white p-0.5 shadow-lg shrink-0" />
-            <div className="min-w-0">
-              <h2 className="font-extrabold text-base text-white tracking-tight font-['Outfit'] truncate uppercase">VALUELIFE ESSENTIALS</h2>
-              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block truncate">valuelifeessentials.com</span>
-            </div>
-          </div>
-
-          <nav className="space-y-2.5 text-xs font-bold">
-            {/* 1. DASHBOARD & ANALYTICS */}
-            <button 
-              onClick={() => setActiveTab('analytics')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'analytics' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <BarChart2 size={18} className="flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap">Power Analytics</span>
-              </div>
-            </button>
-
-            {/* 1. CATALOG DROPDOWN */}
-            <div className="space-y-1">
-              <button 
-                onClick={() => toggleSubmenu('catalog')}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors uppercase tracking-wider text-[11px] font-black"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Package size={15} className="text-emerald-400 flex-shrink-0" />
-                  <span className="truncate whitespace-nowrap">Catalog</span>
-                </div>
-                {openSubmenus.catalog ? <ChevronDown size={14} className="flex-shrink-0" /> : <ChevronRight size={14} className="flex-shrink-0" />}
-              </button>
-
-              {openSubmenus.catalog && (
-                <div className="pl-3.5 space-y-1 border-l-2 border-slate-800 ml-3.5">
-                  <button 
-                    onClick={() => setActiveTab('products')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'products' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <ShoppingBag size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Products & Variants</span>
-                    </div>
-                    <span className="bg-slate-800 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {products.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('categories')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'categories' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Layers size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Categories</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {categories.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('collections')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'collections' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Sparkles size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Collections</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {collections.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => { setActiveTab('media'); fetchAdminData(); }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'media' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <ImageIcon size={16} className="flex-shrink-0 text-emerald-400" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Media Library</span>
-                    </div>
-                    <span className="bg-emerald-950 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md border border-emerald-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {mediaFiles.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('filters')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'filters' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Filter size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Product Filters</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {filterGroups?.length || 0}
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 2. INVENTORY */}
-            <button 
-              onClick={() => setActiveTab('inventory')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'inventory' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Grid size={17} className="text-amber-400 flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Inventory & Stock</span>
-              </div>
-            </button>
-
-            {/* 3. SALES */}
-            <button 
-              onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'orders' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <DollarSign size={17} className="text-emerald-400 flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Sales & Orders</span>
-              </div>
-              <span className="bg-slate-800 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                {orders.length}
-              </span>
-            </button>
-
-            {/* 4. CUSTOMERS */}
-            <button 
-              onClick={() => setActiveTab('users')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'users' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Users size={17} className="text-blue-400 flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Customers</span>
-              </div>
-              <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                {users.length}
-              </span>
-            </button>
-
-            {/* 5. MARKETING DROPDOWN */}
-            <div className="space-y-1">
-              <button 
-                onClick={() => toggleSubmenu('marketing')}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors uppercase tracking-wider text-[11px] font-black"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Tag size={15} className="text-purple-400 flex-shrink-0" />
-                  <span className="truncate whitespace-nowrap">Marketing</span>
-                </div>
-                {openSubmenus.marketing ? <ChevronDown size={14} className="flex-shrink-0" /> : <ChevronRight size={14} className="flex-shrink-0" />}
-              </button>
-
-              {openSubmenus.marketing && (
-                <div className="pl-3.5 space-y-1 border-l-2 border-slate-800 ml-3.5">
-                  <button 
-                    onClick={() => setActiveTab('sections')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'sections' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Grid size={16} className="text-emerald-400 flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-black uppercase tracking-wider text-emerald-400">🎛️ Store Sections Control</span>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('hero')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'hero' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Sparkles size={16} className="text-emerald-400 flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Hero Section Manager</span>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('announcement')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'announcement' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Megaphone size={16} className="text-amber-400 flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Header Announcement Bar</span>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('banners')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'banners' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Image size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Banners & Sliders</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {banners.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('coupons')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'coupons' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Tag size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Coupons & Discounts</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {coupons.length}
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 6. CONTENT DROPDOWN */}
-            <div className="space-y-1">
-              <button 
-                onClick={() => toggleSubmenu('content')}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors uppercase tracking-wider text-[11px] font-black"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText size={15} className="text-amber-400 flex-shrink-0" />
-                  <span className="truncate whitespace-nowrap">Content</span>
-                </div>
-                {openSubmenus.content ? <ChevronDown size={14} className="flex-shrink-0" /> : <ChevronRight size={14} className="flex-shrink-0" />}
-              </button>
-
-              {openSubmenus.content && (
-                <div className="pl-3.5 space-y-1 border-l-2 border-slate-800 ml-3.5">
-                  <button 
-                    onClick={() => setActiveTab('reviews')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'reviews' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Star size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Customer Reviews</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {reviews.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('pages')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'pages' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <FileText size={16} className="flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Pages (CMS)</span>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
-                      {pages?.length || 0}
-                    </span>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('theme')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      activeTab === 'theme' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Sparkles size={16} className="text-amber-400 flex-shrink-0" /> 
-                      <span className="truncate whitespace-nowrap text-xs font-bold">Theme & Styling Studio</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 7. PAYMENT */}
-            <button 
-              onClick={() => setActiveTab('payment')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'payment' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <DollarSign size={17} className="text-emerald-400 flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Payment & Partial COD</span>
-              </div>
-            </button>
-
-            {/* 8. TAXES & GST MANAGER */}
-            <button 
-              onClick={() => setActiveTab('taxes')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'taxes' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <FileText size={17} className="text-amber-400 flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Taxes & GST Manager</span>
-              </div>
-              <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[10px] px-2 py-0.5 rounded-md font-extrabold flex-shrink-0 whitespace-nowrap">
-                36 States
-              </span>
-            </button>
-
-            {/* 9. STORE SETTINGS */}
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'settings' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Settings size={17} className="flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Store Settings</span>
-              </div>
-            </button>
-          </nav>
+          {renderSidebarHeader()}
+          {renderNavLinks(false)}
         </div>
-
-        <div className="pt-4 border-t border-slate-800 space-y-2">
-          <button 
-            onClick={onExitAdmin}
-            className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition-colors"
-          >
-            <ExternalLink size={16} /> Return to Storefront
-          </button>
-          <button 
-            onClick={handleAdminLogout}
-            className="w-full flex items-center justify-center gap-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-rose-100 text-xs font-bold py-2.5 rounded-xl border border-rose-800/80 transition-all cursor-pointer shadow-sm"
-          >
-            <LogOut size={16} /> Logout Admin Session
-          </button>
-        </div>
+        {renderSidebarFooter(false)}
       </aside>
+
+      {/* MOBILE RESPONSIVE SLIDE-OVER DRAWER WITH BACKDROP */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* BACKDROP OVERLAY */}
+          <div 
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" 
+            onClick={() => setIsMobileMenuOpen(false)} 
+          />
+          
+          {/* SLIDE-OUT DRAWER PANEL */}
+          <div className="relative w-80 max-w-[85vw] h-full bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-4 z-50 shadow-2xl overflow-y-auto custom-scrollbar animate-slide-in-left">
+            <div className="space-y-5">
+              {renderSidebarHeader(() => setIsMobileMenuOpen(false))}
+              {renderNavLinks(true)}
+            </div>
+            {renderSidebarFooter(true)}
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE STICKY BOTTOM QUICK ACTION NAVIGATION BAR */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 flex items-center justify-around py-2 px-1 text-[10px] font-bold shadow-2xl">
+        <button 
+          onClick={() => setActiveTab('analytics')} 
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'analytics' ? 'text-emerald-400 font-extrabold bg-emerald-950/50' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <BarChart2 size={18} />
+          <span>Analytics</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('products')} 
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'products' ? 'text-emerald-400 font-extrabold bg-emerald-950/50' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <ShoppingBag size={18} />
+          <span>Products</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('orders')} 
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer relative ${
+            activeTab === 'orders' ? 'text-emerald-400 font-extrabold bg-emerald-950/50' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <DollarSign size={18} />
+          <span>Orders</span>
+          {orders.length > 0 && (
+            <span className="absolute top-0 right-2 w-2 h-2 rounded-full bg-emerald-400" />
+          )}
+        </button>
+        <button 
+          onClick={() => setActiveTab('media')} 
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'media' ? 'text-emerald-400 font-extrabold bg-emerald-950/50' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <ImageIcon size={18} />
+          <span>Media</span>
+        </button>
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)} 
+          className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-slate-400 hover:text-emerald-400 active:scale-95 transition-all cursor-pointer"
+        >
+          <Menu size={18} />
+          <span>All Tabs</span>
+        </button>
+      </nav>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
-        <header className="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <button onClick={onExitAdmin} className="md:hidden text-xs font-bold bg-slate-800 px-3 py-1.5 rounded-lg text-emerald-400">
-              ← Store
+        <header className="bg-slate-900 border-b border-slate-800 p-3 sm:p-4 flex justify-between items-center sticky top-0 z-30">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)} 
+              className="md:hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors flex items-center justify-center cursor-pointer shadow-sm shrink-0"
+              aria-label="Open Admin Menu"
+            >
+              <Menu size={20} />
             </button>
-            <h1 className="text-lg font-extrabold text-white">Master Admin Control Panel</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800/80 uppercase font-mono tracking-wider hidden xs:inline-block shrink-0">
+                {activeTab}
+              </span>
+              <h1 className="text-sm sm:text-lg font-extrabold text-white truncate max-w-[170px] sm:max-w-none font-['Outfit']">
+                Master Admin Panel
+              </h1>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 animate-pulse hidden sm:flex">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 animate-pulse hidden lg:flex">
               ● Live Users: {analytics?.liveUsers ?? 0}
             </span>
             <button
               onClick={handleAdminLogout}
-              className="flex items-center gap-1.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/80 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/80 text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm cursor-pointer"
               title="Logout Admin Session"
             >
               <LogOut size={14} />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
-            <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shadow-md">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-600 text-white font-black flex items-center justify-center text-xs shadow-md shrink-0">
               AD
             </div>
           </div>
         </header>
 
-        <main className="p-6 space-y-6 flex-1">
+        <main className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 flex-1 min-w-0 overflow-x-hidden pb-24 md:pb-6">
           {/* TAB 1: ANALYTICS */}
           {activeTab === 'analytics' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-emerald-600 to-emerald-900 text-white p-5 rounded-2xl shadow-lg border border-emerald-500/30">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-gradient-to-br from-emerald-600 to-emerald-900 text-white p-4 sm:p-5 rounded-2xl shadow-lg border border-emerald-500/30">
                   <span className="text-xs font-extrabold text-emerald-200 uppercase tracking-wider block">Live Active Users</span>
                   <div className="text-3xl font-black mt-2">{analytics?.liveUsers ?? 0}</div>
                   <span className="text-[11px] text-emerald-200 block mt-1">Real-time store visitors</span>
                 </div>
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md">
+                <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md">
                   <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
                   <div className="text-3xl font-black mt-2 text-white">₹{(analytics?.totalRevenue ?? orders.reduce((acc, o) => acc + (o.total_amount || 0), 0)).toLocaleString('en-IN')}</div>
                   <span className="text-[11px] text-emerald-400 font-bold block mt-1">₹{(analytics?.totalCollected ?? orders.reduce((acc, o) => acc + (o.paid_amount || 0), 0)).toLocaleString('en-IN')} Collected</span>
                 </div>
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md">
+                <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md">
                   <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">Total Visitors</span>
                   <div className="text-3xl font-black mt-2 text-white">{(analytics?.totalVisitors ?? 0).toLocaleString('en-IN')}</div>
                   <span className="text-[11px] text-slate-400 block mt-1">Sessions tracked</span>
                 </div>
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md">
+                <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md">
                   <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">Total Orders</span>
                   <div className="text-3xl font-black mt-2 text-white">{analytics?.totalOrders ?? orders.length}</div>
                   <span className="text-[11px] text-blue-400 font-bold block mt-1">Processed orders</span>
@@ -2179,8 +2295,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               </div>
 
               {/* GST TAX LEDGER & LIABILITY KPI CARDS */}
-              <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 border-b border-slate-800 pb-2">
                   <div>
                     <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
                       🏛️ Total GST Tax Liability & Collection Ledger
@@ -2190,13 +2306,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                   <button 
                     onClick={handleDownloadGstCSV}
-                    className="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
                   >
                     <Download size={14} /> Export GST CSV (for CA)
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                   <div className="bg-slate-850 p-3.5 rounded-xl border border-slate-800 space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Total GST Collected</span>
                     <div className="text-xl font-black text-emerald-400">₹{(analytics?.totalGstCollected || 0).toLocaleString('en-IN')}</div>
@@ -2407,8 +2523,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto rounded-xl border border-slate-800 custom-scrollbar">
+                <table className="w-full text-left text-xs min-w-[720px]">
                   <thead className="bg-slate-800 text-slate-400 font-bold uppercase border-b border-slate-700">
                     <tr>
                       <th className="p-3">Thumbnail</th>
@@ -3109,8 +3225,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <p className="text-xs text-slate-500 mt-1">Click "Create Discount" to add your first coupon code</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                <div className="overflow-x-auto rounded-xl border border-slate-800 custom-scrollbar">
+                  <table className="w-full text-xs min-w-[680px]">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 font-extrabold uppercase tracking-wider">
                         <th className="text-left py-3 px-3">Code</th>
@@ -3688,8 +3804,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   )}
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto rounded-xl border border-slate-800 custom-scrollbar">
+                  <table className="w-full text-left text-xs min-w-[840px]">
                     <thead className="bg-slate-800 text-slate-400 font-bold uppercase border-b border-slate-700">
                       <tr>
                         <th className="p-3">Order #</th>
@@ -3912,8 +4028,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   )}
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto rounded-xl border border-slate-800 custom-scrollbar">
+                  <table className="w-full text-left text-xs min-w-[840px]">
                     <thead className="bg-slate-800 text-slate-400 font-bold uppercase border-b border-slate-700">
                       <tr>
                         <th className="p-3">ID</th>
@@ -4050,8 +4166,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto rounded-xl border border-slate-800 custom-scrollbar">
+                <table className="w-full text-left text-xs min-w-[640px]">
                   <thead className="bg-slate-800 text-slate-400 font-bold uppercase border-b border-slate-700">
                     <tr>
                       <th className="p-3">Page Title</th>
@@ -5185,8 +5301,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-800 rounded-xl">
-                    <table className="w-full text-left text-xs text-slate-300">
+                  <div className="overflow-x-auto border border-slate-800 rounded-xl custom-scrollbar">
+                    <table className="w-full text-left text-xs text-slate-300 min-w-[700px]">
                       <thead className="bg-slate-850 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-800">
                         <tr>
                           <th className="p-3.5">Product / Variant Name</th>
@@ -6894,23 +7010,23 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       {/* FULL SHOPIFY-STYLE ADD / EDIT PRODUCT MODAL */}
       {showProductModal && (
         <div className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-[98vw] w-full p-5 lg:p-8 space-y-6 shadow-2xl max-h-[96vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl sm:rounded-3xl max-w-[98vw] w-full p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 shadow-2xl max-h-[95vh] overflow-y-auto custom-scrollbar">
             {/* TOP HEADER */}
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-              <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+              <div className="min-w-0">
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">PRODUCT CREATOR & MANAGER</span>
-                <h3 className="font-extrabold text-2xl text-white font-['Outfit']">{editingProduct ? `Edit ${editingProduct.title}` : 'Add New Product'}</h3>
+                <h3 className="font-extrabold text-xl sm:text-2xl text-white font-['Outfit'] truncate max-w-full">{editingProduct ? `Edit ${editingProduct.title}` : 'Add New Product'}</h3>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
                 <button 
                   onClick={() => setShowProductModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleProductSubmit}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-xs font-extrabold shadow-lg transition-colors flex items-center gap-1.5"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 sm:px-6 py-2 rounded-xl text-xs font-extrabold shadow-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <CheckCircle size={15} /> Save Product
                 </button>
@@ -7286,7 +7402,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           setProductForm(prev => ({ 
                             ...prev, 
                             price_inr: val, 
-                            discount_inr: prev.discount_inr ? prev.discount_inr : val,
+                            discount_inr: val,
                             price_usd: autoUsd,
                             discount_usd: autoUsd
                           }));
@@ -7305,7 +7421,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           setProductForm(prev => ({ 
                             ...prev, 
                             price_usd: val, 
-                            discount_usd: prev.discount_usd ? prev.discount_usd : val 
+                            discount_usd: val 
                           }));
                         }}
                         className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold text-blue-400 text-sm"
@@ -7418,8 +7534,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                   {/* VARIANTS LIST TABLE */}
                   {productForm.variants && productForm.variants.length > 0 && (
-                    <div className="overflow-x-auto border border-slate-800 rounded-xl">
-                      <table className="w-full text-xs text-left text-slate-300">
+                    <div className="overflow-x-auto border border-slate-800 rounded-xl custom-scrollbar">
+                      <table className="w-full text-xs text-left text-slate-300 min-w-[680px]">
                         <thead className="bg-slate-900 text-[11px] uppercase font-bold text-slate-400 border-b border-slate-800">
                           <tr>
                             <th className="p-2.5">Image</th>
@@ -8014,11 +8130,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* CREATE / EDIT COLLECTION MODAL */}
       {showCollectionModal && (
-        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-4xl w-full p-6 lg:p-8 space-y-5 shadow-2xl max-h-[94vh] overflow-y-auto">
+        <div className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl sm:rounded-3xl max-w-4xl w-full p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 shadow-2xl max-h-[94vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="font-extrabold text-lg text-white">{editingCollection ? 'Edit Collection & Map Products' : 'Create New Collection'}</h3>
-              <button onClick={() => setShowCollectionModal(false)}><XCircle size={24} /></button>
+              <h3 className="font-extrabold text-base sm:text-lg text-white truncate max-w-[80%]">{editingCollection ? 'Edit Collection & Map Products' : 'Create New Collection'}</h3>
+              <button onClick={() => setShowCollectionModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><XCircle size={24} /></button>
             </div>
 
             <form onSubmit={handleCollectionSubmit} className="space-y-4 text-xs">
@@ -8116,26 +8232,26 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* FULL ORDER DETAILS & NOTES INVOICE MODAL */}
       {selectedOrderDetails && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[9999]">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">ORDER INVOICE & DETAILS</span>
-                <h3 className="font-extrabold text-lg text-white font-mono">{selectedOrderDetails.order_number}</h3>
+                <h3 className="font-extrabold text-base sm:text-lg text-white font-mono">{selectedOrderDetails.order_number}</h3>
               </div>
-              <button onClick={() => setSelectedOrderDetails(null)} className="text-slate-400 hover:text-white"><XCircle size={24} /></button>
+              <button onClick={() => setSelectedOrderDetails(null)} className="text-slate-400 hover:text-white cursor-pointer"><XCircle size={24} /></button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-850 p-4 rounded-xl border border-slate-800 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-850 p-4 rounded-xl border border-slate-800 text-xs">
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block">Customer Information:</span>
                 <div className="font-bold text-white text-sm">{selectedOrderDetails.customer_name}</div>
-                <div className="text-emerald-400 font-mono">{selectedOrderDetails.customer_email}</div>
+                <div className="text-emerald-400 font-mono break-all">{selectedOrderDetails.customer_email}</div>
                 <div className="text-slate-300">{selectedOrderDetails.customer_phone}</div>
                 <div className="text-slate-400 mt-2">{selectedOrderDetails.shipping_address}, {selectedOrderDetails.country}</div>
               </div>
 
-              <div className="space-y-1 text-right">
+              <div className="space-y-1 text-left sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block">Payment & Shipping Status:</span>
                 <div className="font-extrabold text-white text-sm">Mode: {selectedOrderDetails.payment_mode}</div>
                 <div className="text-emerald-400 font-black text-base">Total: ₹{selectedOrderDetails.total_amount}</div>
@@ -8397,14 +8513,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* MEDIA PREVIEW LIGHTBOX MODAL */}
       {previewMediaItem && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+        <div className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
+              <div className="min-w-0 pr-2">
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">ASSET DETAILS</span>
                 <h3 className="font-extrabold text-base text-white truncate max-w-md">{previewMediaItem.filename}</h3>
               </div>
-              <button onClick={() => setPreviewMediaItem(null)} className="text-slate-400 hover:text-white"><XCircle size={24} /></button>
+              <button onClick={() => setPreviewMediaItem(null)} className="text-slate-400 hover:text-white cursor-pointer shrink-0"><XCircle size={24} /></button>
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden max-h-80 flex items-center justify-center p-2">
@@ -8416,19 +8532,19 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between items-center p-2.5 bg-slate-800/80 rounded-xl border border-slate-700 font-mono text-[11px]">
-                <span className="text-slate-400">Full Image URL:</span>
-                <span className="text-emerald-300 font-bold truncate max-w-md">{previewMediaItem.fullUrl || getApiUrl(previewMediaItem.url)}</span>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 p-2.5 bg-slate-800/80 rounded-xl border border-slate-700 font-mono text-[11px]">
+                <span className="text-slate-400 shrink-0">Full Image URL:</span>
+                <span className="text-emerald-300 font-bold truncate max-w-full sm:max-w-md break-all">{previewMediaItem.fullUrl || getApiUrl(previewMediaItem.url)}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(previewMediaItem.fullUrl || getApiUrl(previewMediaItem.url));
                   if (showToast) showToast('success', 'URL Copied!', 'Image URL copied to clipboard.');
                 }}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <LinkIcon size={14} /> Copy Full Image URL
               </button>
@@ -8482,14 +8598,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* PRODUCT CREATOR MEDIA LIBRARY PICKER MODAL */}
       {showProductMediaPickerModal && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-4xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl sm:rounded-3xl max-w-4xl w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">PRODUCT MEDIA PICKER</span>
                 <h3 className="font-extrabold text-base text-white">Select Images from Media Library</h3>
               </div>
-              <button onClick={() => setShowProductMediaPickerModal(false)} className="text-slate-400 hover:text-white"><XCircle size={24} /></button>
+              <button onClick={() => setShowProductMediaPickerModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><XCircle size={24} /></button>
             </div>
 
             <div className="relative">
@@ -8508,7 +8624,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 No media files uploaded yet. Upload a file above first.
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-96 overflow-y-auto p-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3 max-h-[60vh] overflow-y-auto p-1 custom-scrollbar">
                 {mediaFiles
                   .filter(m => !mediaSearch || m.filename.toLowerCase().includes(mediaSearch.toLowerCase()))
                   .map((item, idx) => {
@@ -8571,23 +8687,23 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* MANAGE VARIANTS MODAL (CRUD) */}
       {selectedProductForVariants && (
-        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-4xl w-full p-6 lg:p-8 space-y-5 shadow-2xl max-h-[94vh] overflow-y-auto">
+        <div className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl sm:rounded-3xl max-w-4xl w-full p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 shadow-2xl max-h-[94vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-white">Variant Pills CRUD Manager</h3>
                 <p className="text-xs text-emerald-400">{selectedProductForVariants.title}</p>
               </div>
-              <button onClick={() => setSelectedProductForVariants(null)}><XCircle size={24} /></button>
+              <button onClick={() => setSelectedProductForVariants(null)} className="cursor-pointer text-slate-400 hover:text-white"><XCircle size={24} /></button>
             </div>
 
-            <div className="space-y-2 max-h-56 overflow-y-auto">
+            <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
               <span className="text-[10px] font-black uppercase text-slate-400 block">Existing Variant Pills:</span>
               {selectedProductForVariants.variants?.map(v => (
                 <div key={v.id} className="p-3 border border-slate-800 bg-slate-850 rounded-xl flex justify-between items-center text-xs">
                   <div>
                     <span className="font-bold text-white">{v.variant_name}</span>
-                    <div className="text-[11px] text-emerald-400 font-bold flex items-center gap-2">
+                    <div className="text-[11px] text-emerald-400 font-bold flex flex-wrap items-center gap-2">
                       <span>Offer Price: ₹{v.discount_inr || v.price_inr}</span>
                       {v.price_inr > (v.discount_inr || v.price_inr) && (
                         <span className="text-slate-400 line-through text-[10px]">MRP: ₹{v.price_inr}</span>
@@ -8596,7 +8712,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       <span className="text-slate-300">Stock: {v.stock}</span>
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteVariant(v.id)} className="bg-rose-900/50 text-rose-300 p-1.5 rounded-lg border border-rose-700 hover:bg-rose-800">
+                  <button onClick={() => handleDeleteVariant(v.id)} className="bg-rose-900/50 text-rose-300 p-1.5 rounded-lg border border-rose-700 hover:bg-rose-800 cursor-pointer shrink-0">
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -8614,7 +8730,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               />
 
               <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[10px] font-bold text-emerald-400 mb-1">Offer / Sale Price INR (₹) *</label>
                     <input 
@@ -8638,7 +8754,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
                     <label className="block text-[10px] font-bold text-blue-400 mb-1">Offer USD ($) *</label>
                     <input 
@@ -8683,11 +8799,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* CREATE BANNER MODAL */}
       {showBannerModal && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-white">Create Hero Banner</h3>
-              <button onClick={() => setShowBannerModal(false)}><XCircle size={24} /></button>
+              <button onClick={() => setShowBannerModal(false)} className="cursor-pointer text-slate-400 hover:text-white"><XCircle size={24} /></button>
             </div>
 
             <form onSubmit={handleBannerSubmit} className="space-y-3 text-xs">
@@ -8782,20 +8898,20 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* STEP 2: SHOPIFY-GRADE DYNAMIC CREATE DISCOUNT FORM MODAL */}
       {showCouponModal && selectedDiscountType && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-4xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[9999]">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-4xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <button 
                   onClick={() => { setShowCouponModal(false); setShowDiscountTypeModal(true); }}
-                  className="text-xs text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                  className="text-xs text-emerald-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   ‹ Back to discount types
                 </button>
                 <span className="text-slate-500">•</span>
                 <h3 className="font-extrabold text-base text-white">{selectedDiscountType.title}</h3>
               </div>
-              <button onClick={() => setShowCouponModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+              <button onClick={() => setShowCouponModal(false)} className="text-slate-400 hover:text-white font-bold cursor-pointer self-end sm:self-auto">✕</button>
             </div>
 
             <form onSubmit={handleCouponSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
@@ -9365,11 +9481,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* CREATE CATEGORY MODAL */}
       {showCategoryModal && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-white">{editingCategory ? 'Edit Category' : 'Create Category'}</h3>
-              <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }}><XCircle size={24} /></button>
+              <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }} className="cursor-pointer text-slate-400 hover:text-white"><XCircle size={24} /></button>
             </div>
 
             <form onSubmit={handleCategorySubmit} className="space-y-3 text-xs">
@@ -9410,7 +9526,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 placeholder="Upload image file or paste web/Unsplash URL..."
               />
 
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition-colors">
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition-colors cursor-pointer">
                 {editingCategory ? 'Update Category' : 'Create Category'}
               </button>
             </form>
@@ -9420,11 +9536,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* CREATE SUBCATEGORY MODAL */}
       {showSubcategoryModal && selectedCatForSubcat && (
-        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-white">Add Subcategory to {selectedCatForSubcat.name}</h3>
-              <button onClick={() => setShowSubcategoryModal(false)}><XCircle size={24} /></button>
+              <button onClick={() => setShowSubcategoryModal(false)} className="cursor-pointer text-slate-400 hover:text-white"><XCircle size={24} /></button>
             </div>
 
             <form onSubmit={handleSubcategorySubmit} className="space-y-3 text-xs">
@@ -9438,7 +9554,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 />
               </div>
 
-              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-lg">
+              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-lg cursor-pointer">
                 Add Subcategory
               </button>
             </form>
@@ -9448,8 +9564,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* REAL DATA BROWSE SELECTOR MODAL */}
       {showBrowseModal && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-[10000]">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl animate-scaleIn">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[10000]">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar animate-scaleIn">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-white">Select Real {browseTargetType.toUpperCase()}</h3>
@@ -9680,18 +9796,18 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
       {/* CMS PAGE CREATE / EDIT MODAL */}
       {showPageModal && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[9999]">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">SHOPIFY-GRADE CMS PAGE BUILDER</span>
-                <h3 className="font-extrabold text-lg text-white">{editingPage ? `Edit Page: ${editingPage.title}` : 'Create New Custom Page'}</h3>
+                <h3 className="font-extrabold text-base sm:text-lg text-white truncate max-w-md">{editingPage ? `Edit Page: ${editingPage.title}` : 'Create New Custom Page'}</h3>
               </div>
-              <button onClick={() => setShowPageModal(false)} className="text-slate-400 hover:text-white"><XCircle size={24} /></button>
+              <button onClick={() => setShowPageModal(false)} className="cursor-pointer text-slate-400 hover:text-white"><XCircle size={24} /></button>
             </div>
 
             <form onSubmit={handlePageSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Page Title *</label>
                   <input 

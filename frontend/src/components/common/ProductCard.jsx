@@ -49,14 +49,14 @@ export default function ProductCard({
     : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : (firstVariant?.compare_price_usd ? Number(firstVariant.compare_price_usd) : null));
 
   let pPrice = rawPrice;
-  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
+  if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
     pPrice = rawDiscount;
   }
 
   let pOriginal = pPrice;
   if (rawCompare !== null && rawCompare > pPrice) {
     pOriginal = rawCompare;
-  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
+  } else if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
     pOriginal = rawPrice;
   }
 

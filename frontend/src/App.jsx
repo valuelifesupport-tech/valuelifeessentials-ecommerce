@@ -3,7 +3,6 @@ import Header from './components/layout/Header';
 import CartDrawer from './components/cart/CartDrawer';
 import WishlistDrawer from './components/cart/WishlistDrawer';
 import ToastNotification from './components/common/ToastNotification';
-const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 import ProductDetailPage from './components/product/ProductDetailPage';
 import PageView from './components/sections/PageView';
 import HeroSection from './components/sections/HeroSection';
@@ -331,6 +330,39 @@ export default function App() {
     } catch (err) {}
   };
 
+  const getProductPricing = (p, curr = currency) => {
+    if (!p) return { pPrice: 0, pOriginal: 0, pct: 0 };
+    const isINR = curr === 'INR';
+    const firstVariant = Array.isArray(p.variants) && p.variants.length > 0 ? p.variants[0] : null;
+    const basePrice = isINR 
+      ? (Number(p.price_inr) > 0 ? Number(p.price_inr) : (firstVariant ? Number(firstVariant.price_inr || firstVariant.price || 0) : (Number(p.price) || 0)))
+      : (Number(p.price_usd) > 0 ? Number(p.price_usd) : (firstVariant ? Number(firstVariant.price_usd || 0) : 0));
+
+    const rawCompare = isINR
+      ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : (firstVariant?.compare_price_inr ? Number(firstVariant.compare_price_inr) : null))
+      : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : (firstVariant?.compare_price_usd ? Number(firstVariant.compare_price_usd) : null));
+
+    const rawDiscount = isINR
+      ? (p.discount_inr !== undefined && p.discount_inr !== null && Number(p.discount_inr) > 0 && Number(p.discount_inr) < basePrice ? Number(p.discount_inr) : null)
+      : (p.discount_usd !== undefined && p.discount_usd !== null && Number(p.discount_usd) > 0 && Number(p.discount_usd) < basePrice ? Number(p.discount_usd) : null);
+
+    let pPrice = basePrice;
+    if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawDiscount < basePrice) {
+      pPrice = rawDiscount;
+    }
+
+    let pOriginal = pPrice;
+    if (rawCompare !== null && rawCompare > pPrice) {
+      pOriginal = rawCompare;
+    } else if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && basePrice > pPrice) {
+      pOriginal = basePrice;
+    }
+
+    const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+
+    return { pPrice, pOriginal, pct };
+  };
+
   const fetchProducts = async () => {
     setIsProductsLoading(true);
     try {
@@ -347,7 +379,11 @@ export default function App() {
       let data = Array.isArray(rawData) ? rawData : (rawData && Array.isArray(rawData.products) ? rawData.products : []);
 
       if (route.view === 'offers') {
-        data = data.filter(p => p && ((p.discount_inr > 0 && p.price_inr > p.discount_inr) || (p.discount_usd > 0 && p.price_usd > p.discount_usd)));
+        data = data.filter(p => {
+          if (!p) return false;
+          const { pct } = getProductPricing(p);
+          return pct > 0;
+        });
       } else if (route.view === 'bestsellers') {
         data = data.filter(p => p && p.is_best_product === 1);
       } else if (route.view === 'new_arrivals') {
@@ -608,7 +644,7 @@ export default function App() {
 
       // 1. PRICE RANGE FILTER HANDLER
       if (filterKey === 'price_range') {
-        const pPrice = currency === 'INR' ? (p.discount_inr || p.price_inr) : (p.discount_usd || p.price_usd);
+        const { pPrice } = getProductPricing(p);
         if (filterValue === 'under_200' && pPrice >= 200) return false;
         if (filterValue === '200_500' && (pPrice < 200 || pPrice > 500)) return false;
         if (filterValue === '500_1000' && (pPrice < 500 || pPrice > 1000)) return false;
@@ -641,8 +677,8 @@ export default function App() {
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const priceA = currency === 'INR' ? (a.discount_inr || a.price_inr) : (a.discount_usd || a.price_usd);
-    const priceB = currency === 'INR' ? (b.discount_inr || b.price_inr) : (b.discount_usd || b.price_usd);
+    const priceA = getProductPricing(a).pPrice;
+    const priceB = getProductPricing(b).pPrice;
     if (sortBy === 'low_high') return priceA - priceB;
     if (sortBy === 'high_low') return priceB - priceA;
     return 0;
@@ -675,17 +711,35 @@ export default function App() {
 
   if (route.view === 'admin') {
     return (
-      <Suspense fallback={<BrandLoader text="Loading Admin Dashboard..." fullScreen={true} />}>
-        <ToastNotification toast={toast} onClose={() => setToast(null)} />
-        <AdminDashboard 
-          onExitAdmin={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })} 
-          showToast={showToast}
-          sectionsConfig={sectionsConfig}
-          onUpdateSectionsConfig={setSectionsConfig}
-          settings={settings}
-          onUpdateSettings={setSettings}
-        />
-      </Suspense>
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 bg-emerald-950 border border-emerald-600/30 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-inner">
+            🛡️
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-white font-['Outfit']">Admin Portal</h2>
+            <p className="text-xs text-slate-400 font-medium">
+              The ValueLife Essentials Admin Dashboard is hosted as a dedicated application.
+            </p>
+          </div>
+          <div className="space-y-3 pt-2">
+            <a 
+              href="https://admin.valuelifeessentials.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 block"
+            >
+              Open Dedicated Admin Portal →
+            </a>
+            <button
+              onClick={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 px-6 rounded-xl transition-all block cursor-pointer"
+            >
+              ← Return to Storefront
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -922,28 +976,7 @@ export default function App() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {bestProducts.map((p) => {
-                  const isINR = currency === 'INR';
-                  const rawPrice = isINR ? (Number(p.price_inr) || 0) : (Number(p.price_usd) || 0);
-                  const rawDiscount = isINR 
-                    ? (p.discount_inr !== undefined && p.discount_inr !== null && p.discount_inr > 0 ? Number(p.discount_inr) : null)
-                    : (p.discount_usd !== undefined && p.discount_usd !== null && p.discount_usd > 0 ? Number(p.discount_usd) : null);
-                  const rawCompare = isINR
-                    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && p.compare_price_inr > 0 ? Number(p.compare_price_inr) : null)
-                    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && p.compare_price_usd > 0 ? Number(p.compare_price_usd) : null);
-
-                  let pPrice = rawPrice;
-                  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
-                    pPrice = rawDiscount;
-                  }
-
-                  let pOriginal = pPrice;
-                  if (rawCompare !== null && rawCompare > pPrice) {
-                    pOriginal = rawCompare;
-                  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
-                    pOriginal = rawPrice;
-                  }
-
-                  const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+                  const { pPrice, pOriginal, pct } = getProductPricing(p);
                   const isWish = wishlist.some(w => w.id === p.id);
 
                   return (
@@ -1238,28 +1271,7 @@ export default function App() {
               ) : (
                 <div className={`grid ${mobileViewMode === 'list' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-4 sm:gap-5`}>
                   {sortedProducts.slice(0, visibleCount).map((p) => {
-                  const isINR = currency === 'INR';
-                  const rawPrice = isINR ? (Number(p.price_inr) || 0) : (Number(p.price_usd) || 0);
-                  const rawDiscount = isINR 
-                    ? (p.discount_inr !== undefined && p.discount_inr !== null && p.discount_inr > 0 ? Number(p.discount_inr) : null)
-                    : (p.discount_usd !== undefined && p.discount_usd !== null && p.discount_usd > 0 ? Number(p.discount_usd) : null);
-                  const rawCompare = isINR
-                    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && p.compare_price_inr > 0 ? Number(p.compare_price_inr) : null)
-                    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && p.compare_price_usd > 0 ? Number(p.compare_price_usd) : null);
-
-                  let pPrice = rawPrice;
-                  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
-                    pPrice = rawDiscount;
-                  }
-
-                  let pOriginal = pPrice;
-                  if (rawCompare !== null && rawCompare > pPrice) {
-                    pOriginal = rawCompare;
-                  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
-                    pOriginal = rawPrice;
-                  }
-
-                  const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+                    const { pPrice, pOriginal, pct } = getProductPricing(p);
                     const isWish = wishlist.some(w => w.id === p.id);
 
                     if (mobileViewMode === 'list') {

@@ -353,14 +353,14 @@ export default function ProductDetailPage({
     : (targetItem.compare_price_usd !== undefined && targetItem.compare_price_usd !== null && Number(targetItem.compare_price_usd) > 0 ? Number(targetItem.compare_price_usd) : (Number(productData.compare_price_usd) > 0 ? Number(productData.compare_price_usd) : null));
 
   let price = rawPrice;
-  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
+  if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
     price = rawDiscount;
   }
 
   let originalPrice = price;
   if (rawCompare !== null && rawCompare > price) {
     originalPrice = rawCompare;
-  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > price) {
+  } else if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawPrice > price) {
     originalPrice = rawPrice;
   }
 
