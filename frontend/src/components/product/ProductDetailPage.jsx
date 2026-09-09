@@ -530,8 +530,8 @@ export default function ProductDetailPage({
 
                 <div className="flex flex-wrap gap-2.5">
                   {variantsList.map((v, vIdx) => {
-                    const isSelected = (selectedVariant?.id && v.id && selectedVariant.id === v.id) || 
-                                       (selectedVariant?.variant_name && v.variant_name && selectedVariant.variant_name === v.variant_name) ||
+                    const isSelected = (selectedVariant?.id && v.id && String(selectedVariant.id) === String(v.id)) || 
+                                       (selectedVariant?.variant_name && v.variant_name && String(selectedVariant.variant_name).trim().toLowerCase() === String(v.variant_name).trim().toLowerCase()) ||
                                        (!selectedVariant && vIdx === 0);
 
                     const vPrice = isINR 
