@@ -4116,15 +4116,24 @@ app.post('/api/auth/reset-password', (req, res) => {
 });
 
 // PRODUCT FILTER GROUPS & OPTIONS API
-app.get(['/api/filter-groups', '/api/admin/filter-groups'], (req, res) => {
-  const groups = db.prepare('SELECT * FROM product_filter_groups WHERE is_active = 1 OR is_active IS NULL ORDER BY sort_order ASC, id ASC').all();
+app.get(['/api/filter-groups', '/api/admin/filter-groups'], async (req, res) => {
+  let groups = await executeMySQL('SELECT * FROM product_filter_groups WHERE is_active = 1 OR is_active IS NULL ORDER BY sort_order ASC, id ASC');
+  let options = await executeMySQL('SELECT * FROM product_filter_options ORDER BY sort_order ASC, id ASC');
+
+  if (Array.isArray(groups)) {
+    const result = groups.map(grp => ({
+      ...grp,
+      options: (Array.isArray(options) ? options : []).filter(o => o.group_id == grp.id)
+    }));
+    return res.json(result);
+  }
+
+  const fallbackGroups = db.prepare('SELECT * FROM product_filter_groups WHERE is_active = 1 OR is_active IS NULL ORDER BY sort_order ASC, id ASC').all();
   const optionStmt = db.prepare('SELECT * FROM product_filter_options WHERE group_id = ? ORDER BY sort_order ASC, id ASC');
-  
-  const result = groups.map(grp => ({
+  const result = (Array.isArray(fallbackGroups) ? fallbackGroups : []).map(grp => ({
     ...grp,
     options: optionStmt.all(grp.id)
   }));
-
   res.json(result);
 });
 
@@ -4136,16 +4145,19 @@ app.post('/api/admin/filter-groups', async (req, res) => {
     ? String(filter_key).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_') 
     : String(name).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
   
-  let grpId = Date.now();
+  let grpId = null;
+  const mysqlRes = await executeMySQL(
+    'INSERT INTO product_filter_groups (name, filter_key, sort_order, is_active) VALUES (?, ?, ?, 1)',
+    [String(name).trim(), key, sort_order || 0]
+  );
+  if (mysqlRes && mysqlRes.insertId) {
+    grpId = mysqlRes.insertId;
+  }
+
   try {
     const result = db.prepare('INSERT INTO product_filter_groups (name, filter_key, sort_order, is_active) VALUES (?, ?, ?, 1)').run(String(name).trim(), key, sort_order || 0);
-    grpId = result.lastInsertRowid;
+    if (!grpId) grpId = result.lastInsertRowid;
   } catch (err) {}
-
-  await executeMySQL(
-    'INSERT INTO product_filter_groups (id, name, filter_key, sort_order, is_active) VALUES (?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE name=VALUES(name), filter_key=VALUES(filter_key), sort_order=VALUES(sort_order)',
-    [grpId, String(name).trim(), key, sort_order || 0]
-  );
 
   res.status(201).json({ id: grpId, name: String(name).trim(), filter_key: key, message: 'Filter group created' });
 });
@@ -4184,16 +4196,19 @@ app.delete('/api/admin/filter-groups/:id', async (req, res) => {
 app.post('/api/admin/filter-options', async (req, res) => {
   const { group_id, label, value, sort_order } = req.body;
   const optValue = value ? value.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : label.toLowerCase().replace(/[^a-z0-9_]+/g, '_');
-  let optId = Date.now();
+  let optId = null;
+  const mysqlRes = await executeMySQL(
+    'INSERT INTO product_filter_options (group_id, label, value, sort_order) VALUES (?, ?, ?, ?)',
+    [group_id, label, optValue, sort_order || 0]
+  );
+  if (mysqlRes && mysqlRes.insertId) {
+    optId = mysqlRes.insertId;
+  }
+
   try {
     const result = db.prepare('INSERT INTO product_filter_options (group_id, label, value, sort_order) VALUES (?, ?, ?, ?)').run(group_id, label, optValue, sort_order || 0);
-    optId = result.lastInsertRowid;
+    if (!optId) optId = result.lastInsertRowid;
   } catch (e) {}
-
-  await executeMySQL(
-    'INSERT INTO product_filter_options (id, group_id, label, value, sort_order) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE label=VALUES(label), value=VALUES(value), sort_order=VALUES(sort_order)',
-    [optId, group_id, label, optValue, sort_order || 0]
-  );
 
   res.status(201).json({ id: optId, message: 'Filter option added' });
 });
