@@ -121,6 +121,18 @@ function saveFallbackStore() {
   } catch (e) {}
 }
 
+function getNextFallbackId(collectionName) {
+  const items = (fallbackStore && fallbackStore[collectionName]) || [];
+  let maxId = 0;
+  for (const item of items) {
+    const num = Number(item.id);
+    if (!isNaN(num) && num < 1000000 && num > maxId) {
+      maxId = num;
+    }
+  }
+  return Math.max(maxId, 40) + 1;
+}
+
 const dbPath = path.join(__dirname, 'ecommerce.db');
 const db = Database ? new Database(dbPath) : {
   pragma: () => {},
@@ -130,7 +142,16 @@ const db = Database ? new Database(dbPath) : {
     
     return {
       run: (...params) => {
-        const nowId = Date.now();
+        let targetTable = 'misc';
+        if (s.includes('categories')) targetTable = 'categories';
+        else if (s.includes('subcategories')) targetTable = 'subcategories';
+        else if (s.includes('products')) targetTable = 'products';
+        else if (s.includes('product_images')) targetTable = 'product_images';
+        else if (s.includes('product_variants')) targetTable = 'product_variants';
+        else if (s.includes('collections')) targetTable = 'collections';
+        else if (s.includes('coupons')) targetTable = 'coupons';
+        else if (s.includes('orders')) targetTable = 'orders';
+        const nowId = getNextFallbackId(targetTable);
         if (s.includes('insert into categories')) {
           const [name, slug, description, image_url, icon] = params;
           const newCat = { id: nowId, name, slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), description: description || '', image_url: image_url || '', icon: icon || '🌿' };

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { getApiUrl } from '../api/config';
 
 export const useCart = () => {
   const [cart, setCart] = useState(() => {
@@ -9,8 +10,48 @@ export const useCart = () => {
     }
   });
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
     localStorage.setItem('organic_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    let customerUser = null;
+    try {
+      customerUser = JSON.parse(localStorage.getItem('customerUser'));
+    } catch (e) {}
+
+    if (customerUser && customerUser.id) {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        fetch(getApiUrl(`/api/cart?user_id=${customerUser.id}`), {
+          headers: { 'x-user-id': String(customerUser.id) }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data && Array.isArray(data.items) && data.items.length > 0) {
+              setCart(data.items);
+            } else if (cart.length > 0) {
+              fetch(getApiUrl('/api/cart'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': String(customerUser.id) },
+                body: JSON.stringify({ user_id: customerUser.id, items: cart })
+              }).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      } else {
+        const timer = setTimeout(() => {
+          fetch(getApiUrl('/api/cart'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-user-id': String(customerUser.id) },
+            body: JSON.stringify({ user_id: customerUser.id, items: cart })
+          }).catch(() => {});
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
   }, [cart]);
 
   const addToCart = (product, quantity = 1, selectedVariant = null) => {

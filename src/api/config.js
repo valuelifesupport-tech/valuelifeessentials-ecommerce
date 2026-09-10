@@ -2,17 +2,32 @@
 export const getApiUrl = (path) => {
   let base = '';
 
-  if (typeof window !== 'undefined' && import.meta.env.VITE_API_URL) {
-    base = import.meta.env.VITE_API_URL.trim().replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    
+    if (isLocal) {
+      base = ''; // Uses Vite proxy to local port 5000 smoothly
+    } else if (import.meta.env.VITE_API_URL) {
+      base = import.meta.env.VITE_API_URL.trim().replace(/\/$/, '');
+    } else if (host.includes('valuelifeessentials.com')) {
+      base = 'https://backend.valuelifeessentials.com';
+    } else if (host.includes('hostingersite.com')) {
+      base = 'https://aliceblue-loris-851812.hostingersite.com';
+    } else {
+      base = 'https://backend.valuelifeessentials.com';
+    }
   }
 
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return base ? `${base}${cleanPath}` : cleanPath;
 };
 
-export const API_BASE = (typeof window !== 'undefined' && import.meta.env.VITE_API_URL)
-  ? import.meta.env.VITE_API_URL.trim().replace(/\/$/, '')
-  : '';
+export const API_BASE = (typeof window !== 'undefined')
+  ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? ''
+    : (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.trim().replace(/\/$/, '') : (window.location.hostname.includes('hostingersite.com') ? 'https://aliceblue-loris-851812.hostingersite.com' : 'https://backend.valuelifeessentials.com'))
+  : 'https://backend.valuelifeessentials.com';
 
 export const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=300&q=80') => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;

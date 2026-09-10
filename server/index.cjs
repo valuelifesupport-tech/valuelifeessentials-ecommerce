@@ -1372,12 +1372,24 @@ app.get('/api/products', async (req, res) => {
     let finalPriceUsd = Number(p.price_usd || 0);
     let finalDiscountInr = Number(p.discount_inr || finalPriceInr || 0);
     let finalDiscountUsd = Number(p.discount_usd || finalPriceUsd || 0);
+    let finalComparePriceInr = Number(p.compare_price_inr || 0);
+    let finalComparePriceUsd = Number(p.compare_price_usd || 0);
 
-    if (finalPriceInr === 0 && variants.length > 0) {
-      finalPriceInr = Number(variants[0].price_inr || variants[0].price || 0);
-      finalPriceUsd = Number(variants[0].price_usd || (finalPriceInr > 0 ? Number((finalPriceInr / 95).toFixed(2)) : 0));
-      finalDiscountInr = Number(variants[0].discount_inr || finalPriceInr);
-      finalDiscountUsd = Number(variants[0].discount_usd || finalPriceUsd);
+    if (variants.length > 0) {
+      const activeVars = variants.filter(v => !v.status || v.status === 'active');
+      const vList = activeVars.length > 0 ? activeVars : variants;
+      const sortedVars = [...vList].sort((a, b) => {
+        const pA = Number(a.discount_inr || a.price_inr || a.price || 0);
+        const pB = Number(b.discount_inr || b.price_inr || b.price || 0);
+        return pA - pB;
+      });
+      const minVar = sortedVars[0] || vList[0];
+      finalPriceInr = Number(minVar.price_inr || minVar.price || 0);
+      finalPriceUsd = Number(minVar.price_usd || (finalPriceInr > 0 ? Number((finalPriceInr / 95).toFixed(2)) : 0));
+      finalDiscountInr = Number(minVar.discount_inr || finalPriceInr);
+      finalDiscountUsd = Number(minVar.discount_usd || finalPriceUsd);
+      finalComparePriceInr = Number(minVar.compare_price_inr || 0);
+      finalComparePriceUsd = Number(minVar.compare_price_usd || 0);
     }
 
     return { 
@@ -1388,6 +1400,8 @@ app.get('/api/products', async (req, res) => {
       price_usd: finalPriceUsd,
       discount_inr: finalDiscountInr,
       discount_usd: finalDiscountUsd,
+      compare_price_inr: finalComparePriceInr,
+      compare_price_usd: finalComparePriceUsd,
       thumbnail: primaryImg,
       image_url: primaryImg,
       images: imagesList.length > 0 ? imagesList : (primaryImg ? [primaryImg] : []),
@@ -1751,12 +1765,24 @@ app.get('/api/products/slug/:slug', async (req, res) => {
   let finalPriceUsd = Number(product.price_usd || 0);
   let finalDiscountInr = Number(product.discount_inr || finalPriceInr || 0);
   let finalDiscountUsd = Number(product.discount_usd || finalPriceUsd || 0);
+  let finalComparePriceInr = Number(product.compare_price_inr || 0);
+  let finalComparePriceUsd = Number(product.compare_price_usd || 0);
 
-  if (finalPriceInr === 0 && variants.length > 0) {
-    finalPriceInr = Number(variants[0].price_inr || variants[0].price || 0);
-    finalPriceUsd = Number(variants[0].price_usd || (finalPriceInr > 0 ? Number((finalPriceInr / 95).toFixed(2)) : 0));
-    finalDiscountInr = Number(variants[0].discount_inr || finalPriceInr);
-    finalDiscountUsd = Number(variants[0].discount_usd || finalPriceUsd);
+  if (variants.length > 0) {
+    const activeVars = variants.filter(v => !v.status || v.status === 'active');
+    const vList = activeVars.length > 0 ? activeVars : variants;
+    const sortedVars = [...vList].sort((a, b) => {
+      const pA = Number(a.discount_inr || a.price_inr || a.price || 0);
+      const pB = Number(b.discount_inr || b.price_inr || b.price || 0);
+      return pA - pB;
+    });
+    const minVar = sortedVars[0] || vList[0];
+    finalPriceInr = Number(minVar.price_inr || minVar.price || 0);
+    finalPriceUsd = Number(minVar.price_usd || (finalPriceInr > 0 ? Number((finalPriceInr / 95).toFixed(2)) : 0));
+    finalDiscountInr = Number(minVar.discount_inr || finalPriceInr);
+    finalDiscountUsd = Number(minVar.discount_usd || finalPriceUsd);
+    finalComparePriceInr = Number(minVar.compare_price_inr || 0);
+    finalComparePriceUsd = Number(minVar.compare_price_usd || 0);
   }
 
   let parsedSpecs = null;
@@ -1774,6 +1800,8 @@ app.get('/api/products/slug/:slug', async (req, res) => {
     price_usd: finalPriceUsd,
     discount_inr: finalDiscountInr,
     discount_usd: finalDiscountUsd,
+    compare_price_inr: finalComparePriceInr,
+    compare_price_usd: finalComparePriceUsd,
     variants,
     images: imagesList,
     image_url: imagesList[0] || product.image_url || product.thumbnail || null,
@@ -1814,15 +1842,9 @@ function isSkuTaken(sku, excludeProductId = null) {
 }
 
 function generateUniqueSku(prefix = 'VLE-PROD') {
-  let counter = 101;
-  while (counter < 99999) {
-    const candidate = `${prefix}-${counter}`;
-    if (!isSkuTaken(candidate)) {
-      return candidate;
-    }
-    counter++;
-  }
-  return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
+  const randSuffix = Math.floor(100 + Math.random() * 900);
+  const timeHex = Date.now().toString(36).toUpperCase().slice(-4);
+  return `${prefix}-${timeHex}-${randSuffix}`;
 }
 
 // API: Real-time SKU Check Endpoint
@@ -1845,7 +1867,15 @@ app.post('/api/products', requireAdminAuth, async (req, res) => {
     is_best_product, seo_keywords, specs_json, images, gst_percent,
     frequently_bought_ids, related_collection_ids, related_mode
   } = req.body;
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  let baseSlug = (title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  if (!baseSlug) baseSlug = `prod-${Date.now().toString(36)}`;
+  let slug = baseSlug;
+  let slugSuffix = 1;
+  while (true) {
+    const checkSqlite = db.prepare('SELECT id FROM products WHERE slug = ?').get(slug);
+    if (!checkSqlite) break;
+    slug = `${baseSlug}-${slugSuffix++}`;
+  }
 
   // Auto-resolve SKU collisions to ensure products always save cleanly without 400 errors
   let inputSku = req.body.sku ? req.body.sku.trim().toUpperCase() : '';
@@ -1966,21 +1996,17 @@ app.post('/api/products', requireAdminAuth, async (req, res) => {
     } catch (e) {}
   }
 
-  // Direct MySQL Insert Bridge
-  await executeMySQL(`
+  // Direct MySQL Insert Bridge (creates distinct new product in MySQL)
+  const mysqlInsertRes = await executeMySQL(`
     INSERT INTO products (
-      id, title, slug, sku, barcode, status, vendor, product_type, tags,
+      title, slug, sku, barcode, status, vendor, product_type, tags,
       category_id, subcategory_id, description, price_inr, price_usd, discount_inr, discount_usd,
       compare_price_inr, compare_price_usd, cost_per_item_inr, cost_per_item_usd,
       stock, weight, hs_code, country_of_origin, is_best_product, meta_title, meta_description, seo_keywords,
       specs_json, gst_percent, frequently_bought_ids, related_collection_ids, related_mode
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      title=VALUES(title), slug=VALUES(slug), sku=VALUES(sku), status=VALUES(status),
-      price_inr=VALUES(price_inr), price_usd=VALUES(price_usd), discount_inr=VALUES(discount_inr), discount_usd=VALUES(discount_usd),
-      stock=VALUES(stock), category_id=VALUES(category_id), subcategory_id=VALUES(subcategory_id)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    productId, title, slug, sku, barcode || null, status || 'Active', vendor || 'VALUELIFE ESSENTIALS', product_type || 'Garden Supplies', cleanTags,
+    title, slug, sku, barcode || null, status || 'Active', vendor || 'VALUELIFE ESSENTIALS', product_type || 'Garden Supplies', cleanTags,
     targetCategoryId, subcategory_id || null, description || '', 
     cleanPriceInr, cleanPriceUsd, cleanDiscInr, cleanDiscUsd,
     cleanCompInr, cleanCompUsd, cleanCostInr, cleanCostUsd,
@@ -1991,9 +2017,11 @@ app.post('/api/products', requireAdminAuth, async (req, res) => {
     frequently_bought_ids || '', related_collection_ids || '', related_mode || 'PRODUCTS'
   ]);
 
+  const finalProductId = (mysqlInsertRes && mysqlInsertRes.insertId) ? mysqlInsertRes.insertId : productId;
+
   if (cleanImages.length > 0) {
     for (let i = 0; i < cleanImages.length; i++) {
-      await executeMySQL('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)', [productId, cleanImages[i], i === 0 ? 1 : 0]);
+      await executeMySQL('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)', [finalProductId, cleanImages[i], i === 0 ? 1 : 0]);
     }
   }
 
@@ -2009,17 +2037,17 @@ app.post('/api/products', requireAdminAuth, async (req, res) => {
       const vStock = v.stock !== undefined && v.stock !== '' ? Math.max(0, Number(v.stock)) : 50;
       let vImg = v.image_url || v.image || (cleanImages.length > 0 ? cleanImages[0] : null);
       if (typeof vImg === 'object' && vImg?.image_url) vImg = vImg.image_url;
-      await executeMySQL('INSERT INTO product_variants (product_id, variant_name, sku, price_inr, price_usd, discount_inr, discount_usd, stock, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [productId, vName, vSku, vPriceInr, vPriceUsd, vDiscInr, vDiscUsd, vStock, vImg || null]);
+      await executeMySQL('INSERT INTO product_variants (product_id, variant_name, sku, price_inr, price_usd, discount_inr, discount_usd, stock, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [finalProductId, vName, vSku, vPriceInr, vPriceUsd, vDiscInr, vDiscUsd, vStock, vImg || null]);
     }
   }
 
   if (Array.isArray(collection_ids) && collection_ids.length > 0) {
     for (const cId of collection_ids) {
-      await executeMySQL('INSERT INTO product_collections (product_id, collection_id) VALUES (?, ?)', [productId, Number(cId)]);
+      await executeMySQL('INSERT INTO product_collections (product_id, collection_id) VALUES (?, ?)', [finalProductId, Number(cId)]);
     }
   }
 
-  res.status(201).json({ id: productId, slug, message: 'Product created successfully' });
+  res.status(201).json({ id: finalProductId, slug, message: 'Product created successfully' });
 });
 
 // Update Product
@@ -2050,9 +2078,17 @@ app.put('/api/products/:id', requireAdminAuth, async (req, res) => {
   const finalDiscUsd = discount_usd !== undefined ? Math.max(0, Number(discount_usd)) : (price_usd !== undefined ? finalPriceUsd : existing.discount_usd);
   const finalStock = stock !== undefined && stock !== null && stock !== '' ? Math.max(0, Number(stock)) : existing.stock;
   const finalTitle = (title !== undefined && title !== null && String(title).trim() !== '') ? String(title).trim() : existing.title;
-  const finalSlug = (title !== undefined && title !== null && String(title).trim() !== '') 
+  let baseSlug = (title !== undefined && title !== null && String(title).trim() !== '') 
     ? String(title).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
     : existing.slug;
+  if (!baseSlug) baseSlug = `prod-${id}`;
+  let finalSlug = baseSlug;
+  let slugSuffix = 1;
+  while (true) {
+    const checkSqlite = db.prepare('SELECT id FROM products WHERE slug = ? AND id != ?').get(finalSlug, id);
+    if (!checkSqlite) break;
+    finalSlug = `${baseSlug}-${slugSuffix++}`;
+  }
   const finalSku = cleanReqSku || (reqSku && reqSku.trim() ? reqSku.trim().toUpperCase() : existing.sku);
   const finalCategory = category_id !== undefined ? category_id : existing.category_id;
   const finalSubcategory = subcategory_id !== undefined ? subcategory_id : existing.subcategory_id;

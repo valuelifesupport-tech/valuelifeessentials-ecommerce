@@ -21,10 +21,9 @@ export default function CatalogPage({
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('default');
 
-  // Sorting products
   const sortedProducts = [...products].sort((a, b) => {
-    const aPrice = currency === 'INR' ? (a.discount_inr || a.price_inr) : (a.discount_usd || a.price_usd);
-    const bPrice = currency === 'INR' ? (b.discount_inr || b.price_inr) : (b.discount_usd || b.price_usd);
+    const aPrice = currency === 'INR' ? (Number(a.price_inr) || Number(a.discount_inr) || 0) : (Number(a.price_usd) || Number(a.discount_usd) || 0);
+    const bPrice = currency === 'INR' ? (Number(b.price_inr) || Number(b.discount_inr) || 0) : (Number(b.price_usd) || Number(b.discount_usd) || 0);
     if (sortBy === 'low_high') return aPrice - bPrice;
     if (sortBy === 'high_low') return bPrice - aPrice;
     return b.id - a.id;

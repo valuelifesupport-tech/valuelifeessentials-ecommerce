@@ -56,6 +56,18 @@ input:focus, select:focus, textarea:focus {
   border-color: #10b981 !important;
 }
 
+/* 🚫 HIDE NUMBER INPUT SPINNER ARROWS ACROSS ALL BROWSERS & PREVENT ACCIDENTAL SCROLL CLICKS */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
 /* 🌟 PREMIUM MODERN CUSTOM SCROLLBAR SYSTEM */
 ::-webkit-scrollbar {
   width: 6px;

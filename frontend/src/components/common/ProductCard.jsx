@@ -1,6 +1,6 @@
 import { getApiUrl } from '../../api/config';
 import React from 'react';
-import { Eye, Heart, ShoppingBag } from 'lucide-react';
+import { Eye, Heart, ShoppingBag, Layers } from 'lucide-react';
 
 const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80') => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;
@@ -37,38 +37,42 @@ export default function ProductCard({
 }) {
   const p = product;
   const isINR = currency === 'INR';
-  const firstVariant = Array.isArray(p.variants) && p.variants.length > 0 ? p.variants[0] : null;
-  const pPriceInr = Number(p.price_inr || p.price || (firstVariant ? (firstVariant.price_inr || firstVariant.price) : 0)) || 0;
-  const pPriceUsd = Number(p.price_usd) || (pPriceInr > 0 ? Number((pPriceInr / 95).toFixed(2)) : (firstVariant ? Number(firstVariant.price_usd || 0) : 0));
-  const rawPrice = isINR ? pPriceInr : pPriceUsd;
-  const rawDiscount = isINR 
-    ? (p.discount_inr !== undefined && p.discount_inr !== null && Number(p.discount_inr) > 0 && Number(p.discount_inr) < rawPrice ? Number(p.discount_inr) : null)
-    : (p.discount_usd !== undefined && p.discount_usd !== null && Number(p.discount_usd) > 0 && Number(p.discount_usd) < rawPrice ? Number(p.discount_usd) : null);
-  const rawCompare = isINR
-    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : (firstVariant?.compare_price_inr ? Number(firstVariant.compare_price_inr) : null))
-    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : (firstVariant?.compare_price_usd ? Number(firstVariant.compare_price_usd) : null));
+  const variants = Array.isArray(p.variants) && p.variants.length > 0 ? p.variants : null;
+  const hasVariants = Boolean(variants && variants.length > 0);
 
-  let pPrice = rawPrice;
-  if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
-    pPrice = rawDiscount;
+  let pPrice = 0;
+  let pOriginal = 0;
+  let pct = 0;
+  let minVarPrice = null;
+  let maxVarPrice = null;
+  let hasPriceRange = false;
+
+  if (hasVariants) {
+    const activeVars = variants.filter(v => !v.status || v.status === 'active');
+    const vList = activeVars.length > 0 ? activeVars : variants;
+    const allPrices = vList.map(v => isINR ? Number(v.discount_inr || v.price_inr || v.price || 0) : Number(v.price_usd || 0)).filter(x => x > 0);
+    minVarPrice = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+    maxVarPrice = allPrices.length > 0 ? Math.max(...allPrices) : minVarPrice;
+    hasPriceRange = minVarPrice < maxVarPrice;
+    pPrice = minVarPrice;
+    const firstVar = vList[0];
+    const rawCompare = isINR ? Number(firstVar?.compare_price_inr || 0) : Number(firstVar?.compare_price_usd || 0);
+    pOriginal = rawCompare > pPrice ? rawCompare : pPrice;
+    pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+  } else {
+    const pPriceInr = Number(p.price_inr || p.price || 0);
+    const pPriceUsd = Number(p.price_usd) || (pPriceInr > 0 ? Number((pPriceInr / 95).toFixed(2)) : 0);
+    const rawPrice = isINR ? pPriceInr : pPriceUsd;
+    const rawDiscount = isINR 
+      ? (p.discount_inr !== undefined && p.discount_inr !== null && Number(p.discount_inr) > 0 && Number(p.discount_inr) < rawPrice ? Number(p.discount_inr) : null)
+      : (p.discount_usd !== undefined && p.discount_usd !== null && Number(p.discount_usd) > 0 && Number(p.discount_usd) < rawPrice ? Number(p.discount_usd) : null);
+    const rawCompare = isINR
+      ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : null)
+      : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : null);
+    pPrice = (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) ? rawDiscount : rawPrice;
+    pOriginal = (rawCompare !== null && rawCompare > pPrice) ? rawCompare : pPrice;
+    pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
   }
-
-  let pOriginal = pPrice;
-  if (rawCompare !== null && rawCompare > pPrice) {
-    pOriginal = rawCompare;
-  } else if (!rawCompare && rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
-    pOriginal = rawPrice;
-  }
-
-  const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
-
-  const allVariantPrices = Array.isArray(p.variants) && p.variants.length > 0
-    ? p.variants.map(v => isINR ? Number(v.price_inr || v.price || v.discount_inr || 0) : Number(v.price_usd || v.discount_usd || 0)).filter(pr => pr > 0)
-    : [];
-
-  const minVarPrice = allVariantPrices.length > 0 ? Math.min(...allVariantPrices) : null;
-  const maxVarPrice = allVariantPrices.length > 0 ? Math.max(...allVariantPrices) : null;
-  const hasPriceRange = minVarPrice !== null && maxVarPrice !== null && minVarPrice < maxVarPrice;
 
   // 1. LIST VIEW CARD (Horizontal 2-Column Layout matching Screenshot 2)
   if (viewMode === 'list') {
@@ -245,17 +249,27 @@ export default function ProductCard({
             </button>
             <button 
               onClick={() => onAddToCart(p)}
-              className="bg-[#3b6e14] hover:bg-[#2e5710] text-white flex-1 py-2 px-2.5 rounded-xl text-[11px] sm:text-xs font-black shadow-md transition-all text-center flex items-center justify-center gap-1 min-w-0"
+              className="bg-[#3b6e14] hover:bg-[#2e5710] text-white flex-1 py-2 px-2.5 rounded-xl text-[11px] sm:text-xs font-black shadow-md transition-all text-center flex items-center justify-center gap-1 min-w-0 cursor-pointer"
             >
-              + Add
+              {hasVariants ? 'Options' : '+ Add'}
             </button>
           </div>
         ) : (
           <button 
             onClick={() => onAddToCart(p)}
-            className="w-full bg-[#3b6e14] hover:bg-[#2e5710] text-white py-2.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all mt-2 cursor-pointer"
+            className={`w-full text-white py-2.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all mt-2 cursor-pointer ${
+              hasVariants ? 'bg-[#2d6a4f] hover:bg-[#1b4332]' : 'bg-[#3b6e14] hover:bg-[#2e5710]'
+            }`}
           >
-            <ShoppingBag size={15} /> ADD TO CART
+            {hasVariants ? (
+              <>
+                <Layers size={14} /> SELECT OPTIONS
+              </>
+            ) : (
+              <>
+                <ShoppingBag size={15} /> ADD TO CART
+              </>
+            )}
           </button>
         )}
       </div>

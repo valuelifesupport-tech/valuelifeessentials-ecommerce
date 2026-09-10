@@ -1,6 +1,6 @@
 import { getApiUrl } from '../../api/config';
 import React from 'react';
-import { Eye, Heart, ShoppingBag } from 'lucide-react';
+import { Eye, Heart, ShoppingBag, Layers } from 'lucide-react';
 
 const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80') => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;
@@ -37,27 +37,42 @@ export default function ProductCard({
 }) {
   const p = product;
   const isINR = currency === 'INR';
-  const rawPrice = isINR ? (Number(p.price_inr) || 0) : (Number(p.price_usd) || 0);
-  const rawDiscount = isINR 
-    ? (p.discount_inr !== undefined && p.discount_inr !== null && Number(p.discount_inr) > 0 && Number(p.discount_inr) < rawPrice ? Number(p.discount_inr) : null)
-    : (p.discount_usd !== undefined && p.discount_usd !== null && Number(p.discount_usd) > 0 && Number(p.discount_usd) < rawPrice ? Number(p.discount_usd) : null);
-  const rawCompare = isINR
-    ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : null)
-    : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : null);
+  const variants = Array.isArray(p.variants) && p.variants.length > 0 ? p.variants : null;
+  const hasVariants = Boolean(variants && variants.length > 0);
 
-  let pPrice = rawPrice;
-  if (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) {
-    pPrice = rawDiscount;
+  let pPrice = 0;
+  let pOriginal = 0;
+  let pct = 0;
+  let minVarPrice = null;
+  let maxVarPrice = null;
+  let hasPriceRange = false;
+
+  if (hasVariants) {
+    const activeVars = variants.filter(v => !v.status || v.status === 'active');
+    const vList = activeVars.length > 0 ? activeVars : variants;
+    const allPrices = vList.map(v => isINR ? Number(v.discount_inr || v.price_inr || v.price || 0) : Number(v.price_usd || 0)).filter(x => x > 0);
+    minVarPrice = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+    maxVarPrice = allPrices.length > 0 ? Math.max(...allPrices) : minVarPrice;
+    hasPriceRange = minVarPrice < maxVarPrice;
+    pPrice = minVarPrice;
+    const firstVar = vList[0];
+    const rawCompare = isINR ? Number(firstVar?.compare_price_inr || 0) : Number(firstVar?.compare_price_usd || 0);
+    pOriginal = rawCompare > pPrice ? rawCompare : pPrice;
+    pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+  } else {
+    const pPriceInr = Number(p.price_inr || p.price || 0);
+    const pPriceUsd = Number(p.price_usd) || (pPriceInr > 0 ? Number((pPriceInr / 95).toFixed(2)) : 0);
+    const rawPrice = isINR ? pPriceInr : pPriceUsd;
+    const rawDiscount = isINR 
+      ? (p.discount_inr !== undefined && p.discount_inr !== null && Number(p.discount_inr) > 0 && Number(p.discount_inr) < rawPrice ? Number(p.discount_inr) : null)
+      : (p.discount_usd !== undefined && p.discount_usd !== null && Number(p.discount_usd) > 0 && Number(p.discount_usd) < rawPrice ? Number(p.discount_usd) : null);
+    const rawCompare = isINR
+      ? (p.compare_price_inr !== undefined && p.compare_price_inr !== null && Number(p.compare_price_inr) > 0 ? Number(p.compare_price_inr) : null)
+      : (p.compare_price_usd !== undefined && p.compare_price_usd !== null && Number(p.compare_price_usd) > 0 ? Number(p.compare_price_usd) : null);
+    pPrice = (rawDiscount !== null && rawDiscount > 0 && rawDiscount < rawPrice) ? rawDiscount : rawPrice;
+    pOriginal = (rawCompare !== null && rawCompare > pPrice) ? rawCompare : pPrice;
+    pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
   }
-
-  let pOriginal = pPrice;
-  if (rawCompare !== null && rawCompare > pPrice) {
-    pOriginal = rawCompare;
-  } else if (rawDiscount !== null && rawDiscount > 0 && rawPrice > pPrice) {
-    pOriginal = rawPrice;
-  }
-
-  const pct = pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
 
   // 1. LIST VIEW CARD (Horizontal 2-Column Layout matching Screenshot 2)
   if (viewMode === 'list') {
@@ -98,17 +113,23 @@ export default function ProductCard({
 
             <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
               <span>★★★★★</span>
-              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
-              <span className="text-gray-400 font-medium">| {p.review_count || 56}</span>
+              <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(1)}</span>
+              <span className="text-gray-400 font-medium">| {p.review_count || 0} reviews</span>
             </div>
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice}.00</span>
-                {pOriginal > pPrice && (
-                  <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal}.00</span>
+                {hasPriceRange ? (
+                  <span className="text-base sm:text-lg font-black text-gray-900">
+                    {currencySymbol}{minVarPrice.toFixed(0)} - {currencySymbol}{maxVarPrice.toFixed(0)}
+                  </span>
+                ) : (
+                  <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice.toFixed(2)}</span>
                 )}
-                {pct > 0 && (
+                {!hasPriceRange && pOriginal > pPrice && (
+                  <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal.toFixed(2)}</span>
+                )}
+                {!hasPriceRange && pct > 0 && (
                   <span className="bg-[#4a7729] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                     -{pct}% Off
                   </span>
@@ -182,17 +203,23 @@ export default function ProductCard({
 
           <div className="star-rating text-[11px] font-bold text-amber-500 flex items-center gap-1">
             <span>★★★★★</span>
-            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 5).toFixed(2)}</span>
-            <span className="text-gray-400 font-medium">| {p.review_count || 24}</span>
+            <span className="text-gray-700 font-extrabold">{Number(p.avg_rating || 0).toFixed(1)}</span>
+            <span className="text-gray-400 font-medium">| {p.review_count || 0} reviews</span>
           </div>
 
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice}.00</span>
-              {pOriginal > pPrice && (
-                <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal}.00</span>
+              {hasPriceRange ? (
+                <span className="text-base sm:text-lg font-black text-gray-900">
+                  {currencySymbol}{minVarPrice.toFixed(0)} - {currencySymbol}{maxVarPrice.toFixed(0)}
+                </span>
+              ) : (
+                <span className="text-base sm:text-lg font-black text-gray-900">{currencySymbol} {pPrice.toFixed(2)}</span>
               )}
-              {pct > 0 && (
+              {!hasPriceRange && pOriginal > pPrice && (
+                <span className="text-xs text-gray-400 line-through font-bold">{currencySymbol} {pOriginal.toFixed(2)}</span>
+              )}
+              {!hasPriceRange && pct > 0 && (
                 <span className="bg-[#4a7729] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                   -{pct}% Off
                 </span>
@@ -222,17 +249,27 @@ export default function ProductCard({
             </button>
             <button 
               onClick={() => onAddToCart(p)}
-              className="bg-[#3b6e14] hover:bg-[#2e5710] text-white flex-1 py-2 px-2.5 rounded-xl text-[11px] sm:text-xs font-black shadow-md transition-all text-center flex items-center justify-center gap-1 min-w-0"
+              className="bg-[#3b6e14] hover:bg-[#2e5710] text-white flex-1 py-2 px-2.5 rounded-xl text-[11px] sm:text-xs font-black shadow-md transition-all text-center flex items-center justify-center gap-1 min-w-0 cursor-pointer"
             >
-              + Add
+              {hasVariants ? 'Options' : '+ Add'}
             </button>
           </div>
         ) : (
           <button 
             onClick={() => onAddToCart(p)}
-            className="w-full bg-[#3b6e14] hover:bg-[#2e5710] text-white py-2.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all mt-2 cursor-pointer"
+            className={`w-full text-white py-2.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all mt-2 cursor-pointer ${
+              hasVariants ? 'bg-[#2d6a4f] hover:bg-[#1b4332]' : 'bg-[#3b6e14] hover:bg-[#2e5710]'
+            }`}
           >
-            <ShoppingBag size={15} /> ADD TO CART
+            {hasVariants ? (
+              <>
+                <Layers size={14} /> SELECT OPTIONS
+              </>
+            ) : (
+              <>
+                <ShoppingBag size={15} /> ADD TO CART
+              </>
+            )}
           </button>
         )}
       </div>
