@@ -304,26 +304,80 @@ const db = Database ? new Database(dbPath) : {
           saveFallbackStore();
           return { lastInsertRowid: nowId, changes: 1 };
         }
-        if (s.includes('delete from product_variants where product_id =')) {
-          const [product_id] = params;
-          if (fallbackStore.product_variants) {
-            fallbackStore.product_variants = fallbackStore.product_variants.filter(v => String(v.product_id) !== String(product_id));
-            saveFallbackStore();
-          }
-          return { changes: 1 };
-        }
-        if (s.includes('delete from products where id =')) {
-          const [id] = params;
-          fallbackStore.products = fallbackStore.products.filter(p => String(p.id) !== String(id));
-          if (fallbackStore.product_collections) {
-            fallbackStore.product_collections = fallbackStore.product_collections.filter(pc => String(pc.product_id) !== String(id));
+        if (s.includes('delete from product_variants')) {
+          if (s.includes('where product_id =')) {
+            const [product_id] = params;
+            fallbackStore.product_variants = (fallbackStore.product_variants || []).filter(v => String(v.product_id) !== String(product_id));
+          } else if (s.includes('where id =')) {
+            const [id] = params;
+            fallbackStore.product_variants = (fallbackStore.product_variants || []).filter(v => String(v.id) !== String(id));
+          } else {
+            fallbackStore.product_variants = [];
           }
           saveFallbackStore();
           return { changes: 1 };
         }
-        if (s.includes('delete from categories where id =')) {
-          const [id] = params;
-          fallbackStore.categories = fallbackStore.categories.filter(c => String(c.id) !== String(id));
+        if (s.includes('delete from product_images')) {
+          fallbackStore.product_images = [];
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from product_collections')) {
+          fallbackStore.product_collections = [];
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from products')) {
+          if (s.includes('where id =')) {
+            const [id] = params;
+            fallbackStore.products = (fallbackStore.products || []).filter(p => String(p.id) !== String(id));
+            if (fallbackStore.product_collections) {
+              fallbackStore.product_collections = fallbackStore.product_collections.filter(pc => String(pc.product_id) !== String(id));
+            }
+          } else {
+            fallbackStore.products = [];
+            fallbackStore.product_collections = [];
+          }
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from subcategories')) {
+          if (s.includes('where id =')) {
+            const [id] = params;
+            fallbackStore.subcategories = (fallbackStore.subcategories || []).filter(sub => String(sub.id) !== String(id));
+          } else {
+            fallbackStore.subcategories = [];
+          }
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from collections')) {
+          if (s.includes('where id =')) {
+            const [id] = params;
+            fallbackStore.collections = (fallbackStore.collections || []).filter(c => String(c.id) !== String(id));
+          } else {
+            fallbackStore.collections = [];
+          }
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from categories')) {
+          if (s.includes('where id =')) {
+            const [id] = params;
+            fallbackStore.categories = (fallbackStore.categories || []).filter(c => String(c.id) !== String(id));
+          } else {
+            fallbackStore.categories = [];
+          }
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from product_filter_options')) {
+          fallbackStore.product_filter_options = [];
+          saveFallbackStore();
+          return { changes: 1 };
+        }
+        if (s.includes('delete from product_filter_groups')) {
+          fallbackStore.product_filter_groups = [];
           saveFallbackStore();
           return { changes: 1 };
         }

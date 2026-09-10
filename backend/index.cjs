@@ -842,7 +842,7 @@ app.get(['/api/categories', '/api/categories/tree'], async (req, res) => {
   const categories = await executeMySQL('SELECT * FROM categories ORDER BY id ASC');
   const subcategories = await executeMySQL('SELECT * FROM subcategories ORDER BY id ASC');
   
-  if (Array.isArray(categories) && categories.length > 0) {
+  if (Array.isArray(categories)) {
     const result = categories.map(cat => ({
       ...cat,
       subcategories: (Array.isArray(subcategories) ? subcategories : []).filter(sub => String(sub.category_id) === String(cat.id) || sub.category_id == cat.id)
@@ -852,9 +852,9 @@ app.get(['/api/categories', '/api/categories/tree'], async (req, res) => {
 
   const fallbackCats = db.prepare('SELECT * FROM categories ORDER BY id ASC').all();
   const fallbackSubs = db.prepare('SELECT * FROM subcategories ORDER BY id ASC').all();
-  const result = fallbackCats.map(cat => ({
+  const result = (Array.isArray(fallbackCats) ? fallbackCats : []).map(cat => ({
     ...cat,
-    subcategories: fallbackSubs.filter(sub => String(sub.category_id) === String(cat.id) || sub.category_id == cat.id)
+    subcategories: (Array.isArray(fallbackSubs) ? fallbackSubs : []).filter(sub => String(sub.category_id) === String(cat.id) || sub.category_id == cat.id)
   }));
   res.json(result);
 });
@@ -997,15 +997,33 @@ app.delete('/api/subcategories/:id', async (req, res) => {
 });
 
 // API 5: Collections API
-app.get('/api/collections', (req, res) => {
-  const collections = db.prepare(`
+app.get('/api/collections', async (req, res) => {
+  let collections = await executeMySQL(`
     SELECT col.*, c.name as category_name, c.slug as category_slug
     FROM collections col
     LEFT JOIN categories c ON col.category_id = c.id
     ORDER BY col.id DESC
-  `).all();
+  `);
 
-  const allProds = db.prepare('SELECT id, is_best_product, price_inr, discount_inr, price_usd, discount_usd FROM products').all();
+  let allProds = await executeMySQL('SELECT id, is_best_product, price_inr, discount_inr, price_usd, discount_usd FROM products');
+
+  if (!Array.isArray(collections)) {
+    try {
+      collections = db.prepare(`
+        SELECT col.*, c.name as category_name, c.slug as category_slug
+        FROM collections col
+        LEFT JOIN categories c ON col.category_id = c.id
+        ORDER BY col.id DESC
+      `).all();
+    } catch (e) { collections = []; }
+  }
+
+  if (!Array.isArray(allProds)) {
+    try {
+      allProds = db.prepare('SELECT id, is_best_product, price_inr, discount_inr, price_usd, discount_usd FROM products').all();
+    } catch (e) { allProds = []; }
+  }
+
   const validProdList = Array.isArray(allProds) ? allProds : [];
   const validProdSet = new Set(validProdList.map(p => String(p.id)));
 
@@ -1305,8 +1323,8 @@ app.get('/api/products', async (req, res) => {
   let allVariants = await executeMySQL('SELECT * FROM product_variants ORDER BY id ASC');
   let allColLinks = await executeMySQL('SELECT product_id, collection_id FROM product_collections');
 
-  // ── FALLBACK TO SQLITE ──
-  if (!Array.isArray(products) || products.length === 0) {
+  // ── FALLBACK TO SQLITE (ONLY IF MYSQL QUERY FAILED) ──
+  if (!Array.isArray(products)) {
     try {
       products = db.prepare(sqliteQuery).all(...sqliteParams);
     } catch (e) { products = []; }
