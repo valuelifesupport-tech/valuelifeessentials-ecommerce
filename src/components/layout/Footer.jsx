@@ -58,11 +58,11 @@ export default function Footer({ settings, categories = [], navigateTo }) {
                 <YoutubeIcon size={14} />
               </a>
               <a
-                href={`https://wa.me/${(settings?.whatsapp_number || '919876543210').replace(/[^\d]/g, '')}`}
+                href={`https://wa.me/${(settings?.whatsapp_number || '917675941899').replace(/[^\d]/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-emerald-400 hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
-                title="WhatsApp"
+                title="WhatsApp Support: 7675941899"
               >
                 <WhatsAppIcon size={14} />
               </a>
@@ -183,16 +183,21 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               Contact Us
             </h4>
             <ul className="space-y-2.5 text-emerald-200/80 font-medium">
-              <li className="flex items-center gap-2">
-                <Phone size={13} className="text-emerald-400 shrink-0" />
-                <a href="tel:+919876543210" className="hover:text-white transition-colors">
-                  +91 98765 43210
-                </a>
+              <li className="flex items-start gap-2">
+                <Phone size={13} className="text-emerald-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <a href="tel:+917675941899" className="hover:text-white transition-colors block font-semibold">
+                    +91 76759 41899
+                  </a>
+                  <a href="tel:+917893100755" className="hover:text-white transition-colors block font-semibold">
+                    +91 78931 00755
+                  </a>
+                </div>
               </li>
               <li className="flex items-center gap-2">
                 <Mail size={13} className="text-emerald-400 shrink-0" />
-                <a href="mailto:support@valuelife.in" className="hover:text-white transition-colors">
-                  support@valuelife.in
+                <a href="mailto:valuelifesupport@gmail.com" className="hover:text-white transition-colors">
+                  {settings?.contact_email || 'valuelifesupport@gmail.com'}
                 </a>
               </li>
               <li className="flex items-center gap-2">
@@ -211,19 +216,19 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               100% Secure 256-Bit Encrypted Payments
             </p>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="bg-white text-gray-900 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+              <span className="bg-white text-[#003366] font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
                 VISA
               </span>
-              <span className="bg-white text-gray-900 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+              <span className="bg-white text-gray-900 font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
                 MasterCard
               </span>
-              <span className="bg-white text-emerald-700 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+              <span className="bg-white text-[#008060] font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
                 UPI
               </span>
-              <span className="bg-white text-blue-700 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+              <span className="bg-white text-[#005b9f] font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
                 RuPay
               </span>
-              <span className="bg-white text-gray-900 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+              <span className="bg-white text-gray-900 font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
                 NetBanking
               </span>
             </div>

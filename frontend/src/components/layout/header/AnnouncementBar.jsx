@@ -38,13 +38,13 @@ export default function AnnouncementBar({
         {/* Right Info: Phone & Currency Switcher */}
         <div className="flex items-center gap-3 shrink-0 text-emerald-100 font-medium">
           <a
-            href="tel:+919876543210"
+            href="tel:+917675941899"
             className="flex items-center gap-1.5 hover:text-emerald-300 transition-colors shrink-0"
-            title="Customer Support Hotline"
+            title="Customer Support: 7675941899 / 7893100755"
             data-reticle-target="topbar-phone-link"
           >
             <Phone size={12} className="text-emerald-400" />
-            <span className="font-semibold">+91 98765 43210</span>
+            <span className="font-semibold">{settings?.contact_phone || '+91 76759 41899 / 78931 00755'}</span>
           </a>
 
           {/* Currency Switcher */}

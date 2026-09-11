@@ -216,34 +216,7 @@ export default function NavMegaMenu({
             )}
           </div>
 
-          {/* 2. OFFERS LINK */}
-          <button 
-            type="button" 
-            onClick={() => onSelectOffers ? onSelectOffers() : navigateTo('/offers', { view: 'offers' })} 
-            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
-          >
-            <span>🔥 Offers</span>
-          </button>
-
-          {/* 3. BEST SELLERS LINK */}
-          <button 
-            type="button" 
-            onClick={() => onSelectBestSellers ? onSelectBestSellers() : navigateTo('/bestsellers', { view: 'bestsellers' })} 
-            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
-          >
-            <span>⭐ Best Sellers</span>
-          </button>
-
-          {/* 4. NEW ARRIVALS LINK */}
-          <button 
-            type="button" 
-            onClick={() => onSelectNewArrivals ? onSelectNewArrivals() : navigateTo('/new-arrivals', { view: 'new_arrivals' })} 
-            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
-          >
-            <span>✨ New Arrivals</span>
-          </button>
-
-          {/* 5. COLLECTIONS DROPDOWN (IF ANY) */}
+          {/* 2. COLLECTIONS DROPDOWN (DIRECTLY AFTER SHOP CATALOG) */}
           {dropdownColls.length > 0 && (
             <div className="relative py-1">
               <button 
@@ -284,6 +257,33 @@ export default function NavMegaMenu({
             </div>
           )}
 
+          {/* 3. OFFERS LINK */}
+          <button 
+            type="button" 
+            onClick={() => onSelectOffers ? onSelectOffers() : navigateTo('/offers', { view: 'offers' })} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+          >
+            <span>🔥 Offers</span>
+          </button>
+
+          {/* 4. BEST SELLERS LINK */}
+          <button 
+            type="button" 
+            onClick={() => onSelectBestSellers ? onSelectBestSellers() : navigateTo('/bestsellers', { view: 'bestsellers' })} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+          >
+            <span>⭐ Best Sellers</span>
+          </button>
+
+          {/* 5. NEW ARRIVALS LINK */}
+          <button 
+            type="button" 
+            onClick={() => onSelectNewArrivals ? onSelectNewArrivals() : navigateTo('/new-arrivals', { view: 'new_arrivals' })} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+          >
+            <span>✨ New Arrivals</span>
+          </button>
+
           {/* 6. DYNAMIC NAVBAR COLLECTIONS */}
           {customNavColls.map(navCol => (
             <button 
@@ -309,7 +309,7 @@ export default function NavMegaMenu({
           {/* 8. CONTACT */}
           <button 
             type="button"
-            onClick={() => onOpenPage ? onOpenPage('contact-us') : (navigateTo ? navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' }) : null)}
+            onClick={() => onOpenPage ? onOpenPage('contact-us') : (navigateTo ? navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' }) : alert("Contact ValueLife Essentials Support:\n📧 valuelifesupport@gmail.com\n📞 +91 76759 41899 / +91 78931 00755\n🌐 valuelifeessentials.com"))}
             className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer text-xs"
             data-reticle-target="nav-contact-btn"
           >
