@@ -1,24 +1,69 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
 
 export default function CategorySlider({ categories = [], navigateTo, sectionTitle, sectionsConfig }) {
   if (sectionsConfig && Number(sectionsConfig.show_categories_slider) === 0) return null;
   const scrollRef = useRef(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const resumeTimeoutRef = useRef(null);
 
   // Real database categories only
   const displayCategories = categories || [];
   if (displayCategories.length === 0) return null;
 
-  const scrollRight = () => {
-    if (scrollRef.current) scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-  };
-  const scrollLeft = () => {
-    if (scrollRef.current) scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+  // Auto-scroll loop effect
+  useEffect(() => {
+    if (isPaused || displayCategories.length <= 3) return;
+
+    const interval = setInterval(() => {
+      if (!scrollRef.current) return;
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      
+      // If reached the end, smoothly scroll back to beginning
+      if (scrollLeft + clientWidth >= scrollWidth - 25) {
+        scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        // Scroll forward by one card step
+        scrollRef.current.scrollBy({ left: 240, behavior: 'smooth' });
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isPaused, displayCategories.length]);
+
+  const handleManualScroll = (direction) => {
+    setIsPaused(true);
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -280 : 280,
+        behavior: 'smooth'
+      });
+    }
+
+    // Resume auto-slide after 4 seconds of inactivity
+    resumeTimeoutRef.current = setTimeout(() => {
+      setIsPaused(false);
+    }, 4000);
   };
 
+  useEffect(() => {
+    return () => {
+      if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    };
+  }, []);
+
   return (
-    <section className="py-12 bg-[#faf9f6]" data-reticle-target="category-slider-section">
+    <section 
+      className="py-12 bg-[#faf9f6]" 
+      data-reticle-target="category-slider-section"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -35,7 +80,7 @@ export default function CategorySlider({ categories = [], navigateTo, sectionTit
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={scrollLeft}
+              onClick={() => handleManualScroll('left')}
               className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-xs flex items-center justify-center text-gray-600 hover:bg-[#164e3f] hover:text-white transition-all cursor-pointer"
               aria-label="Scroll left"
             >
@@ -43,7 +88,7 @@ export default function CategorySlider({ categories = [], navigateTo, sectionTit
             </button>
             <button
               type="button"
-              onClick={scrollRight}
+              onClick={() => handleManualScroll('right')}
               className="w-9 h-9 rounded-full bg-[#164e3f] text-white shadow-md flex items-center justify-center hover:bg-[#0f382d] transition-all cursor-pointer"
               aria-label="Scroll right"
             >

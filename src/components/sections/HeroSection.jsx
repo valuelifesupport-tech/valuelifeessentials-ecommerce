@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, Leaf, Shield, HeartHandshake, Award } from 'lucide-react';
 
 export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) {
   if (sectionsConfig && Number(sectionsConfig.show_hero) === 0) return null;
 
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const slides = [
     {
@@ -31,6 +32,15 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
     }
   ];
 
+  // Auto-slide effect every 4.5 seconds
+  useEffect(() => {
+    if (isPaused || slides.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % slides.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [isPaused, slides.length]);
+
   const currentSlide = slides[activeSlide] || slides[0];
 
   const handleCta = () => {
@@ -38,7 +48,12 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
   };
 
   return (
-    <section className="relative bg-[#fbf9f5] border-b border-gray-200/70 overflow-hidden" data-reticle-target="hero-section">
+    <section 
+      className="relative bg-[#fbf9f5] border-b border-gray-200/70 overflow-hidden" 
+      data-reticle-target="hero-section"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       {/* Background Soft Natural Lighting Accents */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 right-1/4 w-96 h-96 bg-amber-100/30 rounded-full blur-3xl pointer-events-none" />
