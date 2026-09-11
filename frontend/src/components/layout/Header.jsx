@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Heart, Menu, X, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShoppingBag, User, Menu, X, ChevronDown, Search } from 'lucide-react';
 import AnnouncementBar from './header/AnnouncementBar';
-import SearchForm from './header/SearchForm';
-import NavMegaMenu from './header/NavMegaMenu';
 import MobileNavMenu from './header/MobileNavMenu';
 
 export default function Header({ 
@@ -13,37 +11,45 @@ export default function Header({
   wishlistCount, 
   onOpenCart, 
   onOpenWishlist, 
-  currentUser,
-  onOpenAuth,
+  currentUser, 
+  onOpenAuth, 
   categories = [], 
-  collections = [],
-  onSelectCategory,
-  onSelectCollection,
-  onSelectAllProducts,
-  onSelectOffers,
-  onSelectBestSellers,
-  onSelectNewArrivals,
-  navigateTo,
-  searchQuery,
-  setSearchQuery,
-  onSearchSubmit,
-  onGoHome,
-  onOpenPage,
-  settings = { enable_multi_currency: 0 },
-  sectionsConfig,
-  showToast
+  collections = [], 
+  onSelectCategory, 
+  onSelectCollection, 
+  onSelectAllProducts, 
+  navigateTo, 
+  searchQuery, 
+  setSearchQuery, 
+  onSearchSubmit, 
+  onGoHome, 
+  onOpenPage, 
+  settings = { enable_multi_currency: 0 }, 
+  sectionsConfig, 
+  showToast 
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
-    if (settings && Number(settings.enable_multi_currency) === 0 && currency !== 'INR') {
-      setCurrency('INR');
-    }
-  }, [settings, currency, setCurrency]);
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (onSearchSubmit) onSearchSubmit(searchQuery);
+  };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200" data-reticle-target="main-header">
-      {/* 1. TOP ANNOUNCEMENT BAR */}
+    <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-150" data-reticle-target="main-header">
+      {/* 1. TOP INFO BAR */}
       <AnnouncementBar
         sectionsConfig={sectionsConfig}
         settings={settings}
@@ -52,11 +58,13 @@ export default function Header({
         showToast={showToast}
       />
 
-      {/* 2. MAIN HEADER BAR */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-6 overflow-hidden">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* 2. MAIN NAVIGATION BAR (MATCHING VALUELIFE DESIGN MOCKUP) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+        {/* Left: Mobile Menu Toggle & Logo */}
+        <div className="flex items-center gap-3">
           <button 
-            className="md:hidden p-1 text-gray-700 hover:bg-gray-100 rounded-lg flex-shrink-0 cursor-pointer" 
+            type="button"
+            className="lg:hidden p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer" 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             data-reticle-target="mobile-menu-toggle-btn"
           >
@@ -66,95 +74,189 @@ export default function Header({
           <a 
             href="#" 
             onClick={(e) => { e.preventDefault(); onGoHome(); }} 
-            className="flex items-center gap-2.5 group min-w-0"
+            className="flex items-center gap-2 group"
             data-reticle-target="header-logo-link"
           >
             <img 
               src="/valuelife_logo.png" 
-              alt="ValueLife Essentials Logo" 
-              className="h-9 sm:h-11 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform" 
+              alt="ValueLife" 
+              className="h-9 sm:h-10 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform" 
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <div className="min-w-0">
-              <span className="font-black text-base sm:text-xl tracking-tight text-[#2d6a4f] block leading-none font-['Outfit'] truncate uppercase">
-                VALUELIFE <span className="text-[#800000]">ESSENTIALS</span>
-              </span>
-              <span className="text-[9px] sm:text-[10px] text-emerald-800 font-extrabold tracking-wider uppercase block mt-0.5 truncate hidden xs:block font-mono">
-                valuelifeessentials.com
+            <div>
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-[#164e3f] font-['Outfit'] uppercase">
+                  Value<span className="text-[#2d6a4f] font-medium">Life</span>
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-800/80 font-semibold tracking-wider block mt-0.5 font-sans">
+                Better Choices, Better Life.
               </span>
             </div>
           </a>
         </div>
 
-        {/* SEARCH FORM */}
-        <SearchForm
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onSearchSubmit={onSearchSubmit}
-        />
+        {/* Center: Desktop Navigation Links */}
+        <nav className="hidden lg:flex items-center gap-7 text-[13px] font-semibold text-gray-800">
+          <button
+            type="button"
+            onClick={onGoHome}
+            className="text-[#164e3f] font-bold hover:text-emerald-700 transition-colors cursor-pointer"
+          >
+            Home
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectAllProducts ? onSelectAllProducts() : navigateTo('/products', { view: 'all_products' })}
+            className="hover:text-[#164e3f] transition-colors cursor-pointer"
+          >
+            Shop
+          </button>
 
-        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-          {/* CUSTOMER USER ACCOUNT BUTTON */}
+          {/* Categories Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+              className="flex items-center gap-1 hover:text-[#164e3f] transition-colors cursor-pointer"
+            >
+              <span>Categories</span>
+              <ChevronDown size={14} className={`transition-transform duration-200 ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {categoryDropdownOpen && (
+              <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-3 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-4 pb-2 border-b border-gray-100">
+                  <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-widest">
+                    All Categories
+                  </span>
+                </div>
+                <div className="max-h-80 overflow-y-auto py-1">
+                  {(categories || []).map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setCategoryDropdownOpen(false);
+                        if (onSelectCategory) onSelectCategory(cat.slug || cat.id);
+                        else navigateTo(`/category/${cat.slug || cat.id}`, { view: 'catalog', category: cat.slug });
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-gray-700 hover:bg-emerald-50 hover:text-[#164e3f] transition-colors flex items-center justify-between"
+                    >
+                      <span>{cat.name}</span>
+                      {cat.subcategories && cat.subcategories.length > 0 && (
+                        <span className="text-[10px] text-gray-400">({cat.subcategories.length})</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="pt-2 px-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryDropdownOpen(false);
+                      if (onSelectAllProducts) onSelectAllProducts();
+                      else navigateTo('/products', { view: 'all_products' });
+                    }}
+                    className="w-full text-center text-xs font-bold text-emerald-700 hover:underline py-1"
+                  >
+                    View All Categories →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onOpenPage ? onOpenPage('about-us') : navigateTo('/pages/about-us', { view: 'page', slug: 'about-us' })}
+            className="hover:text-[#164e3f] transition-colors cursor-pointer"
+          >
+            About Us
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenPage ? onOpenPage('contact-us') : navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' })}
+            className="hover:text-[#164e3f] transition-colors cursor-pointer"
+          >
+            Contact
+          </button>
+        </nav>
+
+        {/* Right: Search, Account & Cart */}
+        <div className="flex items-center gap-3 sm:gap-5 flex-1 max-w-md justify-end">
+          {/* Search Pill Input */}
+          <form 
+            onSubmit={handleSearch}
+            className="relative hidden sm:flex flex-1 max-w-xs"
+            data-reticle-target="header-search-form"
+          >
+            <input 
+              type="text" 
+              placeholder="Search for products..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#f4f7f5] hover:bg-[#eef3f0] focus:bg-white border border-gray-200 rounded-full py-2 pl-4 pr-10 text-xs font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#164e3f] focus:ring-2 focus:ring-[#164e3f]/15 transition-all"
+              data-reticle-target="header-search-input"
+            />
+            <button
+              type="submit"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#164e3f] transition-colors"
+              title="Search"
+            >
+              <Search size={15} />
+            </button>
+          </form>
+
+          {/* Account Button */}
           <button 
+            type="button"
             onClick={onOpenAuth}
-            className="p-2 sm:p-2.5 rounded-full hover:bg-gray-100 text-gray-700 transition-all flex items-center justify-center border border-gray-200 shadow-sm cursor-pointer"
-            title={currentUser ? `My Account (${currentUser.name})` : "Customer Sign In / Login"}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-[#164e3f] transition-colors cursor-pointer"
+            title={currentUser ? `Logged in as ${currentUser.name}` : "Sign In / Register"}
             data-reticle-target="header-user-btn"
           >
-            {currentUser ? (
-              <span className="w-5 h-5 rounded-full bg-[#3b6e14] text-white text-[11px] font-black flex items-center justify-center font-mono">
-                {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-              </span>
-            ) : (
-              <User size={18} />
-            )}
+            <User size={18} className="text-gray-600" />
+            <span className="hidden md:inline">Account</span>
           </button>
 
-          {/* WISHLIST BUTTON */}
+          {/* Cart Button */}
           <button 
-            onClick={onOpenWishlist}
-            className="relative p-2 sm:p-2.5 rounded-full hover:bg-gray-100 text-gray-700 transition-colors hidden sm:flex items-center justify-center border border-gray-200 cursor-pointer"
-            title="Wishlist"
-            data-reticle-target="header-wishlist-btn"
-          >
-            <Heart size={20} />
-            {wishlistCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {wishlistCount}
-              </span>
-            )}
-          </button>
-
-          {/* CART BUTTON */}
-          <button 
+            type="button"
             onClick={onOpenCart}
-            className="bg-[#2d6a4f] text-white px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-full flex items-center gap-1.5 sm:gap-2 shadow-md hover:bg-[#1b4332] transition-all font-bold text-xs cursor-pointer"
+            className="flex items-center gap-2 bg-[#164e3f] hover:bg-[#0f382c] text-white px-3.5 py-2 rounded-full transition-all shadow-sm font-semibold text-xs cursor-pointer group"
             data-reticle-target="header-cart-btn"
           >
-            <ShoppingBag size={16} className="sm:w-[18px] sm:h-[18px]" />
-            <span className="hidden sm:inline">Cart</span>
-            <span className="bg-[#52b788] text-[#1b4332] text-[10px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-full">
-              {cartCount}
-            </span>
+            <div className="relative">
+              <ShoppingBag size={16} />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-amber-400 text-gray-900 font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span>Cart</span>
           </button>
         </div>
       </div>
 
-      {/* 3. MEGA MENU NAVIGATION BAR */}
-      <NavMegaMenu
-        categories={categories}
-        collections={collections}
-        onGoHome={onGoHome}
-        onSelectCategory={onSelectCategory}
-        onSelectCollection={onSelectCollection}
-        onSelectAllProducts={onSelectAllProducts}
-        onSelectOffers={onSelectOffers}
-        onSelectBestSellers={onSelectBestSellers}
-        onSelectNewArrivals={onSelectNewArrivals}
-        navigateTo={navigateTo}
-        onOpenPage={onOpenPage}
-      />
+      {/* Mobile Search Bar for small devices */}
+      <div className="sm:hidden px-4 pb-3">
+        <form onSubmit={handleSearch} className="relative w-full">
+          <input 
+            type="text" 
+            placeholder="Search for products..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#f4f7f5] border border-gray-200 rounded-full py-2 pl-4 pr-10 text-xs font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#164e3f]"
+          />
+          <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <Search size={15} />
+          </button>
+        </form>
+      </div>
 
-      {/* 4. MOBILE DRAWER MENU */}
+      {/* Mobile Drawer Menu */}
       <MobileNavMenu
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}

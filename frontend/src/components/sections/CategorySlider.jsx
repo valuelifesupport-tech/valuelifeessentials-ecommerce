@@ -1,155 +1,150 @@
-import { getApiUrl } from '../../api/config';
-import React, { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useRef } from 'react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { resolveImgUrl } from '../../api/config';
 
-const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80') => {
-  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
-  let clean = url.trim();
-
-  if (clean.startsWith('data:')) return clean;
-
-  if (clean.includes('/uploads/')) {
-    const filename = clean.split('/uploads/').pop();
-    return getApiUrl(`/api/media/file/${filename}`);
-  }
-
-  if (clean.includes('/images/')) {
-    const relative = clean.split('/images/').pop();
-    return `/images/${relative}`;
-  }
-
-  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
-
-  const path = clean.startsWith('/') ? clean : `/${clean}`;
-  return getApiUrl(path);
-};
-
-export default function CategorySlider({ categories, navigateTo, sectionTitle, sectionsConfig }) {
+export default function CategorySlider({ categories = [], navigateTo, sectionTitle, sectionsConfig }) {
   if (sectionsConfig && Number(sectionsConfig.show_categories_slider) === 0) return null;
   const scrollRef = useRef(null);
-  const [activeIndex, setActiveIndex] = useState(0);
 
-  const handleScroll = () => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    const maxScroll = scrollWidth - clientWidth;
-    if (maxScroll <= 0) return;
-    const progress = Math.min(1, Math.max(0, scrollLeft / maxScroll));
-    const dotIndex = Math.min(2, Math.floor(progress * 3));
-    setActiveIndex(dotIndex);
-  };
+  // Fallback curated categories if empty or to ensure high quality visual presentation
+  const fallbackCategories = [
+    {
+      id: 'cat-grocery',
+      name: 'Grocery & Staples',
+      slug: 'cereals-flours-and-food-starches',
+      image_url: 'https://images.unsplash.com/photo-1574316071802-0d684efa7bf5?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 'cat-health',
+      name: 'Health & Wellness',
+      slug: 'edible-seeds',
+      image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 'cat-herbs',
+      name: 'Herbs & Teas',
+      slug: 'herbs-teas',
+      image_url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 'cat-personal',
+      name: 'Personal Care',
+      slug: 'other-home-essentials',
+      image_url: 'https://images.unsplash.com/photo-1608248597359-bb51cb7e44be?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 'cat-spices',
+      name: 'Spices & Seasoning',
+      slug: 'spices-seasoning',
+      image_url: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=400&q=80'
+    },
+    {
+      id: 'cat-home',
+      name: 'Home & Living',
+      slug: 'other-home-essentials',
+      image_url: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=400&q=80'
+    }
+  ];
 
-  const scroll = (direction) => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    const maxScroll = scrollWidth - clientWidth;
+  // Merge database categories with visual images
+  const displayCategories = (categories && categories.length > 0)
+    ? categories.map((cat, idx) => ({
+        ...cat,
+        image_url: cat.image_url || fallbackCategories[idx % fallbackCategories.length].image_url
+      }))
+    : fallbackCategories;
 
-    if (direction === 'right') {
-      if (scrollLeft + 15 >= maxScroll) {
-        scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-      } else {
-        scrollRef.current.scrollBy({ left: 320, behavior: 'smooth' });
-      }
-    } else {
-      if (scrollLeft <= 15) {
-        scrollRef.current.scrollTo({ left: maxScroll, behavior: 'smooth' });
-      } else {
-        scrollRef.current.scrollBy({ left: -320, behavior: 'smooth' });
-      }
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
     }
   };
 
-  useEffect(() => {
-    if (!categories || categories.length === 0) return;
-    const autoScrollTimer = setInterval(() => {
-      scroll('right');
-    }, 3500);
-    return () => clearInterval(autoScrollTimer);
-  }, [categories]);
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
 
-  if (!categories || categories.length === 0) return null;
+  const handleCategoryClick = (cat) => {
+    if (navigateTo) {
+      navigateTo(`/category/${cat.slug || cat.id}`, { view: 'catalog', slug: null, category: cat.slug || cat.id, collection: null });
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 relative group/slider">
-      {/* SECTION TITLE & HEADER (Matching Screenshot 1) */}
-      <div className="text-center space-y-1">
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight font-['Outfit']">
-          {sectionTitle || 'Shop By Categories'}
-        </h2>
-        <div className="w-16 h-1 bg-emerald-700 mx-auto rounded-full opacity-80" />
-      </div>
+    <section className="py-12 bg-white" data-reticle-target="category-slider-section">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-950">
+              {sectionTitle || 'Shop by Category'}
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Explore our wide range of pure organic and natural essentials
+            </p>
+          </div>
 
-      {/* SLIDER CONTAINER WITH FLOATING ARROWS */}
-      <div className="relative">
-        {/* LEFT NAV ARROW */}
-        <button
-          type="button"
-          onClick={() => scroll('left')}
-          className="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white text-gray-800 shadow-xl border border-gray-200 flex items-center justify-center hover:bg-[#1b4332] hover:text-white transition-all cursor-pointer hover:scale-110 active:scale-95"
-          aria-label="Previous Categories"
-        >
-          <ChevronLeft size={20} />
-        </button>
-
-        {/* HORIZONTAL SWIPEABLE CAROUSEL */}
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex gap-4 sm:gap-8 overflow-x-auto scrollbar-none snap-x snap-mandatory py-4 px-2 scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              onClick={() => navigateTo(`/category/${cat.slug}`, { view: 'catalog', slug: null, category: cat.slug, collection: null })}
-              className="shrink-0 snap-center flex flex-col items-center cursor-pointer group w-32 sm:w-44 text-center transition-transform hover:-translate-y-1"
+          {/* Navigation Arrow */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={scrollLeft}
+              className="w-10 h-10 rounded-full border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-900 flex items-center justify-center transition-colors cursor-pointer"
+              title="Previous Categories"
             >
-              {/* CIRCULAR CATEGORY IMAGE CONTAINER (Exact Screenshot 1 aesthetic) */}
-              <div className="w-28 h-28 sm:w-40 sm:h-40 rounded-full border-2 border-emerald-900/15 p-1 bg-white shadow-md group-hover:shadow-2xl group-hover:border-[#2d6a4f] transition-all duration-300 relative overflow-hidden flex items-center justify-center">
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={scrollRight}
+              className="w-10 h-10 rounded-full bg-[#164e3f] hover:bg-[#0f382c] text-white flex items-center justify-center shadow-md transition-colors cursor-pointer"
+              title="Next Categories"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Categories Cards Carousel */}
+        <div 
+          ref={scrollRef}
+          className="flex items-stretch gap-5 overflow-x-auto no-scrollbar pb-4 pt-1 scroll-smooth"
+        >
+          {displayCategories.map((cat) => (
+            <div
+              key={cat.id || cat.slug}
+              onClick={() => handleCategoryClick(cat)}
+              className="min-w-[170px] sm:min-w-[190px] max-w-[200px] flex-1 bg-white border border-gray-200/90 rounded-2xl p-4 text-center group hover:shadow-xl hover:border-emerald-500/40 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col items-center justify-between"
+              data-reticle-target={`category-card-${cat.slug}`}
+            >
+              {/* Image Circle/Container */}
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-[#faf8f5] mb-3 border border-gray-100 p-1 group-hover:scale-105 transition-transform">
                 <img
                   src={resolveImgUrl(cat.image_url)}
                   alt={cat.name}
-                  className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500"
-                  onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'; }}
+                  className="w-full h-full object-cover rounded-xl"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400&q=80';
+                  }}
                 />
-                <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors" />
               </div>
 
-              {/* CATEGORY TITLE BELOW CIRCLE */}
-              <span className="mt-3 text-xs sm:text-sm font-extrabold text-gray-900 group-hover:text-[#2d6a4f] tracking-tight font-['Outfit'] transition-colors line-clamp-1">
+              {/* Category Name */}
+              <h3 className="text-xs sm:text-sm font-bold text-gray-800 group-hover:text-[#164e3f] transition-colors leading-tight line-clamp-2">
                 {cat.name}
-              </span>
-              <span className="text-[10px] text-gray-500 font-medium group-hover:text-emerald-700">
-                Explore Items →
-              </span>
+              </h3>
+
+              {cat.subcategories && cat.subcategories.length > 0 && (
+                <span className="text-[10px] text-gray-400 mt-1 block">
+                  {cat.subcategories.length} Sub-items
+                </span>
+              )}
             </div>
           ))}
         </div>
-
-        {/* RIGHT NAV ARROW */}
-        <button
-          type="button"
-          onClick={() => scroll('right')}
-          className="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white text-gray-800 shadow-xl border border-gray-200 flex items-center justify-center hover:bg-[#1b4332] hover:text-white transition-all cursor-pointer hover:scale-110 active:scale-95"
-          aria-label="Next Categories"
-        >
-          <ChevronRight size={20} />
-        </button>
       </div>
-
-      {/* PAGINATION INDICATOR DOTS (Matching Screenshot 1) */}
-      <div className="flex justify-center items-center gap-1.5 pt-1">
-        {[0, 1, 2].map((dotIndex) => (
-          <div
-            key={dotIndex}
-            className={`transition-all duration-300 rounded-full ${
-              activeIndex === dotIndex
-                ? 'w-6 h-2 bg-[#2d6a4f]'
-                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
+    </section>
   );
 }
