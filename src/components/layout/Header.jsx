@@ -194,6 +194,7 @@ export default function Header({
         onSelectCollection={onSelectCollection}
         onSelectCategory={onSelectCategory}
         navigateTo={navigateTo}
+        onOpenPage={onOpenPage}
       />
     </header>
   );

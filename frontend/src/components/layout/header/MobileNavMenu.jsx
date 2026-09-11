@@ -10,7 +10,8 @@ export default function MobileNavMenu({
   categories = [],
   onSelectCollection,
   onSelectCategory,
-  navigateTo
+  navigateTo,
+  onOpenPage
 }) {
   if (!isOpen) return null;
 
@@ -94,6 +95,42 @@ export default function MobileNavMenu({
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="pt-2 border-t border-gray-200 space-y-1 text-xs">
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            if (onOpenPage) onOpenPage('about-us');
+            else if (navigateTo) navigateTo('/pages/about-us', { view: 'page', slug: 'about-us' });
+          }}
+          className="block w-full text-left py-1.5 text-gray-700 hover:text-emerald-700 cursor-pointer font-bold"
+        >
+          ℹ️ About Us
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            if (onOpenPage) onOpenPage('blog');
+            else if (navigateTo) navigateTo('/pages/blog', { view: 'page', slug: 'blog' });
+          }}
+          className="block w-full text-left py-1.5 text-gray-700 hover:text-emerald-700 cursor-pointer font-bold"
+        >
+          📝 Blog & Articles
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            if (onOpenPage) onOpenPage('contact-us');
+            else if (navigateTo) navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' });
+          }}
+          className="block w-full text-left py-1.5 text-gray-700 hover:text-emerald-700 cursor-pointer font-bold"
+        >
+          📞 Contact Us
+        </button>
       </div>
     </div>
   );

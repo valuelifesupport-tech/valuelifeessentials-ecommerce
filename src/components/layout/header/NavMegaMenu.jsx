@@ -107,6 +107,16 @@ export default function NavMegaMenu({
     <nav className="bg-gradient-to-r from-emerald-950 via-[#1b4332] to-emerald-950 text-white border-t border-emerald-800/60 hidden md:block shadow-md relative z-40" data-reticle-target="nav-mega-menu-bar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-6 py-2 text-xs font-bold">
         <div className="flex items-center gap-5 sm:gap-6">
+          {/* HOME LINK */}
+          <button 
+            type="button" 
+            onClick={() => onGoHome ? onGoHome() : (navigateTo ? navigateTo('/', { view: 'store', slug: null, category: null, collection: null }) : null)} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+            data-reticle-target="nav-home-btn"
+          >
+            <span>Home</span>
+          </button>
+
           {/* 1. SHOP CATALOG MEGA MENU BUTTON */}
           <div 
             ref={megaMenuRef}
@@ -306,7 +316,17 @@ export default function NavMegaMenu({
             <span>About Us</span>
           </button>
 
-          {/* 8. CONTACT */}
+          {/* 8. BLOG */}
+          <button 
+            type="button"
+            onClick={() => onOpenPage ? onOpenPage('blog') : (navigateTo ? navigateTo('/pages/blog', { view: 'page', slug: 'blog' }) : null)}
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer text-xs"
+            data-reticle-target="nav-blog-btn"
+          >
+            <span>Blog</span>
+          </button>
+
+          {/* 9. CONTACT */}
           <button 
             type="button"
             onClick={() => onOpenPage ? onOpenPage('contact-us') : (navigateTo ? navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' }) : alert("Contact ValueLife Essentials Support:\n📧 valuelifesupport@gmail.com\n📞 +91 76759 41899 / +91 78931 00755\n🌐 valuelifeessentials.com"))}
