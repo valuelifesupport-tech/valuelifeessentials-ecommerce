@@ -1,178 +1,246 @@
 import React from 'react';
+import { Phone, Mail, MapPin, Leaf } from 'lucide-react';
 import { InstagramIcon, FacebookIcon, YoutubeIcon, WhatsAppIcon } from './SocialIcons';
-import { resolveImgUrl } from '../../api/config';
 
 export default function Footer({ settings, categories = [], navigateTo }) {
-  return (
-    <footer className="bg-emerald-950 text-white text-xs border-t border-emerald-900/60 mt-auto pt-12 pb-24 md:pb-12" data-reticle-target="footer-section">
-      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <img 
-              src={resolveImgUrl(settings?.store_logo || '/valuelife_logo.png')} 
-              alt={settings?.store_name || "ValueLife Essentials Logo"} 
-              className="h-9 w-auto object-contain bg-white/90 p-1 rounded-xl shadow-md"
-              onError={(e) => { e.currentTarget.src = '/valuelife_logo.png'; }}
-            />
-            <span className="font-extrabold text-lg text-white font-['Outfit'] tracking-tight uppercase">
-              {settings?.store_name || 'VALUELIFE ESSENTIALS'}
-            </span>
-          </div>
-          <p className="text-emerald-200/80 leading-relaxed">
-            {settings?.store_description || settings?.store_tagline || 'Your 100% trusted online organic & wellness store. Supplying certified organic superfoods, seeds, pure supplements, and natural wellness products.'}
-          </p>
+  const handleNav = (path, view, slug) => {
+    if (navigateTo) {
+      navigateTo(path, { view: view || 'store', slug: slug || null });
+    }
+  };
 
-          {/* SOCIAL MEDIA ICONS BAR */}
-          <div className="pt-1 space-y-1.5">
-            <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest block">Connect & Follow Us:</span>
+  return (
+    <footer className="bg-[#0a2e22] text-white text-xs border-t border-[#124734] mt-auto" data-reticle-target="footer-section">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 mb-12">
+          
+          {/* Column 1: Brand Info & Socials */}
+          <div className="space-y-4 lg:col-span-1">
             <div className="flex items-center gap-2">
-              <a 
-                href={settings?.instagram_url || "https://instagram.com/valuelifeessentials"} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" 
-                title="Instagram"
-                data-reticle-target="footer-social-instagram"
-              >
-                <InstagramIcon size={15} />
-              </a>
-              <a 
-                href={settings?.facebook_url || "https://facebook.com/valuelifeessentials"} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" 
+              <div className="w-8 h-8 rounded-full bg-emerald-800 text-white flex items-center justify-center font-bold">
+                <Leaf size={16} />
+              </div>
+              <span className="font-extrabold text-xl text-white font-['Outfit'] tracking-tight uppercase">
+                Value<span className="text-emerald-400 font-medium">Life</span>
+              </span>
+            </div>
+            <p className="text-emerald-200/80 text-xs leading-relaxed font-sans">
+              Natural products for a healthier, happier everyday life.
+            </p>
+
+            {/* Social Icons Bar */}
+            <div className="pt-2 flex items-center gap-2.5">
+              <a
+                href={settings?.facebook_url || "https://facebook.com/valuelifeessentials"}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
                 title="Facebook"
-                data-reticle-target="footer-social-facebook"
               >
-                <FacebookIcon size={15} />
+                <FacebookIcon size={14} />
               </a>
-              <a 
-                href={settings?.youtube_url || "https://youtube.com/@valuelifeessentials"} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" 
-                title="YouTube Channel"
-                data-reticle-target="footer-social-youtube"
+              <a
+                href={settings?.instagram_url || "https://instagram.com/valuelifeessentials"}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
+                title="Instagram"
               >
-                <YoutubeIcon size={15} />
+                <InstagramIcon size={14} />
               </a>
-              <a 
-                href={`https://wa.me/${(settings?.whatsapp_number || '919876543210').replace(/[^\d]/g, '')}`} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/80 flex items-center justify-center text-emerald-200 hover:text-emerald-400 hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm" 
-                title="WhatsApp Direct Chat"
-                data-reticle-target="footer-social-whatsapp"
+              <a
+                href={settings?.youtube_url || "https://youtube.com/@valuelifeessentials"}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
+                title="YouTube"
               >
-                <WhatsAppIcon size={15} />
+                <YoutubeIcon size={14} />
+              </a>
+              <a
+                href={`https://wa.me/${(settings?.whatsapp_number || '919876543210').replace(/[^\d]/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-emerald-400 hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
+                title="WhatsApp"
+              >
+                <WhatsAppIcon size={14} />
               </a>
             </div>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">Quick Navigation</h4>
-          <ul className="space-y-1.5 text-emerald-200/80">
-            <li>
-              <button 
-                onClick={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })} 
-                className="hover:text-white transition-colors text-left cursor-pointer"
-                data-reticle-target="footer-nav-home"
-              >
-                Home Page
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })} 
-                className="hover:text-white transition-colors text-left cursor-pointer"
-                data-reticle-target="footer-nav-products"
-              >
-                All Products Catalog
-              </button>
-            </li>
-            {(categories || []).slice(0, 4).map((cat) => (
-              <li key={cat.id}>
-                <button 
-                  onClick={() => navigateTo(`/category/${cat.slug}`, { view: 'catalog', slug: null, category: cat.slug, collection: null })} 
-                  className="hover:text-white transition-colors text-left cursor-pointer truncate max-w-full block"
-                  data-reticle-target={`footer-nav-category-${cat.slug}`}
+          {/* Column 2: Quick Links */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">
+              Quick Links
+            </h4>
+            <ul className="space-y-2 text-emerald-200/80 font-medium">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/', 'store')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  {cat.name}
+                  Home
                 </button>
               </li>
-            ))}
-          </ul>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/products', 'all_products')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Shop
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/about-us', 'page', 'about-us')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  About Us
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/contact-us', 'page', 'contact-us')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Contact
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/blog', 'page', 'blog')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Blog
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: Customer Support */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">
+              Customer Support
+            </h4>
+            <ul className="space-y-2 text-emerald-200/80 font-medium">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/shipping-policy', 'page', 'shipping-policy')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Shipping Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/returns-refund', 'page', 'returns-refund')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Return & Refund
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/faq', 'page', 'faq')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  FAQ
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/track-order', 'page', 'track-order')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Track Order
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/pages/privacy-policy', 'page', 'privacy-policy')}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Privacy Policy
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4: Contact Us */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">
+              Contact Us
+            </h4>
+            <ul className="space-y-2.5 text-emerald-200/80 font-medium">
+              <li className="flex items-center gap-2">
+                <Phone size={13} className="text-emerald-400 shrink-0" />
+                <a href="tel:+919876543210" className="hover:text-white transition-colors">
+                  +91 98765 43210
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <Mail size={13} className="text-emerald-400 shrink-0" />
+                <a href="mailto:support@valuelife.in" className="hover:text-white transition-colors">
+                  support@valuelife.in
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <MapPin size={13} className="text-emerald-400 shrink-0" />
+                <span>Indore, India</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 5: We Accept */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">
+              We Accept
+            </h4>
+            <p className="text-emerald-200/70 text-[11px] mb-2">
+              100% Secure 256-Bit Encrypted Payments
+            </p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="bg-white text-gray-900 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+                VISA
+              </span>
+              <span className="bg-white text-gray-900 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+                MasterCard
+              </span>
+              <span className="bg-white text-emerald-700 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+                UPI
+              </span>
+              <span className="bg-white text-blue-700 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+                RuPay
+              </span>
+              <span className="bg-white text-gray-900 font-extrabold text-[10px] px-2 py-1 rounded shadow-sm">
+                NetBanking
+              </span>
+            </div>
+          </div>
+
         </div>
 
-        <div className="space-y-2">
-          <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">Company & Policies</h4>
-          <ul className="space-y-1.5 text-emerald-200/80">
-            <li>
-              <button 
-                onClick={() => navigateTo('/pages/about-us', { view: 'page', slug: 'about-us', category: null, collection: null })} 
-                className="hover:text-white transition-colors text-left cursor-pointer"
-                data-reticle-target="footer-nav-about"
-              >
-                About Us
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us', category: null, collection: null })} 
-                className="hover:text-white transition-colors text-left cursor-pointer"
-                data-reticle-target="footer-nav-contact"
-              >
-                Contact Us
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => navigateTo('/pages/shipping-policy', { view: 'page', slug: 'shipping-policy', category: null, collection: null })} 
-                className="hover:text-white transition-colors text-left cursor-pointer"
-                data-reticle-target="footer-nav-shipping"
-              >
-                Shipping & Delivery Policy
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => navigateTo('/pages/privacy-policy', { view: 'page', slug: 'privacy-policy', category: null, collection: null })} 
-                className="hover:text-white transition-colors text-left cursor-pointer"
-                data-reticle-target="footer-nav-privacy"
-              >
-                Privacy & Cookie Policy
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="font-extrabold text-sm text-white uppercase tracking-wider">Customer Support</h4>
-          <ul className="space-y-2 text-emerald-200/80">
-            <li className="flex items-center gap-2 font-medium">
-              <span>📞</span>
-              <span>{settings?.phone_number || settings?.support_phone || '+91 98765 43210'}</span>
-            </li>
-            <li className="flex items-center gap-2 font-medium">
-              <span>✉️</span>
-              <span>{settings?.support_email || settings?.email || 'support@valuelifeessentials.com'}</span>
-            </li>
-            <li className="flex items-center gap-2 font-medium text-[11px] text-emerald-300">
-              <span>🌐</span>
-              <span>{settings?.store_url || 'valuelifeessentials.com'}</span>
-            </li>
-          </ul>
-          <div className="pt-2">
-            <span className="inline-flex items-center gap-1.5 bg-emerald-900/80 text-emerald-200 border border-emerald-700/60 text-[10px] font-bold px-3 py-1.5 rounded-xl shadow-sm">
-              <span>🔒</span> 256-Bit SSL Encrypted & Certified
-            </span>
+        {/* Bottom Copyright Bar */}
+        <div className="pt-8 border-t border-emerald-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-emerald-300/70 text-[11px]">
+          <div>
+            © 2024 ValueLife. All rights reserved.
+          </div>
+          <div className="flex items-center gap-1.5 italic font-serif text-xs text-emerald-200">
+            <span>Good Products, Brighter Days.</span>
+            <Leaf size={12} className="text-emerald-400" />
           </div>
         </div>
-      </div>
-
-      <div className="border-t border-emerald-900/60 py-4 text-center text-[11px] text-emerald-300">
-        © 2026 ValueLife Essentials (valuelifeessentials.com). All Rights Reserved. Fully Dynamic E-Commerce System.
       </div>
     </footer>
   );

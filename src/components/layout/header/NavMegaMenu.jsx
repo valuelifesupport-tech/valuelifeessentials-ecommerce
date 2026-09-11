@@ -1,6 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Grid, ChevronDown } from 'lucide-react';
 
+// Intelligent botanical & department icon mapper for dynamic categories
+const getCategoryIcon = (cat) => {
+  if (cat?.icon && cat.icon.trim()) return cat.icon;
+  const lower = `${cat?.name || ''} ${cat?.slug || ''}`.toLowerCase();
+  if (lower.includes('herb') || lower.includes('tea')) return '🌿';
+  if (lower.includes('cereal') || lower.includes('grain') || lower.includes('rice') || lower.includes('millet')) return '🌾';
+  if (lower.includes('spice') || lower.includes('seasoning') || lower.includes('masala')) return '🌶️';
+  if (lower.includes('additive') || lower.includes('salt') || lower.includes('sugar') || lower.includes('sweetener')) return '🍯';
+  if (lower.includes('seed')) return '🌱';
+  if (lower.includes('flour') || lower.includes('starch')) return '🥣';
+  if (lower.includes('pulse') || lower.includes('lentil') || lower.includes('legume')) return '🫘';
+  if (lower.includes('skin') || lower.includes('beauty') || lower.includes('treatment')) return '🌸';
+  if (lower.includes('hair')) return '💇‍♀️';
+  if (lower.includes('food') || lower.includes('nutrition')) return '🥗';
+  if (lower.includes('grocery')) return '🛒';
+  if (lower.includes('home') || lower.includes('care') || lower.includes('essential')) return '✨';
+  return '🌿';
+};
+
 export default function NavMegaMenu({
   categories = [],
   collections = [],
@@ -18,19 +37,51 @@ export default function NavMegaMenu({
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [collectionsDropdown, setCollectionsDropdown] = useState(false);
   const megaMenuRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setActiveCategoryDropdown('MEGA_MENU');
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setActiveCategoryDropdown(null);
+    }, 250);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (megaMenuRef.current && !megaMenuRef.current.contains(event.target)) {
         setIsMegaMenuOpen(false);
+        setActiveCategoryDropdown(null);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMegaMenuOpen(false);
+        setActiveCategoryDropdown(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
   }, []);
 
   const dropdownColls = collections ? collections.filter(c => !(c.show_in_navbar === 1 || c.show_in_navbar === true || String(c.show_in_navbar) === '1')) : [];
   const activeNavColls = collections ? collections.filter(c => c.show_in_navbar === 1 || c.show_in_navbar === true || String(c.show_in_navbar) === '1') : [];
+
+  // Avoid duplicating standard Offers, Best Sellers, and New Arrivals
+  const standardSlugs = ['offer', 'bestseller', 'best-seller', 'newarrival', 'new-arrival'];
+  const customNavColls = activeNavColls.filter(col => {
+    const slug = (col.slug || '').toLowerCase().replace(/[^a-z]/g, '');
+    const name = (col.name || '').toLowerCase().replace(/[^a-z]/g, '');
+    return !standardSlugs.some(s => slug.includes(s) || name.includes(s));
+  });
 
   const handleCollectionRoute = (col) => {
     const lowerSlug = String(col.slug || '').toLowerCase();
@@ -50,93 +101,111 @@ export default function NavMegaMenu({
     }
   };
 
-  return (
-    <nav className="bg-gradient-to-r from-emerald-950 via-[#1b4332] to-emerald-950 text-white border-t border-emerald-800/60 hidden md:block shadow-md relative" data-reticle-target="nav-mega-menu-bar">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-6 py-2.5 text-xs font-bold">
-        <div className="flex items-center gap-6">
-          {/* 1. HOME LINK */}
-          <button 
-            onClick={onGoHome}
-            className="hover:text-emerald-300 text-white font-extrabold transition-colors flex items-center gap-1.5 text-sm cursor-pointer"
-            data-reticle-target="nav-home-btn"
-          >
-            <span>Home</span>
-          </button>
+  const isMenuVisible = isMegaMenuOpen || activeCategoryDropdown === 'MEGA_MENU';
 
-          {/* 2. SHOP MEGA MENU BUTTON */}
+  return (
+    <nav className="bg-gradient-to-r from-emerald-950 via-[#1b4332] to-emerald-950 text-white border-t border-emerald-800/60 hidden md:block shadow-md relative z-40" data-reticle-target="nav-mega-menu-bar">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-6 py-2 text-xs font-bold">
+        <div className="flex items-center gap-5 sm:gap-6">
+          {/* 1. SHOP CATALOG MEGA MENU BUTTON */}
           <div 
             ref={megaMenuRef}
-            className="relative py-1"
-            onMouseEnter={() => setActiveCategoryDropdown('MEGA_MENU')}
-            onMouseLeave={() => {
-              if (!isMegaMenuOpen) setActiveCategoryDropdown(null);
-            }}
+            className="relative py-0.5"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <button 
               type="button"
               onClick={() => setIsMegaMenuOpen(prev => !prev)}
-              className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black px-4 py-1.5 rounded-xl flex items-center gap-2 shadow-md transition-all text-xs cursor-pointer"
+              className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black px-4 py-1.5 rounded-xl flex items-center gap-2 shadow-sm transition-all text-xs cursor-pointer"
               data-reticle-target="nav-catalog-btn"
             >
               <Grid size={15} />
               <span>Shop Catalog</span>
-              <ChevronDown size={14} className={`transition-transform duration-200 ${(isMegaMenuOpen || activeCategoryDropdown === 'MEGA_MENU') ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`transition-transform duration-200 ${isMenuVisible ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* 4-COLUMN RICH MEGA MENU DROPDOWN */}
-            {(isMegaMenuOpen || activeCategoryDropdown === 'MEGA_MENU') && (
-              <div className="absolute left-0 mt-2 w-[880px] bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl p-6 z-[100] animate-fade-in backdrop-blur-xl">
-                <div className="flex justify-between items-center pb-3 mb-3 border-b border-slate-800">
-                  <span className="font-extrabold text-sm text-white flex items-center gap-2">
-                    <span>🛍️ Shop Organic Grocery & Wellness Catalog</span>
-                    <span className="bg-emerald-900/80 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-700 font-mono">
+            {/* 4-COLUMN RICH MEGA MENU DROPDOWN (MATCHING USER REFERENCE) */}
+            {isMenuVisible && (
+              <div 
+                className="absolute left-0 mt-2 w-[920px] lg:w-[980px] max-w-[96vw] bg-[#0b1329] border border-slate-800 text-slate-100 rounded-2xl shadow-2xl p-6 z-[100] animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-xl"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                data-reticle-target="nav-mega-menu-panel"
+              >
+                {/* Header inside Mega Menu */}
+                <div className="flex justify-between items-center pb-3.5 mb-4 border-b border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">🛍️</span>
+                    <h3 className="font-extrabold text-sm sm:text-base text-white tracking-tight">
+                      Shop Organic Grocery & Wellness Catalog
+                    </h3>
+                    <span className="bg-emerald-950 text-emerald-400 text-[11px] px-2.5 py-0.5 rounded-full border border-emerald-700/80 font-mono font-bold">
                       {categories.length} Categories
                     </span>
-                  </span>
+                  </div>
+
                   <button 
+                    type="button"
                     onClick={() => {
-                      onSelectAllProducts();
+                      if (onSelectAllProducts) onSelectAllProducts();
+                      else if (navigateTo) navigateTo('/products', { view: 'all_products' });
                       setIsMegaMenuOpen(false);
                       setActiveCategoryDropdown(null);
                     }} 
-                    className="text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                    className="text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                     data-reticle-target="nav-mega-view-all-btn"
                   >
                     View All Products →
                   </button>
                 </div>
 
-                <div className="max-h-[68vh] overflow-y-auto pr-2 pt-2 pb-4 custom-scrollbar">
-                  <div className="grid grid-cols-4 gap-4">
-                    {categories.map(cat => (
-                      <div key={cat.id} className="space-y-2 bg-slate-850/80 p-3 rounded-xl border border-slate-800 hover:border-emerald-500/60 transition-all hover:bg-slate-800 shadow-sm">
+                {/* 4-Column Category Cards Grid */}
+                <div className="max-h-[68vh] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {categories.map((cat, idx) => (
+                      <div 
+                        key={cat.id || idx} 
+                        className="space-y-2.5 bg-[#131d38] p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/70 transition-all duration-200 hover:bg-[#182344] shadow-sm group"
+                      >
+                        {/* Category Title Button */}
                         <button 
+                          type="button"
                           onClick={() => { 
-                            onSelectCategory(cat.slug); 
+                            if (onSelectCategory) onSelectCategory(cat.slug || cat.id); 
+                            else if (navigateTo) navigateTo(`/category/${cat.slug || cat.id}`, { view: 'catalog', category: cat.slug || cat.id });
                             setIsMegaMenuOpen(false);
                             setActiveCategoryDropdown(null); 
                           }}
-                          className="font-extrabold text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-2 transition-colors group text-left w-full cursor-pointer"
+                          className="font-extrabold text-xs sm:text-[13px] text-emerald-400 hover:text-emerald-300 flex items-center gap-2 transition-colors group-hover:underline text-left w-full cursor-pointer leading-snug"
                         >
-                          <span className="text-base shrink-0">{cat.icon || '🌿'}</span>
-                          <span className="group-hover:underline leading-tight">{cat.name}</span>
+                          <span className="text-base shrink-0">{getCategoryIcon(cat)}</span>
+                          <span className="leading-tight">{cat.name}</span>
                         </button>
 
-                        {cat.subcategories && cat.subcategories.length > 0 && (
-                          <div className="pl-4 space-y-1 border-l-2 border-emerald-900/80 ml-1">
+                        {/* Subcategories Bullet List */}
+                        {cat.subcategories && cat.subcategories.length > 0 ? (
+                          <div className="space-y-1.5 mt-2">
                             {cat.subcategories.map(sub => (
                               <button 
                                 key={sub.id}
+                                type="button"
                                 onClick={() => { 
-                                  onSelectCategory(cat.slug); 
+                                  if (onSelectCategory) onSelectCategory(cat.slug || cat.id); 
+                                  else if (navigateTo) navigateTo(`/category/${cat.slug || cat.id}`, { view: 'catalog', category: cat.slug || cat.id });
                                   setIsMegaMenuOpen(false);
                                   setActiveCategoryDropdown(null); 
                                 }}
-                                className="block text-[11px] text-slate-300 hover:text-white transition-colors text-left truncate w-full font-medium cursor-pointer"
+                                className="text-xs text-slate-300 hover:text-white hover:font-bold transition-all text-left truncate w-full font-medium cursor-pointer flex items-center gap-1.5 py-0.5"
                               >
-                                • {sub.name}
+                                <span className="text-slate-400 font-bold">•</span>
+                                <span className="truncate">{sub.name}</span>
                               </button>
                             ))}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-400 italic pt-1">
+                            Explore department →
                           </div>
                         )}
                       </div>
@@ -147,11 +216,38 @@ export default function NavMegaMenu({
             )}
           </div>
 
-          {/* COLLECTIONS DROPDOWN */}
+          {/* 2. OFFERS LINK */}
+          <button 
+            type="button" 
+            onClick={() => onSelectOffers ? onSelectOffers() : navigateTo('/offers', { view: 'offers' })} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+          >
+            <span>🔥 Offers</span>
+          </button>
+
+          {/* 3. BEST SELLERS LINK */}
+          <button 
+            type="button" 
+            onClick={() => onSelectBestSellers ? onSelectBestSellers() : navigateTo('/bestsellers', { view: 'bestsellers' })} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+          >
+            <span>⭐ Best Sellers</span>
+          </button>
+
+          {/* 4. NEW ARRIVALS LINK */}
+          <button 
+            type="button" 
+            onClick={() => onSelectNewArrivals ? onSelectNewArrivals() : navigateTo('/new-arrivals', { view: 'new_arrivals' })} 
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+          >
+            <span>✨ New Arrivals</span>
+          </button>
+
+          {/* 5. COLLECTIONS DROPDOWN (IF ANY) */}
           {dropdownColls.length > 0 && (
             <div className="relative py-1">
               <button 
-                type="button"
+                type="button" 
                 onClick={() => setCollectionsDropdown(prev => !prev)}
                 className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
                 data-reticle-target="nav-collections-btn"
@@ -169,6 +265,7 @@ export default function NavMegaMenu({
                     {dropdownColls.map(col => (
                       <button
                         key={col.id}
+                        type="button"
                         onClick={() => {
                           setCollectionsDropdown(false);
                           handleCollectionRoute(col);
@@ -187,55 +284,43 @@ export default function NavMegaMenu({
             </div>
           )}
 
-          {/* DYNAMIC TOP NAVBAR COLLECTIONS */}
-          {activeNavColls.length > 0 ? (
-            activeNavColls.map(navCol => (
-              <button 
-                key={navCol.id}
-                type="button"
-                onClick={() => handleCollectionRoute(navCol)}
-                className="hover:text-emerald-300 text-slate-100 font-extrabold transition-colors flex items-center gap-1 cursor-pointer text-xs"
-              >
-                <span>{navCol.name}</span>
-              </button>
-            ))
-          ) : (
-            <>
-              <button type="button" onClick={() => onSelectOffers ? onSelectOffers() : navigateTo('/offers', { view: 'offers' })} className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs">
-                <span>🔥 Offers</span>
-              </button>
-              <button type="button" onClick={() => onSelectBestSellers ? onSelectBestSellers() : navigateTo('/bestsellers', { view: 'bestsellers' })} className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs">
-                <span>⭐ Best Sellers</span>
-              </button>
-              <button type="button" onClick={() => onSelectNewArrivals ? onSelectNewArrivals() : navigateTo('/new-arrivals', { view: 'new_arrivals' })} className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs">
-                <span>✨ New Arrivals</span>
-              </button>
-            </>
-          )}
+          {/* 6. DYNAMIC NAVBAR COLLECTIONS */}
+          {customNavColls.map(navCol => (
+            <button 
+              key={navCol.id}
+              type="button"
+              onClick={() => handleCollectionRoute(navCol)}
+              className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors flex items-center gap-1 cursor-pointer text-xs"
+            >
+              <span>{navCol.name}</span>
+            </button>
+          ))}
 
-          {/* ABOUT US */}
+          {/* 7. ABOUT US */}
           <button 
-            onClick={() => onOpenPage ? onOpenPage('about-us') : alert("ValueLife Essentials is India's premier certified 100% organic grocery and wellness store.")}
-            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer"
+            type="button"
+            onClick={() => onOpenPage ? onOpenPage('about-us') : (navigateTo ? navigateTo('/pages/about-us', { view: 'page', slug: 'about-us' }) : null)}
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer text-xs"
             data-reticle-target="nav-about-us-btn"
           >
             <span>About Us</span>
           </button>
 
-          {/* CONTACT */}
+          {/* 8. CONTACT */}
           <button 
-            onClick={() => onOpenPage ? onOpenPage('contact-us') : alert("Contact ValueLife Essentials Support:\n📧 support@valuelifeessentials.com\n🌐 valuelifeessentials.com")}
-            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer"
+            type="button"
+            onClick={() => onOpenPage ? onOpenPage('contact-us') : (navigateTo ? navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' }) : null)}
+            className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer text-xs"
             data-reticle-target="nav-contact-btn"
           >
             <span>Contact</span>
           </button>
         </div>
 
-        {/* ADVANTAGES BADGE */}
-        <div className="hidden lg:flex items-center gap-3 text-[11px] font-extrabold text-emerald-300 bg-emerald-900/60 px-3 py-1 rounded-full border border-emerald-700/60">
+        {/* RIGHT ADVANTAGES BADGE */}
+        <div className="hidden lg:flex items-center gap-3 text-[11px] font-extrabold text-emerald-300 bg-emerald-900/60 px-3.5 py-1 rounded-full border border-emerald-700/60">
           <span>✓ 100% Certified Organic</span>
-          <span>•</span>
+          <span className="text-emerald-500">•</span>
           <span>✓ Fast Home Delivery</span>
         </div>
       </div>

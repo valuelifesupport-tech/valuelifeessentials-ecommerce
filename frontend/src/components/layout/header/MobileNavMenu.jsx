@@ -57,16 +57,40 @@ export default function MobileNavMenu({
       )}
 
       <div className="space-y-2 py-2">
-        <span className="text-[10px] font-black uppercase text-gray-400">Categories</span>
-        <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+        <span className="text-[10px] font-black uppercase text-gray-400">Categories & Departments</span>
+        <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
           {categories.map(cat => (
-            <div key={cat.id} className="pl-2 space-y-1">
+            <div key={cat.id} className="bg-stone-50 rounded-xl p-2.5 border border-stone-200/70">
               <button 
                 onClick={() => { onSelectCategory(cat.slug); onClose(); }}
-                className="w-full text-left py-1 text-gray-800 font-extrabold flex items-center gap-2 cursor-pointer"
+                className="w-full text-left py-1 text-gray-900 font-extrabold flex items-center justify-between text-xs cursor-pointer hover:text-emerald-700"
               >
-                <span>{cat.icon || '🌱'}</span> <span>{cat.name}</span>
+                <div className="flex items-center gap-2">
+                  <span>{cat.icon || '🌿'}</span>
+                  <span>{cat.name}</span>
+                </div>
+                {cat.subcategories && cat.subcategories.length > 0 && (
+                  <span className="text-[10px] text-emerald-800 bg-emerald-100 font-bold px-1.5 py-0.5 rounded-full">
+                    {cat.subcategories.length}
+                  </span>
+                )}
               </button>
+              {cat.subcategories && cat.subcategories.length > 0 && (
+                <div className="mt-2 pl-3 border-l-2 border-emerald-300 space-y-1">
+                  {cat.subcategories.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => {
+                        onSelectCategory(cat.slug);
+                        onClose();
+                      }}
+                      className="block w-full text-left text-[11px] text-gray-600 hover:text-emerald-700 py-0.5 truncate cursor-pointer"
+                    >
+                      • {sub.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

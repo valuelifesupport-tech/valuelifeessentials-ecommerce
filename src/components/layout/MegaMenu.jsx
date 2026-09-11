@@ -12,23 +12,7 @@ export default function MegaMenu({ categories = [], onClose, onNavigate }) {
     'organic-superfoods': ['Chia Seeds', 'Himalayan Shilajit', 'Pink Salt', 'Moringa']
   };
 
-  const displayCategories = categories.length > 0 ? categories : [
-    { id: 1, name: 'Grains & Staples', slug: 'grains-staples', icon: '🌾' },
-    { id: 2, name: 'Dry Fruits & Nuts', slug: 'dry-fruits-nuts', icon: '🌰' },
-    { id: 3, name: 'Seeds', slug: 'seeds-and-gardening', icon: '🌱' },
-    { id: 4, name: 'Herbs & Seasonings', slug: 'herbs-seasonings', icon: '🌿' },
-    { id: 5, name: 'Spices & Masalas', slug: 'spices-masalas', icon: '🌶️' },
-    { id: 6, name: 'Salt, Sugar & Sweeteners', slug: 'salt-sugar-sweeteners', icon: '🍯' },
-    { id: 7, name: 'Tea & Beverages', slug: 'tea-beverages', icon: '🍵' },
-    { id: 8, name: 'Health & Wellness', slug: 'health-wellness', icon: '🧘' },
-    { id: 9, name: 'Baking Essentials', slug: 'baking-essentials', icon: '🧁' },
-    { id: 10, name: 'Natural Powders', slug: 'natural-powders', icon: '🍃' },
-    { id: 11, name: 'Organic Fertilizers', slug: 'organic-fertilizers', icon: '🌿' },
-    { id: 12, name: 'Pots & Grow Bags', slug: 'pots-and-grow-bags', icon: '🪴' },
-    { id: 13, name: 'Garden Tools', slug: 'garden-tools', icon: '🛠️' },
-    { id: 14, name: 'Pest Control & Care', slug: 'pest-control', icon: '🐛' },
-    { id: 15, name: 'Organic Superfoods', slug: 'organic-superfoods', icon: '🥗' }
-  ];
+  const displayCategories = categories || [];
 
   return (
     <div className="absolute top-full left-0 right-0 z-[999] pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
