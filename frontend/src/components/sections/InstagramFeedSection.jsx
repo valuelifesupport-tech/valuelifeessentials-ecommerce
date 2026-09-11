@@ -41,18 +41,18 @@ export default function InstagramFeedSection() {
               Follow Us On Instagram
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Join our community @valuelifeessentials for healthy recipes, wellness tips and offers
+              Join our community @valuelife_essentials for healthy recipes, wellness tips and offers
             </p>
           </div>
 
           <a
-            href="https://instagram.com/valuelifeessentials"
+            href="https://www.instagram.com/valuelife_essentials/?hl=en"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#164e3f] hover:text-emerald-800 transition-colors"
           >
             <InstagramIcon size={15} />
-            <span>@valuelifeessentials</span>
+            <span>@valuelife_essentials</span>
             <ExternalLink size={12} />
           </a>
         </div>

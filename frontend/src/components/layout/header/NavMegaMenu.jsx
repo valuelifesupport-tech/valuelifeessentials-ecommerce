@@ -316,13 +316,6 @@ export default function NavMegaMenu({
             <span>Contact</span>
           </button>
         </div>
-
-        {/* RIGHT ADVANTAGES BADGE */}
-        <div className="hidden lg:flex items-center gap-3 text-[11px] font-extrabold text-emerald-300 bg-emerald-900/60 px-3.5 py-1 rounded-full border border-emerald-700/60">
-          <span>✓ 100% Certified Organic</span>
-          <span className="text-emerald-500">•</span>
-          <span>✓ Fast Home Delivery</span>
-        </div>
       </div>
     </nav>
   );

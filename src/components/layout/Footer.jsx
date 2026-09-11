@@ -40,7 +40,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
                 <FacebookIcon size={14} />
               </a>
               <a
-                href={settings?.instagram_url || "https://instagram.com/valuelifeessentials"}
+                href={settings?.instagram_url || "https://www.instagram.com/valuelife_essentials/?hl=en"}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
