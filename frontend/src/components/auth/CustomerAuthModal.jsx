@@ -98,8 +98,8 @@ export default function CustomerAuthModal({
 
       if (res.ok && data.requireOtp) {
         setPendingEmail(data.email || loginVal);
-        setSuccessMsg(data.message || 'Email verification code sent! (Valid for 10 mins).');
-        if (data.otp) setRegOtp(data.otp);
+        setSuccessMsg(data.message || 'Email verification code sent directly to your inbox. Valid for 10 mins.');
+        setRegOtp('');
         setActiveTab('REGISTER');
         setRegStep(2);
       } else if (res.ok && data.user) {
@@ -139,8 +139,8 @@ export default function CustomerAuthModal({
 
       if (res.ok && data.requireOtp) {
         setPendingEmail(data.email || email.trim());
-        setSuccessMsg(data.message || 'Account created! Verification OTP sent to your email address (Valid for 10 mins).');
-        if (data.otp) setRegOtp(data.otp);
+        setSuccessMsg(data.message || 'Account created! 6-digit verification code sent directly to your email address (Valid for 10 mins).');
+        setRegOtp('');
         setRegStep(2);
       } else if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Registration successful!');
@@ -208,7 +208,7 @@ export default function CustomerAuthModal({
       const data = await res.json();
       if (res.ok) {
         setSuccessMsg(data.message || 'Fresh verification code sent to your email! (Valid for 10 mins).');
-        if (data.otp) setRegOtp(data.otp);
+        setRegOtp('');
       } else {
         setErrorMsg(data.error || 'Could not resend OTP code.');
       }
@@ -236,8 +236,8 @@ export default function CustomerAuthModal({
       });
       const data = await res.json();
       if (res.ok) {
-        setSuccessMsg(data.message);
-        if (data.otp) setForgotOtp(data.otp);
+        setSuccessMsg(data.message || 'Password reset OTP sent to your email.');
+        setForgotOtp('');
         setForgotStep(2);
       } else {
         setErrorMsg(data.error || 'Failed to process request.');
