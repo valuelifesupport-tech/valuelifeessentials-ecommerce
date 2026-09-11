@@ -69,14 +69,14 @@ export default function ProductDetailPage({
       const clean = url.trim();
       if (!seen.has(clean)) { seen.add(clean); list.push(clean); }
     };
+    addUrl(productData.image_url);
+    addUrl(productData.thumbnail);
     if (Array.isArray(productData.images)) {
       productData.images.forEach(img => {
         if (typeof img === 'string') addUrl(img);
         else if (img && img.image_url) addUrl(img.image_url);
       });
     }
-    addUrl(productData.image_url);
-    addUrl(productData.thumbnail);
     if (Array.isArray(productData.variants)) {
       productData.variants.forEach(v => addUrl(v?.image_url));
     }

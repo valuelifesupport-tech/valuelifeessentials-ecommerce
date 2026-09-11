@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 
 import BrandLoader from './common/BrandLoader';
+import ProductGallery from './product/ProductGallery';
 
 export default function ProductDetailPage({ 
   productSlug, 
@@ -381,73 +382,15 @@ export default function ProductDetailPage({
       <div className="max-w-7xl mx-auto px-4 pt-8 space-y-12">
         {/* PDP MAIN GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-14">
-          {/* LEFT: IMAGE GALLERY (EXACT IMAGE 2 LOOK) */}
-          <div className="space-y-4">
-            <div className="w-full h-[400px] sm:h-[480px] bg-slate-50/80 rounded-3xl overflow-hidden border border-gray-200/80 relative group shadow-sm flex items-center justify-center p-6">
-              <img 
-                src={resolveImgUrl(selectedImage || allProductImages[0] || productData.image_url || productData.thumbnail)} 
-                alt={productData.title} 
-                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80';
-                }}
-              />
-              
-              {/* IMAGE NAVIGATION ARROWS (< and >) */}
-              {allProductImages && allProductImages.length > 1 && (
-                <>
-                  <button 
-                    type="button" 
-                    onClick={handlePrevImage}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-gray-700 hover:text-emerald-700 transition-all opacity-80 hover:opacity-100 cursor-pointer"
-                    title="Previous Image"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={handleNextImage}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-gray-700 hover:text-emerald-700 transition-all opacity-80 hover:opacity-100 cursor-pointer"
-                    title="Next Image"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* HORIZONTAL THUMBNAILS STRIP */}
-            {allProductImages && allProductImages.length > 0 && (
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                {allProductImages.map((imgUrl, idx) => {
-                  const isSelected = resolveImgUrl(selectedImage || allProductImages[0]) === resolveImgUrl(imgUrl);
-                  return (
-                    <button 
-                      key={idx}
-                      type="button"
-                      onClick={() => setSelectedImage(imgUrl)}
-                      className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 transition-all flex-shrink-0 bg-white p-0.5 cursor-pointer flex items-center justify-center ${
-                        isSelected 
-                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md scale-105' 
-                          : 'border-gray-200 hover:border-gray-400 opacity-80 hover:opacity-100'
-                      }`}
-                    >
-                      <img 
-                        src={resolveImgUrl(imgUrl)} 
-                        alt={`${productData.title} view ${idx + 1}`}
-                        className="w-full h-full object-cover rounded-xl"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=200&q=80';
-                        }}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* LEFT: LUXURY PRODUCT GALLERY */}
+          <ProductGallery
+            productData={productData}
+            allProductImages={allProductImages}
+            selectedImage={selectedImage}
+            setSelectedImage={setSelectedImage}
+            handlePrevImage={handlePrevImage}
+            handleNextImage={handleNextImage}
+          />
 
           {/* RIGHT: DETAILS, VARIANTS & PRICE (EXACT IMAGE 2 LOOK) */}
           <div className="space-y-6">
