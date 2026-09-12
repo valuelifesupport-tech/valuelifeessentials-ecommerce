@@ -15,6 +15,8 @@ import StoreHomeView from './components/sections/StoreHomeView';
 import CatalogView from './components/product/CatalogView';
 import ProductDetailPage from './components/product/ProductDetailPage';
 import PageView from './components/sections/PageView';
+import BlogListingView from './components/blog/BlogListingView';
+import BlogDetailView from './components/blog/BlogDetailView';
 import CustomerProfilePage from './components/auth/CustomerProfilePage';
 import MaintenancePage from './components/sections/MaintenancePage';
 
@@ -40,9 +42,14 @@ export default function App() {
     if (path === '/products') return { view: 'all_products', slug: null, category: null, collection: null };
     if (path === '/offers') return { view: 'offers', slug: null, category: null, collection: null };
     if (path === '/bestsellers') return { view: 'bestsellers', slug: null, category: null, collection: null };
-    if (path === '/new-arrivals') return { view: 'new_arrivals', slug: null, category: null, collection: null };
+    if (path === '/blog' || path === '/pages/blog') return { view: 'blog', slug: null, category: null, collection: null };
+    if (path.startsWith('/blog/')) {
+      const slug = path.replace('/blog/', '');
+      return { view: 'blog_detail', slug, category: null, collection: null };
+    }
     if (path.startsWith('/pages/')) {
       const slug = path.replace('/pages/', '');
+      if (slug === 'blog') return { view: 'blog', slug: null, category: null, collection: null };
       return { view: 'page', slug, category: null, collection: null };
     }
     if (path.startsWith('/category/')) {
@@ -468,7 +475,7 @@ export default function App() {
         setSearchQuery={setSearchQuery}
         onSearchSubmit={() => navigateTo('/search', { view: 'catalog', slug: null, category: null, collection: null })}
         onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-        onOpenPage={(slug) => navigateTo(`/pages/${slug}`, { view: 'page', slug, category: null, collection: null })}
+        onOpenPage={(slug) => slug === 'blog' ? navigateTo('/blog', { view: 'blog', slug: null }) : navigateTo(`/pages/${slug}`, { view: 'page', slug, category: null, collection: null })}
         settings={settings}
         sectionsConfig={sectionsConfig}
         showToast={showToast}
@@ -498,6 +505,14 @@ export default function App() {
             onSelectProduct={(slug) => navigateTo(`/products/${slug}`, { view: 'pdp', slug, category: null, collection: null })}
             showToast={showToast}
           />
+        </SectionErrorBoundary>
+      ) : route.view === 'blog' ? (
+        <SectionErrorBoundary name="Wellness Journal">
+          <BlogListingView navigateTo={navigateTo} showToast={showToast} />
+        </SectionErrorBoundary>
+      ) : route.view === 'blog_detail' && route.slug ? (
+        <SectionErrorBoundary name="Article Detail">
+          <BlogDetailView slug={route.slug} navigateTo={navigateTo} showToast={showToast} />
         </SectionErrorBoundary>
       ) : route.view === 'page' && route.slug ? (
         <SectionErrorBoundary name="Custom Page">

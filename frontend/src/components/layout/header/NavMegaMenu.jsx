@@ -319,7 +319,7 @@ export default function NavMegaMenu({
           {/* 8. BLOG */}
           <button 
             type="button"
-            onClick={() => onOpenPage ? onOpenPage('blog') : (navigateTo ? navigateTo('/pages/blog', { view: 'page', slug: 'blog' }) : null)}
+            onClick={() => onOpenPage ? onOpenPage('blog') : (navigateTo ? navigateTo('/blog', { view: 'blog', slug: null }) : null)}
             className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer text-xs"
             data-reticle-target="nav-blog-btn"
           >

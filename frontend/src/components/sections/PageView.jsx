@@ -1,8 +1,12 @@
 import { getApiUrl } from '../../api/config';
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Truck, Clock } from 'lucide-react';
+import BlogListingView from '../blog/BlogListingView';
 
 export default function PageView({ slug, onGoHome, showToast }) {
+  if (slug === 'blog') {
+    return <BlogListingView navigateTo={(path) => { window.location.href = path; }} showToast={showToast} />;
+  }
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

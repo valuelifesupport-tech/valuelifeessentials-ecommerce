@@ -114,7 +114,7 @@ export default function MobileNavMenu({
           onClick={() => {
             onClose();
             if (onOpenPage) onOpenPage('blog');
-            else if (navigateTo) navigateTo('/pages/blog', { view: 'page', slug: 'blog' });
+            else if (navigateTo) navigateTo('/blog', { view: 'blog', slug: null });
           }}
           className="block w-full text-left py-1.5 text-gray-700 hover:text-emerald-700 cursor-pointer font-bold"
         >

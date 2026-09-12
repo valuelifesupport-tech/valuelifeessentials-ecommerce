@@ -114,7 +114,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               <li>
                 <button
                   type="button"
-                  onClick={() => handleNav('/pages/blog', 'page', 'blog')}
+                  onClick={() => handleNav('/blog', 'blog', null)}
                   className="hover:text-white transition-colors cursor-pointer text-left"
                 >
                   Blog

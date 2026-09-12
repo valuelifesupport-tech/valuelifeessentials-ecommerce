@@ -7,6 +7,7 @@ import WhyChooseUsSection from './WhyChooseUsSection';
 import BestSellersSection from './BestSellersSection';
 import BrandStorySection from './BrandStorySection';
 import TestimonialsSection from './TestimonialsSection';
+import BlogSection from './BlogSection';
 import InstagramFeedSection from './InstagramFeedSection';
 import NewsletterBanner from './NewsletterBanner';
 
@@ -75,13 +76,19 @@ export default function StoreHomeView({
       {/* 9. TESTIMONIALS */}
       <TestimonialsSection sectionsConfig={sectionsConfig} />
 
-      {/* 10. INSTAGRAM FEED */}
+      {/* 10. WELLNESS & ORGANIC JOURNAL */}
+      <BlogSection 
+        sectionsConfig={sectionsConfig} 
+        navigateTo={navigateTo} 
+      />
+
+      {/* 11. INSTAGRAM FEED */}
       <InstagramFeedSection 
         sectionsConfig={sectionsConfig}
         settings={settings}
       />
 
-      {/* 11. NEWSLETTER */}
+      {/* 12. NEWSLETTER */}
       <NewsletterBanner sectionsConfig={sectionsConfig} />
     </div>
   );

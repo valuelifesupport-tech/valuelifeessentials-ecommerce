@@ -1,7 +1,7 @@
 import { getApiUrl } from '../api/config';
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, DollarSign, ShoppingBag, Eye, Star, Plus, Trash2, Edit, Upload, CheckCircle, XCircle, X,
+  BookOpen, Users, DollarSign, ShoppingBag, Eye, Star, Plus, Trash2, Edit, Upload, CheckCircle, XCircle, X,
   MessageSquare, Tag, Image, Image as ImageIcon, Layers, BarChart2, Globe, TrendingUp, Sparkles, LogOut, ExternalLink, Settings, Wrench, ToggleLeft, ToggleRight, Download, Printer, FileText, Send, Grid, Package, ShieldCheck, HelpCircle, Link as LinkIcon, Search, ChevronRight, ChevronDown, Filter, Heart, Megaphone, RefreshCw, FolderOpen, GripVertical, UploadCloud, Truck, Phone, Mail, MapPin, AlertTriangle, Check, Clock
 } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, BarElement, Filler } from 'chart.js';
@@ -104,6 +104,30 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     script_quote: 'Nature Nurtures You',
     quote_subtext: '🌿 Handcrafted with Care',
     is_enabled: 1
+  });
+
+
+  // Dynamic Blog Posts Studio States
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [showBlogPostModal, setShowBlogPostModal] = useState(false);
+  const [editingBlogPost, setEditingBlogPost] = useState(null);
+  const [blogSearchQuery, setBlogSearchQuery] = useState('');
+  const [blogCategoryFilter, setBlogCategoryFilter] = useState('All');
+  const [blogPostForm, setBlogPostForm] = useState({
+    title: '',
+    slug: '',
+    category: 'Superfoods & Ayurveda',
+    excerpt: '',
+    content: '',
+    featured_image: '',
+    author_name: 'Dr. V. Sharma',
+    author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    author_role: 'Ayurvedic Specialist',
+    read_time: '5 min read',
+    tags: 'Organic, Wellness, Ayurveda',
+    is_published: 1,
+    is_featured: 0,
+    sort_order: 1
   });
 
   const [brandStoryForm, setBrandStoryForm] = useState({
@@ -639,6 +663,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       } else if (tab === 'theme') {
         const thm = await safeFetchJson('/api/theme-config');
         if (thm && thm.id) setThemeConfig(thm);
+            } else if (tab === 'blog') {
+        const blgs = await safeFetchJson('/api/admin/blogs');
+        if (blgs && Array.isArray(blgs)) setBlogPosts(blgs);
       } else if (tab === 'instagram') {
         const igs = await safeFetchJson('/api/admin/instagram-posts');
         if (igs && Array.isArray(igs)) setInstagramPosts(igs);
@@ -1458,6 +1485,90 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     setShowInstagramPostModal(true);
   };
 
+
+  // BLOG POSTS CRUD HANDLERS
+  const handleBlogPostSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const url = editingBlogPost
+        ? getApiUrl(`/api/admin/blogs/${editingBlogPost.id}`)
+        : getApiUrl('/api/admin/blogs');
+      const method = editingBlogPost ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blogPostForm)
+      });
+
+      if (res.ok) {
+        setShowBlogPostModal(false);
+        const updated = await safeFetchJson('/api/admin/blogs');
+        if (updated && Array.isArray(updated)) setBlogPosts(updated);
+        if (showToast) showToast('success', 'Article Saved Live!', editingBlogPost ? 'Blog post updated successfully.' : 'New article published to journal.');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Failed to Save', errData.error || 'Server error occurred.');
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Error', err.message);
+    }
+  };
+
+  const handleDeleteBlogPost = (postId) => {
+    askConfirmation({
+      title: 'Delete Blog Article?',
+      message: 'Are you sure you want to permanently delete this article from your wellness journal?',
+      confirmText: 'Delete Article',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(getApiUrl(`/api/admin/blogs/${postId}`), { method: 'DELETE' });
+          if (res.ok) {
+            setBlogPosts(prev => prev.filter(p => p.id !== postId));
+            if (showToast) showToast('info', 'Article Deleted', 'Blog post removed from database.');
+          }
+        } catch (err) {
+          if (showToast) showToast('error', 'Error', err.message);
+        }
+      }
+    });
+  };
+
+  const handleToggleBlogPostPublished = async (post) => {
+    const updatedStatus = Number(post.is_published) === 1 ? 0 : 1;
+    try {
+      const res = await fetch(getApiUrl(`/api/admin/blogs/${post.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: updatedStatus })
+      });
+      if (res.ok) {
+        setBlogPosts(prev => prev.map(p => p.id === post.id ? { ...p, is_published: updatedStatus } : p));
+        if (showToast) showToast('success', 'Status Updated', `Article is now ${updatedStatus === 1 ? 'PUBLISHED' : 'DRAFT'}.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Error', err.message);
+    }
+  };
+
+  const handleToggleBlogPostFeatured = async (post) => {
+    const updatedStatus = Number(post.is_featured) === 1 ? 0 : 1;
+    try {
+      const res = await fetch(getApiUrl(`/api/admin/blogs/${post.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_featured: updatedStatus })
+      });
+      if (res.ok) {
+        setBlogPosts(prev => prev.map(p => p.id === post.id ? { ...p, is_featured: updatedStatus } : p));
+        if (showToast) showToast('success', 'Featured Updated', `Article spotlight is now ${updatedStatus === 1 ? 'FEATURED' : 'STANDARD'}.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Error', err.message);
+    }
+  };
+
   const handleInstagramPostSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -1875,6 +1986,21 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     </div>
                     <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
                       {instagramPosts.length}
+                    </span>
+                  </button>
+
+                  <button 
+                    onClick={() => setActiveTab('blog')}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                      activeTab === 'blog' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <BookOpen size={16} className="text-emerald-400 flex-shrink-0" /> 
+                      <span className="truncate whitespace-nowrap text-xs font-bold">📝 Wellness Blog (Articles)</span>
+                    </div>
+                    <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                      {blogPosts.length}
                     </span>
                   </button>
 
@@ -4722,6 +4848,245 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     </button>
                   </form>
                 </div>
+              </div>
+            </div>
+          )}
+
+          
+          {/* TAB: WELLNESS BLOG STUDIO */}
+          {activeTab === 'blog' && (
+            <div className="space-y-6">
+              {/* HEADER BAR & STATS */}
+              <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2 font-['Outfit']">
+                    📝 Wellness & Organic Blog Studio
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Create, edit, and publish dynamic wellness articles with rich HTML content, author bios, and instant MySQL persistence.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingBlogPost(null);
+                    setBlogPostForm({
+                      title: '',
+                      slug: '',
+                      category: 'Superfoods & Ayurveda',
+                      excerpt: '',
+                      content: '',
+                      featured_image: '',
+                      author_name: 'Dr. V. Sharma',
+                      author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                      author_role: 'Ayurvedic Specialist',
+                      read_time: '5 min read',
+                      tags: 'Organic, Wellness, Ayurveda',
+                      is_published: 1,
+                      is_featured: 0,
+                      sort_order: blogPosts.length + 1
+                    });
+                    setShowBlogPostModal(true);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                >
+                  <Plus size={16} /> Write New Article
+                </button>
+              </div>
+
+              {/* STATS METRICS */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">Total Articles</span>
+                  <div className="text-2xl font-black text-white mt-1">{blogPosts.length}</div>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-[11px] font-bold text-emerald-400 uppercase">Published Live</span>
+                  <div className="text-2xl font-black text-emerald-400 mt-1">
+                    {blogPosts.filter(b => Number(b.is_published) === 1).length}
+                  </div>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-[11px] font-bold text-amber-400 uppercase">Drafts</span>
+                  <div className="text-2xl font-black text-amber-400 mt-1">
+                    {blogPosts.filter(b => Number(b.is_published) !== 1).length}
+                  </div>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-[11px] font-bold text-blue-400 uppercase">Total Views</span>
+                  <div className="text-2xl font-black text-blue-400 mt-1">
+                    {blogPosts.reduce((acc, b) => acc + (Number(b.views_count) || 0), 0)}
+                  </div>
+                </div>
+              </div>
+
+              {/* FILTER & SEARCH TOOLBAR */}
+              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search articles by title, author, tags..."
+                    value={blogSearchQuery}
+                    onChange={(e) => setBlogSearchQuery(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 text-white text-xs pl-9 pr-3 py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+                  <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">Category:</span>
+                  <select
+                    value={blogCategoryFilter}
+                    onChange={(e) => setBlogCategoryFilter(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 text-white text-xs px-3 py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="All">All Categories</option>
+                    <option value="Superfoods & Ayurveda">Superfoods & Ayurveda</option>
+                    <option value="Organic Nutrition">Organic Nutrition</option>
+                    <option value="Immunity & Detox">Immunity & Detox</option>
+                    <option value="Daily Wellness">Daily Wellness</option>
+                    <option value="Recipes">Recipes</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* ARTICLES TABLE */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800">
+                      <tr>
+                        <th className="p-3.5">Article</th>
+                        <th className="p-3.5">Category</th>
+                        <th className="p-3.5">Author</th>
+                        <th className="p-3.5">Read Time</th>
+                        <th className="p-3.5 text-center">Status</th>
+                        <th className="p-3.5 text-center">Featured</th>
+                        <th className="p-3.5 text-center">Views</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {blogPosts
+                        .filter(post => {
+                          const matchesCat = blogCategoryFilter === 'All' || post.category === blogCategoryFilter;
+                          const q = blogSearchQuery.toLowerCase();
+                          const matchesQ = !q || 
+                            post.title.toLowerCase().includes(q) || 
+                            (post.author_name && post.author_name.toLowerCase().includes(q)) ||
+                            (post.tags && post.tags.toLowerCase().includes(q));
+                          return matchesCat && matchesQ;
+                        })
+                        .map(post => (
+                          <tr key={post.id} className="hover:bg-slate-800/50 transition-colors">
+                            <td className="p-3.5 flex items-center gap-3">
+                              <img
+                                src={resolveImgUrl(post.featured_image)}
+                                alt={post.title}
+                                className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0 bg-slate-800"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-bold text-white text-xs truncate max-w-xs">{post.title}</div>
+                                <div className="text-[10px] text-slate-500 font-mono truncate max-w-xs">/blog/{post.slug}</div>
+                              </div>
+                            </td>
+                            <td className="p-3.5">
+                              <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {post.category}
+                              </span>
+                            </td>
+                            <td className="p-3.5 whitespace-nowrap">
+                              <div className="font-bold text-slate-200">{post.author_name}</div>
+                              <div className="text-[10px] text-slate-500">{post.author_role}</div>
+                            </td>
+                            <td className="p-3.5 whitespace-nowrap text-slate-400">{post.read_time}</td>
+                            <td className="p-3.5 text-center">
+                              <button
+                                onClick={() => handleToggleBlogPostPublished(post)}
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                                  Number(post.is_published) === 1
+                                    ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                                }`}
+                              >
+                                {Number(post.is_published) === 1 ? 'PUBLISHED' : 'DRAFT'}
+                              </button>
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <button
+                                onClick={() => handleToggleBlogPostFeatured(post)}
+                                className={`text-xs font-bold transition-colors cursor-pointer ${
+                                  Number(post.is_featured) === 1 ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'
+                                }`}
+                                title={Number(post.is_featured) === 1 ? 'Featured on Hero' : 'Mark as Featured'}
+                              >
+                                {Number(post.is_featured) === 1 ? '★ Featured' : '☆ Normal'}
+                              </button>
+                            </td>
+                            <td className="p-3.5 text-center font-mono text-slate-400">{post.views_count || 0}</td>
+                            <td className="p-3.5 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <a
+                                  href={`/blog/${post.slug}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Preview Article on Storefront"
+                                  className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+                                >
+                                  <ExternalLink size={14} />
+                                </a>
+                                <button
+                                  onClick={() => {
+                                    setEditingBlogPost(post);
+                                    setBlogPostForm({
+                                      title: post.title || '',
+                                      slug: post.slug || '',
+                                      category: post.category || 'Superfoods & Ayurveda',
+                                      excerpt: post.excerpt || '',
+                                      content: post.content || '',
+                                      featured_image: post.featured_image || '',
+                                      author_name: post.author_name || 'Dr. V. Sharma',
+                                      author_avatar: post.author_avatar || '',
+                                      author_role: post.author_role || 'Ayurvedic Specialist',
+                                      read_time: post.read_time || '5 min read',
+                                      tags: post.tags || '',
+                                      is_published: Number(post.is_published) ?? 1,
+                                      is_featured: Number(post.is_featured) || 0,
+                                      sort_order: Number(post.sort_order) || 0
+                                    });
+                                    setShowBlogPostModal(true);
+                                  }}
+                                  className="p-1.5 text-emerald-400 hover:text-emerald-300 bg-slate-800 rounded-lg"
+                                  title="Edit Article"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteBlogPost(post.id)}
+                                  className="p-1.5 text-rose-400 hover:text-rose-300 bg-slate-800 rounded-lg"
+                                  title="Delete Article"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {blogPosts.length === 0 && (
+                  <div className="p-12 text-center space-y-3">
+                    <BookOpen size={36} className="mx-auto text-slate-600" />
+                    <p className="text-slate-400 font-bold">No blog articles found in database.</p>
+                    <button
+                      onClick={() => setShowBlogPostModal(true)}
+                      className="text-xs bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl"
+                    >
+                      Write First Article
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -8847,6 +9212,193 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       )}
 
       {/* INSTAGRAM POST MODAL (CREATE / EDIT) */}
+      
+      {/* BLOG POST CREATE / EDIT MODAL */}
+      {showBlogPostModal && (
+        <div className="drawer-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">WELLNESS JOURNAL</span>
+                <h3 className="font-extrabold text-base text-white">
+                  {editingBlogPost ? 'Edit Blog Article' : 'Write New Blog Article'}
+                </h3>
+              </div>
+              <button onClick={() => setShowBlogPostModal(false)}><XCircle size={24} /></button>
+            </div>
+
+            <form onSubmit={handleBlogPostSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Article Title *</label>
+                  <input
+                    type="text" required
+                    value={blogPostForm.title}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const autoSlug = val.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+                      setBlogPostForm({ 
+                        ...blogPostForm, 
+                        title: val, 
+                        slug: editingBlogPost ? blogPostForm.slug : autoSlug 
+                      });
+                    }}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    placeholder="e.g. The Power of Pure Ashwagandha"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">URL Slug</label>
+                  <input
+                    type="text" required
+                    value={blogPostForm.slug}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, slug: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono"
+                    placeholder="power-of-pure-ashwagandha"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Category *</label>
+                  <select
+                    value={blogPostForm.category}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, category: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="Superfoods & Ayurveda">Superfoods & Ayurveda</option>
+                    <option value="Organic Nutrition">Organic Nutrition</option>
+                    <option value="Immunity & Detox">Immunity & Detox</option>
+                    <option value="Daily Wellness">Daily Wellness</option>
+                    <option value="Recipes">Recipes</option>
+                    <option value="General Wellness">General Wellness</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Read Time</label>
+                  <input
+                    type="text"
+                    value={blogPostForm.read_time}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, read_time: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    placeholder="e.g. 5 min read"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Sort Order</label>
+                  <input
+                    type="number"
+                    value={blogPostForm.sort_order}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, sort_order: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+
+              <ImageUploader
+                label="Featured Cover Photo URL *"
+                value={blogPostForm.featured_image}
+                onChange={(url) => setBlogPostForm({ ...blogPostForm, featured_image: url })}
+                placeholder="Upload photo or paste URL..."
+              />
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Short Excerpt / Summary *</label>
+                <textarea
+                  rows={2} required
+                  value={blogPostForm.excerpt}
+                  onChange={(e) => setBlogPostForm({ ...blogPostForm, excerpt: e.target.value })}
+                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  placeholder="2-3 sentence overview shown in cards and previews..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Full Article Body (HTML / Rich Text) *</label>
+                <textarea
+                  rows={8} required
+                  value={blogPostForm.content}
+                  onChange={(e) => setBlogPostForm({ ...blogPostForm, content: e.target.value })}
+                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs leading-relaxed"
+                  placeholder="<h2>Section Title</h2><p>Article paragraphs...</p><blockquote>Quotes...</blockquote>"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Author Name</label>
+                  <input
+                    type="text"
+                    value={blogPostForm.author_name}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, author_name: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Author Role</label>
+                  <input
+                    type="text"
+                    value={blogPostForm.author_role}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, author_role: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Author Avatar URL</label>
+                  <input
+                    type="url"
+                    value={blogPostForm.author_avatar}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, author_avatar: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Tags (Comma-separated)</label>
+                <input
+                  type="text"
+                  value={blogPostForm.tags}
+                  onChange={(e) => setBlogPostForm({ ...blogPostForm, tags: e.target.value })}
+                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  placeholder="e.g. Ashwagandha, Ayurveda, Superfoods"
+                />
+              </div>
+
+              <div className="flex items-center gap-6 p-3 bg-slate-800/60 rounded-xl border border-slate-700">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={Number(blogPostForm.is_published) === 1}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, is_published: e.target.checked ? 1 : 0 })}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>Publish Immediately (Storefront Visible)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={Number(blogPostForm.is_featured) === 1}
+                    onChange={(e) => setBlogPostForm({ ...blogPostForm, is_featured: e.target.checked ? 1 : 0 })}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>Feature in Journal Spotlight</span>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg transition-all cursor-pointer text-sm"
+              >
+                {editingBlogPost ? 'Save & Update Article' : 'Publish Article to Journal'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showInstagramPostModal && (
         <div className="drawer-overlay flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
