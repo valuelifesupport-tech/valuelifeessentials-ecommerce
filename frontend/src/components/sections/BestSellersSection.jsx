@@ -6,7 +6,8 @@ export default function BestSellersSection({
   products = [], 
   onAddToCart, 
   navigateTo,
-  currencySymbol = '₹'
+  currencySymbol = '₹',
+  sectionsConfig
 }) {
   const scrollRef = useRef(null);
 

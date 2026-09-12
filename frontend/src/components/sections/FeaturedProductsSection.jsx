@@ -8,7 +8,8 @@ export default function FeaturedProductsSection({
   onToggleWishlist, 
   isWishlisted, 
   navigateTo,
-  currencySymbol = '₹'
+  currencySymbol = '₹',
+  sectionsConfig
 }) {
   const [activeTab, setActiveTab] = useState('ALL');
 
