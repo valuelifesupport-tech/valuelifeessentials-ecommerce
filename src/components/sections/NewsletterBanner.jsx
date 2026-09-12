@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowRight, CheckCircle2, Mail } from 'lucide-react';
 
-export default function NewsletterBanner() {
+export default function NewsletterBanner({ sectionsConfig }) {
+  if (sectionsConfig && Number(sectionsConfig.show_newsletter) === 0) return null;
+
   const [email, setEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
 

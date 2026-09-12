@@ -1,7 +1,9 @@
 import React from 'react';
 import { ShieldCheck, Lock, Truck, Headphones } from 'lucide-react';
 
-export default function WhyChooseUsSection() {
+export default function WhyChooseUsSection({ sectionsConfig }) {
+  if (sectionsConfig && Number(sectionsConfig.show_why_choose_us) === 0) return null;
+
   const features = [
     {
       icon: ShieldCheck,

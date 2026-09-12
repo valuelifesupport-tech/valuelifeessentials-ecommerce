@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Star, CheckCircle, ShieldCheck, HeartHandshake, Award } from 'lucide-react';
 import { getApiUrl } from '../../api/config';
 
-export default function TestimonialsSection() {
+export default function TestimonialsSection({ sectionsConfig }) {
+  if (sectionsConfig && Number(sectionsConfig.show_testimonials) === 0) return null;
+
   const [reviews, setReviews] = useState([]);
 
   useEffect(() => {

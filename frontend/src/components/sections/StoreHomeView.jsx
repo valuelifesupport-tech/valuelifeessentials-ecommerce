@@ -13,6 +13,7 @@ import NewsletterBanner from './NewsletterBanner';
 export default function StoreHomeView({
   heroConfig,
   sectionsConfig,
+  settings,
   categories = [],
   bestProducts = [],
   wishlist = [],
@@ -50,10 +51,11 @@ export default function StoreHomeView({
       {/* 5. EDITORIAL PROMO BANNER */}
       <EditorialPromoBanner 
         navigateTo={navigateTo} 
+        sectionsConfig={sectionsConfig}
       />
 
       {/* 6. WHY CHOOSE VALUELIFE? */}
-      <WhyChooseUsSection />
+      <WhyChooseUsSection sectionsConfig={sectionsConfig} />
 
       {/* 7. BEST SELLERS */}
       <BestSellersSection
@@ -61,21 +63,26 @@ export default function StoreHomeView({
         currencySymbol={currencySymbol}
         handleAddToCart={handleAddToCart}
         navigateTo={navigateTo}
+        sectionsConfig={sectionsConfig}
       />
 
       {/* 8. BRAND STORY (OUR STORY) */}
       <BrandStorySection 
         navigateTo={navigateTo} 
+        sectionsConfig={sectionsConfig}
       />
 
       {/* 9. TESTIMONIALS */}
-      <TestimonialsSection />
+      <TestimonialsSection sectionsConfig={sectionsConfig} />
 
       {/* 10. INSTAGRAM FEED */}
-      <InstagramFeedSection />
+      <InstagramFeedSection 
+        sectionsConfig={sectionsConfig}
+        settings={settings}
+      />
 
       {/* 11. NEWSLETTER */}
-      <NewsletterBanner />
+      <NewsletterBanner sectionsConfig={sectionsConfig} />
     </div>
   );
 }

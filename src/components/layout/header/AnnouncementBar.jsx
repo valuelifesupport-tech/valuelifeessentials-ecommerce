@@ -38,9 +38,9 @@ export default function AnnouncementBar({
         {/* Right Info: Phone & Currency Switcher */}
         <div className="flex items-center gap-3 shrink-0 text-emerald-100 font-medium">
           <a
-            href="tel:+917675941899"
+            href={`tel:${(settings?.contact_phone || '7675941899').split('/')[0].split(',')[0].replace(/[^0-9+]/g, '')}`}
             className="flex items-center gap-1.5 hover:text-emerald-300 transition-colors shrink-0"
-            title="Customer Support: 7675941899 / 7893100755"
+            title={`Customer Support: ${settings?.contact_phone || '+91 76759 41899 / 78931 00755'}`}
             data-reticle-target="topbar-phone-link"
           >
             <Phone size={12} className="text-emerald-400" />

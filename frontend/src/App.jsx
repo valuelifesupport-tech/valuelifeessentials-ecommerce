@@ -18,6 +18,8 @@ import PageView from './components/sections/PageView';
 import CustomerProfilePage from './components/auth/CustomerProfilePage';
 import MaintenancePage from './components/sections/MaintenancePage';
 
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+
 // Modals & Drawers
 import CartDrawer from './components/cart/CartDrawer';
 import WishlistDrawer from './components/cart/WishlistDrawer';
@@ -420,18 +422,16 @@ export default function App() {
 
   if (route.view === 'admin') {
     return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl">
-          <div className="w-16 h-16 bg-emerald-950 border border-emerald-600/30 rounded-2xl flex items-center justify-center mx-auto text-3xl">🛡️</div>
-          <h2 className="text-2xl font-black text-white font-['Outfit']">Admin Portal</h2>
-          <a href="https://admin.valuelifeessentials.com" target="_blank" rel="noreferrer" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-3.5 px-6 rounded-xl block">
-            Open Dedicated Admin Portal →
-          </a>
-          <button onClick={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })} className="text-slate-400 text-xs font-bold hover:text-white cursor-pointer">
-            ← Return to Storefront
-          </button>
-        </div>
-      </div>
+      <React.Suspense fallback={<BrandLoader text="Loading Admin Control Center..." fullScreen={true} />}>
+        <AdminDashboard 
+          onExitAdmin={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
+          showToast={showToast}
+          sectionsConfig={sectionsConfig}
+          onUpdateSectionsConfig={setSectionsConfig}
+          settings={settings}
+          onUpdateSettings={setSettings}
+        />
+      </React.Suspense>
     );
   }
 
@@ -540,6 +540,7 @@ export default function App() {
           <StoreHomeView 
             heroConfig={heroConfig}
             sectionsConfig={sectionsConfig}
+            settings={settings}
             banners={banners}
             categories={categories}
             collections={collections}
