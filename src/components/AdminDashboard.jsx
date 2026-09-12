@@ -2929,8 +2929,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       }
                       return true;
                     })
-                    .map(item => (
-                      <div key={item.id} className="relative group bg-slate-850 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-slate-700 transition-all">
+                    .map((item, idx) => (
+                      <div key={item.id || item.url || item.filename || `media-${idx}`} className="relative group bg-slate-850 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-slate-700 transition-all">
                         <div className="relative h-36 bg-slate-900 overflow-hidden flex items-center justify-center p-1 cursor-pointer" onClick={() => setPreviewMediaItem(item)}>
                           <img 
                             src={resolveImgUrl(item.url)} 
