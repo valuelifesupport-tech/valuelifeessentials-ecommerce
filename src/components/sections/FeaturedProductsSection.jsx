@@ -8,7 +8,8 @@ export default function FeaturedProductsSection({
   onToggleWishlist, 
   isWishlisted, 
   navigateTo,
-  currencySymbol = '₹'
+  currencySymbol = '₹',
+  sectionsConfig
 }) {
   const [activeTab, setActiveTab] = useState('ALL');
 
@@ -47,6 +48,8 @@ export default function FeaturedProductsSection({
     if (activeTab === 'ON_SALE') return item.originalPrice > item.price;
     return true;
   });
+
+  if (sectionsConfig && Number(sectionsConfig.show_featured_products) === 0) return null;
 
   return (
     <section className="py-12 bg-white" data-reticle-target="featured-products-section">

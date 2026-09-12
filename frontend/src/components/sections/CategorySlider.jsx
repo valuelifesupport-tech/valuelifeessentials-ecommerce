@@ -3,14 +3,12 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
 
 export default function CategorySlider({ categories = [], navigateTo, sectionTitle, sectionsConfig }) {
-  if (sectionsConfig && Number(sectionsConfig.show_categories_slider) === 0) return null;
   const scrollRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
   const resumeTimeoutRef = useRef(null);
 
   // Real database categories only
   const displayCategories = categories || [];
-  if (displayCategories.length === 0) return null;
 
   // Auto-scroll loop effect
   useEffect(() => {
@@ -54,6 +52,9 @@ export default function CategorySlider({ categories = [], navigateTo, sectionTit
       if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
     };
   }, []);
+
+  if (sectionsConfig && Number(sectionsConfig.show_categories_slider) === 0) return null;
+  if (displayCategories.length === 0) return null;
 
   return (
     <section 

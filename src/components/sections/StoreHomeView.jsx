@@ -47,6 +47,7 @@ export default function StoreHomeView({
         handleAddToCart={handleAddToCart}
         handleToggleWishlist={handleToggleWishlist}
         navigateTo={navigateTo}
+        sectionsConfig={sectionsConfig}
       />
 
       {/* 5. EDITORIAL PROMO BANNER */}

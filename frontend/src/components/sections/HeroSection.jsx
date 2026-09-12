@@ -3,7 +3,6 @@ import { ArrowRight, Leaf, Shield, HeartHandshake, Award } from 'lucide-react';
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 
 export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) {
-  if (sectionsConfig && Number(sectionsConfig.show_hero) === 0) return null;
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -61,6 +60,8 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
     }, 4500);
     return () => clearInterval(interval);
   }, [isPaused, slides.length]);
+
+  if (sectionsConfig && Number(sectionsConfig.show_hero) === 0) return null;
 
   const currentSlide = slides[activeSlide] || slides[0] || {};
 

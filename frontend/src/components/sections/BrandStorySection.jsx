@@ -3,7 +3,6 @@ import { ArrowRight, Leaf } from 'lucide-react';
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 
 export default function BrandStorySection({ navigateTo, sectionsConfig }) {
-  if (sectionsConfig && Number(sectionsConfig.show_brand_story) === 0) return null;
 
   const [story, setStory] = useState({
     badge_text: 'WHO WE ARE',
@@ -32,6 +31,7 @@ export default function BrandStorySection({ navigateTo, sectionsConfig }) {
     return () => { isMounted = false; };
   }, []);
 
+  if (sectionsConfig && Number(sectionsConfig.show_brand_story) === 0) return null;
   if (story.is_enabled !== undefined && Number(story.is_enabled) === 0) return null;
 
   const handleLearnMore = () => {

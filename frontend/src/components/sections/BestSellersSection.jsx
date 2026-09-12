@@ -29,7 +29,9 @@ export default function BestSellersSection({
     scrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
   };
 
-  if (displayItems.length === 0) return null; // Don't show empty block if no products
+
+  if (sectionsConfig && Number(sectionsConfig.show_bestsellers) === 0) return null;
+  if (displayItems.length === 0) return null;
 
   return (
     <section className="py-12 bg-white" data-reticle-target="best-sellers-section">

@@ -4,7 +4,6 @@ import { InstagramIcon } from '../layout/SocialIcons';
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 
 export default function InstagramFeedSection({ sectionsConfig, settings }) {
-  if (sectionsConfig && Number(sectionsConfig.show_instagram_feed) === 0) return null;
 
   const [posts, setPosts] = useState([
     {
@@ -64,6 +63,8 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
   }, []);
 
   const defaultInstagramUrl = settings?.instagram_url || 'https://www.instagram.com/valuelife_essentials/?hl=en';
+
+  if (sectionsConfig && Number(sectionsConfig.show_instagram_feed) === 0) return null;
 
   return (
     <section className="py-12 bg-white" data-reticle-target="instagram-feed-section">

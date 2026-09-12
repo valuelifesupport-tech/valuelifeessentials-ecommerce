@@ -3,7 +3,6 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 
 export default function EditorialPromoBanner({ navigateTo, sectionsConfig }) {
-  if (sectionsConfig && Number(sectionsConfig.show_editorial_promo) === 0) return null;
 
   const [promo, setPromo] = useState({
     badge_text: 'LIMITED TIME OFFER',
@@ -33,6 +32,7 @@ export default function EditorialPromoBanner({ navigateTo, sectionsConfig }) {
     return () => { isMounted = false; };
   }, []);
 
+  if (sectionsConfig && Number(sectionsConfig.show_editorial_promo) === 0) return null;
   if (promo.is_enabled !== undefined && Number(promo.is_enabled) === 0) return null;
 
   const handleCta = () => {

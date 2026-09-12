@@ -48,6 +48,8 @@ export default function FeaturedProductsSection({
     return true;
   });
 
+  if (sectionsConfig && Number(sectionsConfig.show_featured_products) === 0) return null;
+
   return (
     <section className="py-12 bg-white" data-reticle-target="featured-products-section">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

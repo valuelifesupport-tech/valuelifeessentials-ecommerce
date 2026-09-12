@@ -6,7 +6,6 @@ export default function BlogSection({ sectionsConfig, navigateTo }) {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  if (sectionsConfig?.show_blog_section === 0) return null;
 
   useEffect(() => {
     fetch('/api/blogs?limit=3')
@@ -18,6 +17,7 @@ export default function BlogSection({ sectionsConfig, navigateTo }) {
       .finally(() => setLoading(false));
   }, []);
 
+  if (sectionsConfig?.show_blog_section === 0) return null;
   if (!loading && blogs.length === 0) return null;
 
   return (

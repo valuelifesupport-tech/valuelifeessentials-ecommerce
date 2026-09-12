@@ -3,7 +3,6 @@ import { Star, CheckCircle, ShieldCheck, HeartHandshake, Award } from 'lucide-re
 import { getApiUrl } from '../../api/config';
 
 export default function TestimonialsSection({ sectionsConfig }) {
-  if (sectionsConfig && Number(sectionsConfig.show_testimonials) === 0) return null;
 
   const [reviews, setReviews] = useState([]);
 
@@ -19,6 +18,8 @@ export default function TestimonialsSection({ sectionsConfig }) {
       })
       .catch(() => {});
   }, []);
+
+  if (sectionsConfig && Number(sectionsConfig.show_testimonials) === 0) return null;
 
   return (
     <section className="py-14 bg-[#fbf9f5] border-t border-b border-gray-200/70" data-reticle-target="testimonials-section">

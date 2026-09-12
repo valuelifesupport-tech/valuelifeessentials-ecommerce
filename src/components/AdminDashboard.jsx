@@ -8,7 +8,17 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { Line, Bar } from 'react-chartjs-2';
 
 import ImageUploader from './ImageUploader';
-import HeroSection from './HeroSection';
+import StoreHeroSection from './sections/HeroSection';
+import CategorySlider from './sections/CategorySlider';
+import FeaturedProductsSection from './sections/FeaturedProductsSection';
+import EditorialPromoBanner from './sections/EditorialPromoBanner';
+import WhyChooseUsSection from './sections/WhyChooseUsSection';
+import BestSellersSection from './sections/BestSellersSection';
+import BrandStorySection from './sections/BrandStorySection';
+import TestimonialsSection from './sections/TestimonialsSection';
+import BlogSection from './sections/BlogSection';
+import InstagramFeedSection from './sections/InstagramFeedSection';
+import NewsletterBanner from './sections/NewsletterBanner';
 import PromoBannerSlider from './PromoBannerSlider';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
@@ -4375,7 +4385,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                       {/* RENDERED HERO SECTION */}
                       <div className="max-h-[580px] overflow-y-auto bg-slate-950 scrollbar-thin">
-                        <HeroSection heroConfig={heroConfig} navigateTo={() => {}} />
+                        <StoreHeroSection heroConfig={heroConfig} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
                       </div>
                     </div>
 
@@ -5091,7 +5101,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
             </div>
           )}
 
-          {/* TAB 14: THEME & DESIGN SYSTEM STUDIO WITH REAL-TIME LIVE PREVIEW CANVAS */}
+                    {/* TAB: THEME & DESIGN SYSTEM STUDIO WITH REAL-TIME LIVE PREVIEW CANVAS */}
           {activeTab === 'theme' && (
             <div className="space-y-6">
               {/* TOP HEADER BAR */}
@@ -5125,14 +5135,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                   <form onSubmit={handleThemeSubmit} className="space-y-5 text-xs">
                     {/* 1. THEME PRESETS SELECTOR */}
                     <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 space-y-3">
-                      <span className="font-extrabold text-xs text-emerald-400 uppercase tracking-wider block">1. Curated 1-Click Theme Presets</span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      <span className="font-extrabold text-xs text-emerald-400 uppercase tracking-wider block">1. Curated Agency Theme Presets</span>
+                      <div className="grid grid-cols-2 gap-2.5">
                         {[
-                          { id: 'EMERALD', name: 'Organic Emerald', primary: '#3b6e14', accent: '#f59e0b', font: 'Outfit', radius: 'rounded-3xl' },
-                          { id: 'AVOCADO', name: 'Fresh Avocado', primary: '#2d5a27', accent: '#eab308', font: 'Plus Jakarta Sans', radius: 'rounded-2xl' },
-                          { id: 'HAZELNUT', name: 'Warm Earth', primary: '#654321', accent: '#d97706', font: 'Playfair Display', radius: 'rounded-xl' },
-                          { id: 'INDIGO', name: 'Berry Indigo', primary: '#3730a3', accent: '#ec4899', font: 'Cabinet Grotesk', radius: 'rounded-3xl' },
-                          { id: 'LUXURY_DARK', name: 'Luxury Gold', primary: '#18181b', accent: '#eab308', font: 'Playfair Display', radius: 'rounded-xl' }
+                          { id: 'EMERALD_ORGANIC', name: 'Emerald Organic (Active)', primary: '#164e3f', hover: '#0a2e22', accent: '#52b788', secondary: '#f8f7f2', font: 'Outfit', radius: 'rounded-3xl', header: 'EMERALD_DARK' },
+                          { id: 'HERBAL_GOLD', name: 'Herbal Gold', primary: '#1b4332', hover: '#143527', accent: '#d4a373', secondary: '#faf8f5', font: 'Plus Jakarta Sans', radius: 'rounded-2xl', header: 'GOLD_ACCENT' },
+                          { id: 'EARTH_BOTANICAL', name: 'Earth Botanical', primary: '#2d5a27', hover: '#20411b', accent: '#e9c46a', secondary: '#f4f6f0', font: 'Cabinet Grotesk', radius: 'rounded-3xl', header: 'EMERALD_DARK' },
+                          { id: 'MINIMAL_CLEAN', name: 'Minimal Clean', primary: '#0f172a', hover: '#020617', accent: '#10b981', secondary: '#ffffff', font: 'Inter', radius: 'rounded-xl', header: 'MINIMAL_WHITE' }
                         ].map(preset => (
                           <button
                             key={preset.id}
@@ -5141,12 +5150,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                               ...themeConfig,
                               active_preset: preset.id,
                               primary_color: preset.primary,
+                              primary_hover: preset.hover,
                               accent_color: preset.accent,
+                              secondary_color: preset.secondary,
                               heading_font: preset.font,
-                              border_radius: preset.radius
+                              border_radius: preset.radius,
+                              header_style: preset.header
                             })}
                             className={`p-3 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
-                              themeConfig.active_preset === preset.id
+                              (themeConfig.active_preset === preset.id || (themeConfig.active_preset === 'EMERALD' && preset.id === 'EMERALD_ORGANIC'))
                                 ? 'bg-emerald-950 border-emerald-500 text-white ring-2 ring-emerald-500/30'
                                 : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
                             }`}
@@ -5172,13 +5184,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           <div className="flex items-center gap-2">
                             <input 
                               type="color"
-                              value={themeConfig.primary_color || '#3b6e14'}
+                              value={themeConfig.primary_color || '#164e3f'}
                               onChange={(e) => setThemeConfig({ ...themeConfig, primary_color: e.target.value })}
                               className="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer shrink-0"
                             />
                             <input 
                               type="text"
-                              value={themeConfig.primary_color || '#3b6e14'}
+                              value={themeConfig.primary_color || '#164e3f'}
                               onChange={(e) => setThemeConfig({ ...themeConfig, primary_color: e.target.value })}
                               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono uppercase"
                             />
@@ -5190,13 +5202,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           <div className="flex items-center gap-2">
                             <input 
                               type="color"
-                              value={themeConfig.primary_hover || '#2e5710'}
+                              value={themeConfig.primary_hover || '#0a2e22'}
                               onChange={(e) => setThemeConfig({ ...themeConfig, primary_hover: e.target.value })}
                               className="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer shrink-0"
                             />
                             <input 
                               type="text"
-                              value={themeConfig.primary_hover || '#2e5710'}
+                              value={themeConfig.primary_hover || '#0a2e22'}
                               onChange={(e) => setThemeConfig({ ...themeConfig, primary_hover: e.target.value })}
                               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono uppercase"
                             />
@@ -5208,13 +5220,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           <div className="flex items-center gap-2">
                             <input 
                               type="color"
-                              value={themeConfig.accent_color || '#f59e0b'}
+                              value={themeConfig.accent_color || '#52b788'}
                               onChange={(e) => setThemeConfig({ ...themeConfig, accent_color: e.target.value })}
                               className="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer shrink-0"
                             />
                             <input 
                               type="text"
-                              value={themeConfig.accent_color || '#f59e0b'}
+                              value={themeConfig.accent_color || '#52b788'}
                               onChange={(e) => setThemeConfig({ ...themeConfig, accent_color: e.target.value })}
                               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono uppercase"
                             />
@@ -5222,7 +5234,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         </div>
 
                         <div>
-                          <label className="block text-slate-300 font-bold mb-1">Card Background Color</label>
+                          <label className="block text-slate-300 font-bold mb-1">Card Background Tint</label>
                           <div className="flex items-center gap-2">
                             <input 
                               type="color"
@@ -5253,12 +5265,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             onChange={(e) => setThemeConfig({ ...themeConfig, heading_font: e.target.value })}
                             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                           >
-                            <option value="Outfit">Outfit (Modern Bold)</option>
+                            <option value="Outfit">Outfit (Modern Bold - Active)</option>
                             <option value="Plus Jakarta Sans">Plus Jakarta Sans (Sleek Clean)</option>
-                            <option value="Inter">Inter (Swiss Tech)</option>
-                            <option value="Playfair Display">Playfair Display (Luxury Serif)</option>
-                            <option value="Roboto">Roboto (Classic Sans)</option>
+                            <option value="Inter">Inter (Swiss Precision)</option>
                             <option value="Cabinet Grotesk">Cabinet Grotesk (Editorial Display)</option>
+                            <option value="Playfair Display">Playfair Display (Luxury Serif)</option>
                           </select>
                         </div>
 
@@ -5269,8 +5280,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             onChange={(e) => setThemeConfig({ ...themeConfig, body_font: e.target.value })}
                             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                           >
-                            <option value="Inter">Inter (Ultra Readable)</option>
-                            <option value="Outfit">Outfit (Modern)</option>
+                            <option value="Inter">Inter (Ultra Readable - Active)</option>
+                            <option value="Outfit">Outfit (Modern Clean)</option>
                             <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
                             <option value="Roboto">Roboto</option>
                           </select>
@@ -5290,7 +5301,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             onChange={(e) => setThemeConfig({ ...themeConfig, border_radius: e.target.value })}
                             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                           >
-                            <option value="rounded-3xl">Pill Smooth (rounded-3xl)</option>
+                            <option value="rounded-3xl">Pill Smooth (rounded-3xl - Active)</option>
                             <option value="rounded-2xl">Modern Soft (rounded-2xl)</option>
                             <option value="rounded-xl">Subtle Curved (rounded-xl)</option>
                             <option value="rounded-none">Sharp Minimalist (rounded-none)</option>
@@ -5304,9 +5315,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             onChange={(e) => setThemeConfig({ ...themeConfig, header_style: e.target.value })}
                             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
                           >
-                            <option value="EMERALD_DARK">Emerald Dark Gradient</option>
+                            <option value="EMERALD_DARK">Emerald Forest Dark (Active)</option>
                             <option value="MINIMAL_WHITE">Clean Minimal White</option>
-                            <option value="GOLD_ACCENT">Gold Accent Border</option>
+                            <option value="GOLD_ACCENT">Luxury Gold Accent</option>
                           </select>
                         </div>
                       </div>
@@ -5316,94 +5327,19 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                     <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="font-extrabold text-xs text-emerald-400 uppercase tracking-wider block">
-                          ⚡ Product Card Action & Layout Design
+                          ⚡ Modern Agency Product Card
                         </span>
                         <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                          Selected: {(themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'CLASSIC_SPLIT' ? '2-Button Split' : 'VALUELIFE ESSENTIALS Pill'}
+                          Agency Pill Style Active
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setThemeConfig({ ...themeConfig, card_style: 'VALUELIFE_ESSENTIALS' })}
-                          className={`p-3 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
-                            (themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'VALUELIFE_ESSENTIALS'
-                              ? 'bg-emerald-950 border-emerald-500 text-white ring-2 ring-emerald-500/30'
-                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-xs text-white">🌿 VALUELIFE ESSENTIALS Pill Card</span>
-                            {(themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'VALUELIFE_ESSENTIALS' && <CheckCircle size={14} className="text-emerald-400" />}
-                          </div>
-                          <p className="text-[10px] opacity-80 font-medium">1-Click 🛒 ADD TO CART button + Rating Stars + Red Heart Wishlist Pill</p>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setThemeConfig({ ...themeConfig, card_style: 'CLASSIC_SPLIT' })}
-                          className={`p-3 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
-                            themeConfig.card_style === 'CLASSIC_SPLIT'
-                              ? 'bg-emerald-950 border-emerald-500 text-white ring-2 ring-emerald-500/30'
-                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-xs text-white">🛍️ Classic 2-Button Split</span>
-                            {themeConfig.card_style === 'CLASSIC_SPLIT' && <CheckCircle size={14} className="text-emerald-400" />}
-                          </div>
-                          <p className="text-[10px] opacity-80 font-medium">Side-by-Side 2 Buttons: [ Details ] + [ + Add ]</p>
-                        </button>
-                      </div>
-
-                      {/* INLINE LIVE CARD PREVIEW MOCKUP BOX */}
-                      <div className="p-3 bg-slate-900 rounded-xl border border-slate-700/80 space-y-2.5">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                          <span className="text-[11px] font-extrabold text-slate-200 flex items-center gap-1.5">
-                            <Eye size={14} className="text-emerald-400" /> Card Live Preview Mockup:
-                          </span>
-                          <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                            {(themeConfig.card_style || 'VALUELIFE_ESSENTIALS') === 'CLASSIC_SPLIT' ? 'Classic 2-Button Split' : 'VALUELIFE ESSENTIALS 1-Click Pill'}
-                          </span>
+                      <div className="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <span className="font-extrabold text-xs text-white block">🌿 ValueLife Essentials Agency Pill Card</span>
+                          <p className="text-[11px] text-slate-400">1-Click Full-Width Cart Button + Rating Stars + Wishlist Heart + Compare Discount Badge</p>
                         </div>
-
-                        <div className="bg-[#f8f7f2] p-3 rounded-2xl border border-gray-300 space-y-2.5 shadow-md max-w-sm mx-auto">
-                          <div className="w-full h-28 bg-white rounded-xl relative flex items-center justify-center p-2 border border-gray-200">
-                            <img src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80" alt="Preview" className="h-full object-contain" />
-                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#f87171] text-white flex items-center justify-center shadow">
-                              <Heart size={12} fill="white" color="white" />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="font-extrabold text-xs text-gray-800 truncate">Organic Himalayan Pink Salt Powder 1kg</div>
-                            <div className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
-                              <span>★★★★★ 5.00</span>
-                              <span className="text-gray-400">| (24)</span>
-                            </div>
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-xs font-black text-gray-900">₹129.00</span>
-                              <span className="text-[10px] text-gray-400 line-through">₹199.00</span>
-                              <span className="bg-[#4a7729] text-white text-[9px] font-bold px-1 rounded">-35% Off</span>
-                            </div>
-                          </div>
-
-                          {(themeConfig.card_style === 'CLASSIC_SPLIT') ? (
-                            <div className="flex gap-1.5 pt-1">
-                              <button type="button" className="border-2 border-[#3b6e14] text-[#3b6e14] flex-1 py-1.5 rounded-lg text-[10px] font-bold text-center">
-                                Details
-                              </button>
-                              <button type="button" className="bg-[#3b6e14] text-white flex-1 py-1.5 rounded-lg text-[10px] font-black text-center">
-                                + Add
-                              </button>
-                            </div>
-                          ) : (
-                            <button type="button" className="w-full bg-[#3b6e14] text-white py-2 rounded-full font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow">
-                              <ShoppingBag size={12} /> ADD TO CART
-                            </button>
-                          )}
-                        </div>
+                        <CheckCircle size={18} className="text-emerald-400 shrink-0" />
                       </div>
                     </div>
 
@@ -5423,8 +5359,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           👁️ LIVE REAL-TIME THEME PREVIEW CANVAS
                         </span>
                       </div>
-                      <span className="bg-slate-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded border border-slate-700 font-extrabold uppercase">
-                        {themeConfig.active_preset} PRESET
+                      <span className="bg-slate-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded border border-slate-700 font-extrabold uppercase font-mono">
+                        {themeConfig.active_preset || 'EMERALD_ORGANIC'}
                       </span>
                     </div>
 
@@ -5436,13 +5372,27 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         fontFamily: themeConfig.body_font || 'Inter'
                       }}
                     >
-                      {/* HEADER MOCKUP */}
+                      {/* HEADER ANNOUNCEMENT BAR MOCKUP */}
+                      <div 
+                        className="py-1 px-3 rounded-lg text-white text-[10px] font-bold flex justify-between items-center shadow-sm"
+                        style={{ backgroundColor: themeConfig.primary_color || '#164e3f' }}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase" style={{ backgroundColor: themeConfig.accent_color || '#52b788', color: '#090d16' }}>
+                            SPECIAL
+                          </span>
+                          <span className="truncate">Free Express Shipping Across India on Orders Above ₹499!</span>
+                        </div>
+                        <span className="text-[9px] opacity-80 shrink-0">🇮🇳 (₹)</span>
+                      </div>
+
+                      {/* NAVBAR HEADER MOCKUP */}
                       <div 
                         className="p-3.5 rounded-xl flex items-center justify-between shadow-md"
                         style={{
-                          backgroundColor: themeConfig.header_style === 'CLEAN_LIGHT' ? '#ffffff' : (themeConfig.primary_color || '#3b6e14'),
-                          color: themeConfig.header_style === 'CLEAN_LIGHT' ? '#0f172a' : '#ffffff',
-                          border: themeConfig.header_style === 'CLEAN_LIGHT' ? '1px solid #e2e8f0' : 'none'
+                          backgroundColor: themeConfig.header_style === 'MINIMAL_WHITE' ? '#ffffff' : (themeConfig.primary_color || '#164e3f'),
+                          color: themeConfig.header_style === 'MINIMAL_WHITE' ? '#0f172a' : '#ffffff',
+                          border: themeConfig.header_style === 'MINIMAL_WHITE' ? '1px solid #e2e8f0' : (themeConfig.header_style === 'GOLD_ACCENT' ? '1px solid #d4a373' : 'none')
                         }}
                       >
                         <div className="flex items-center gap-2">
@@ -5453,8 +5403,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         </div>
 
                         <div className="flex items-center gap-2 text-xs font-bold">
-                          <span className="px-2.5 py-1 rounded-lg" style={{ backgroundColor: themeConfig.accent_color || '#f59e0b', color: '#000' }}>
-                            Cart (3)
+                          <span className="px-2.5 py-1 rounded-lg flex items-center gap-1 font-black" style={{ backgroundColor: themeConfig.accent_color || '#52b788', color: '#090d16' }}>
+                            <ShoppingBag size={12} /> Cart (3)
                           </span>
                         </div>
                       </div>
@@ -5462,14 +5412,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       {/* HERO BADGE & TITLE MOCKUP */}
                       <div className="space-y-2 text-center py-2">
                         <span 
-                          className="text-[10px] font-black uppercase px-3 py-1 rounded-full inline-block border"
+                          className="text-[10px] font-black uppercase px-3 py-1 rounded-full inline-block border tracking-wider"
                           style={{
-                            backgroundColor: `${themeConfig.primary_color}15`,
-                            color: themeConfig.primary_color || '#3b6e14',
-                            borderColor: `${themeConfig.primary_color}40`
+                            backgroundColor: `${themeConfig.primary_color || '#164e3f'}15`,
+                            color: themeConfig.primary_color || '#164e3f',
+                            borderColor: `${themeConfig.primary_color || '#164e3f'}40`
                           }}
                         >
-                          🌱 100% Certified Organic Theme
+                          🌱 100% Certified Organic Superfoods
                         </span>
 
                         <h3 
@@ -5479,11 +5429,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             color: themeConfig.dark_mode === 1 ? '#ffffff' : '#0f172a'
                           }}
                         >
-                          Fresh Organic Groceries & Superfoods
+                          Better Choices, <span className="italic font-normal" style={{ color: themeConfig.primary_color || '#164e3f' }}>Better Life.</span>
                         </h3>
                       </div>
 
-                      {/* MOCK PRODUCT CARD IN CANVAS */}
+                      {/* MOCK AGENCY PILL PRODUCT CARD IN CANVAS */}
                       <div 
                         className={`p-3.5 border space-y-3 shadow-md transition-all ${themeConfig.border_radius || 'rounded-3xl'}`}
                         style={{
@@ -5491,52 +5441,57 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                           borderColor: '#e2e8f0'
                         }}
                       >
-                        <div className="w-full h-32 bg-white rounded-xl overflow-hidden relative flex items-center justify-center p-2">
+                        <div className="w-full h-32 bg-white rounded-2xl overflow-hidden relative flex items-center justify-center p-2 border border-slate-100">
                           <img 
                             src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80" 
-                            alt="Mock" 
+                            alt="Mock Product" 
                             className="w-full h-full object-contain rounded-lg" 
                           />
-                          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#f87171] text-white flex items-center justify-center shadow">
+                          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shadow">
                             <Heart size={12} fill="white" color="white" />
                           </div>
+                          <span className="absolute top-2 left-2 bg-[#164e3f] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
+                            Organic
+                          </span>
                         </div>
 
                         <div className="space-y-1.5">
-                          <span className="text-[10px] font-extrabold uppercase text-amber-600">★★★★★ 5.0 (24 Reviews)</span>
-                          <h4 className="font-extrabold text-xs text-slate-900 line-clamp-1">Pure Organic Ashwagandha Root Powder</h4>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold text-amber-500 flex items-center gap-0.5">
+                              <Star size={11} fill="currentColor" /> 5.0 (24 reviews)
+                            </span>
+                            <span className="text-[9px] text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.2 rounded">In Stock</span>
+                          </div>
+                          <h4 className="font-extrabold text-xs text-slate-900 line-clamp-1" style={{ fontFamily: themeConfig.heading_font || 'Outfit' }}>
+                            Pure Organic Ashwagandha Root Powder 500g
+                          </h4>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-black text-slate-900">₹349.00</span>
                             <span className="text-xs text-slate-400 line-through">₹499.00</span>
-                            <span className="bg-[#4a7729] text-white text-[9px] font-bold px-1 rounded">-30% Off</span>
+                            <span className="bg-emerald-800 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">-30% OFF</span>
                           </div>
                         </div>
 
-                        {/* DYNAMIC CARD BUTTON IN CANVAS */}
-                        {(themeConfig.card_style === 'CLASSIC_SPLIT') ? (
-                          <div className="flex gap-1.5 pt-1">
-                            <button 
-                              type="button"
-                              className="border-2 border-[#3b6e14] text-[#3b6e14] flex-1 py-2 rounded-xl text-xs font-bold text-center"
-                            >
-                              Details
-                            </button>
-                            <button 
-                              type="button"
-                              className="bg-[#3b6e14] text-white flex-1 py-2 rounded-xl text-xs font-black text-center"
-                            >
-                              + Add
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            className="w-full py-2.5 rounded-full text-white font-extrabold text-xs uppercase tracking-wider shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                            style={{ backgroundColor: themeConfig.primary_color || '#3b6e14' }}
-                          >
-                            <ShoppingBag size={14} /> ADD TO CART
-                          </button>
-                        )}
+                        {/* DYNAMIC AGENCY CART BUTTON IN CANVAS */}
+                        <button
+                          type="button"
+                          className="w-full py-2.5 rounded-full text-white font-extrabold text-xs uppercase tracking-wider shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5 hover:opacity-90"
+                          style={{ backgroundColor: themeConfig.primary_color || '#164e3f' }}
+                        >
+                          <ShoppingBag size={14} /> ADD TO CART
+                        </button>
+                      </div>
+
+                      {/* MINI EDITORIAL HIGHLIGHT SNIPPET */}
+                      <div 
+                        className="p-3 rounded-2xl text-white flex items-center justify-between gap-3 shadow-md"
+                        style={{ backgroundColor: themeConfig.primary_color || '#164e3f' }}
+                      >
+                        <div className="space-y-0.5">
+                          <span className="text-[9px] uppercase tracking-widest font-black" style={{ color: themeConfig.accent_color || '#52b788' }}>LIMITED TIME</span>
+                          <div className="text-xs font-black" style={{ fontFamily: themeConfig.heading_font || 'Outfit' }}>Pure Products, Happier Lives</div>
+                        </div>
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white text-slate-900 shrink-0">Explore</span>
                       </div>
                     </div>
 
@@ -6073,656 +6028,754 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
             );
           })()}
 
-          {/* TAB: ALL STOREFRONT SECTIONS CONTROL CENTER */}
+                    {/* TAB: ALL STOREFRONT SECTIONS CONTROL CENTER */}
           {activeTab === 'sections' && (
             <div className="space-y-6 w-full">
               <div>
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest block">STOREFRONT SECTIONS CONTROL</span>
                 <h3 className="text-xl font-black text-white font-['Outfit']">🎛️ Master Website Sections Control Center</h3>
-                <p className="text-xs text-slate-400">Enable, disable, reorder, and customize headlines & subtext for every single section of your storefront in real time with 50-50 side-by-side live canvas preview.</p>
+                <p className="text-xs text-slate-400">Enable, disable, configure, and customize every live section of your storefront in real time with 50-50 side-by-side live canvas preview.</p>
               </div>
 
               {/* EQUAL 50-50 SIDE-BY-SIDE SPLIT EDIT & LIVE PREVIEW CANVAS */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
                 {/* LEFT COLUMN: CONTROLS & TOGGLES (50% WIDTH) */}
-                <div className="w-full bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md space-y-5">
-                  <form onSubmit={handleSectionsConfigSubmit} className="space-y-5 text-xs">
-                {/* SECTION 1: HEADER TOP ANNOUNCEMENT BAR */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-amber-950/60 border border-amber-800 text-amber-400 rounded-xl text-lg">📢</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">1. Top Header Announcement Bar</span>
-                        <p className="text-slate-400 text-xs">Promotional banner ticker displayed at the very top of the website header.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('announcement')}
-                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        ✏️ Edit Content
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => updateAndSaveSectionToggle('show_announcement', sectionsConfig.show_announcement === 1 ? 0 : 1)}
-                        className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                          sectionsConfig.show_announcement === 1 
-                            ? 'bg-emerald-600 text-white shadow-lg' 
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {sectionsConfig.show_announcement === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                        <span>{sectionsConfig.show_announcement === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SECTION 2: HERO SECTION MANAGER */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">🦸</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">2. Hero Banner Showcase</span>
-                        <p className="text-slate-400 text-xs">Main storefront hero banner featuring headlines, CTA buttons, and background images.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('hero')}
-                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        ✏️ Edit Content
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => updateAndSaveSectionToggle('show_hero', sectionsConfig.show_hero === 1 ? 0 : 1)}
-                        className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                          sectionsConfig.show_hero === 1 
-                            ? 'bg-emerald-600 text-white shadow-lg' 
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {sectionsConfig.show_hero === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                        <span>{sectionsConfig.show_hero === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SECTION 3: TRUST & SERVICE BADGES ROW */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-4 shadow-md">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-blue-950/60 border border-blue-800 text-blue-400 rounded-xl text-lg">🌱</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">3. Trust & Service Badges Row</span>
-                        <p className="text-slate-400 text-xs">Highlights key value propositions (100% Organic, Fast Delivery, Partial COD, Top Rating).</p>
-                      </div>
-                    </div>
-
-                    <button 
-                      type="button"
-                      onClick={() => updateAndSaveSectionToggle('show_trust_badges', sectionsConfig.show_trust_badges === 1 ? 0 : 1)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                        sectionsConfig.show_trust_badges === 1 
-                          ? 'bg-emerald-600 text-white shadow-lg' 
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
-                    >
-                      {sectionsConfig.show_trust_badges === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      <span>{sectionsConfig.show_trust_badges === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                    </button>
-                  </div>
-
-                  {sectionsConfig.show_trust_badges === 1 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Badge 1: Title & Subtitle</label>
-                        <input type="text" value={sectionsConfig.trust_badge_1_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_1_title: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white mb-1" placeholder="Title" />
-                        <input type="text" value={sectionsConfig.trust_badge_1_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_1_sub: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300" placeholder="Subtitle" />
-                      </div>
-
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Badge 2: Title & Subtitle</label>
-                        <input type="text" value={sectionsConfig.trust_badge_2_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_2_title: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white mb-1" placeholder="Title" />
-                        <input type="text" value={sectionsConfig.trust_badge_2_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_2_sub: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300" placeholder="Subtitle" />
-                      </div>
-
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Badge 3: Title & Subtitle</label>
-                        <input type="text" value={sectionsConfig.trust_badge_3_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_3_title: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white mb-1" placeholder="Title" />
-                        <input type="text" value={sectionsConfig.trust_badge_3_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_3_sub: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300" placeholder="Subtitle" />
-                      </div>
-
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Badge 4: Title & Subtitle</label>
-                        <input type="text" value={sectionsConfig.trust_badge_4_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_4_title: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white mb-1" placeholder="Title" />
-                        <input type="text" value={sectionsConfig.trust_badge_4_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_4_sub: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300" placeholder="Subtitle" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* SECTION 4: ANIMATED PROMO BANNERS SLIDER (INDIVIDUAL PART 1) */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-4 shadow-md">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-purple-950/60 border border-purple-800 text-purple-400 rounded-xl text-lg">🖼️</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">4. Photorealistic Animated Promo Banner Slider (Part 1)</span>
-                        <p className="text-slate-400 text-xs">High-converting animated banner carousel card.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('banners')}
-                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-purple-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        ✏️ Edit Banners
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => updateAndSaveSectionToggle('show_promo_banners', sectionsConfig.show_promo_banners === 1 ? 0 : 1)}
-                        className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                          sectionsConfig.show_promo_banners === 1 
-                            ? 'bg-emerald-600 text-white shadow-lg' 
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {sectionsConfig.show_promo_banners === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                        <span>{sectionsConfig.show_promo_banners === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SECTION 4B: LIVE SOCIAL PROOF SALES TICKER (INDIVIDUAL PART 2) */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-4 shadow-md">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">⚡</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">4B. Live Social Proof Sales Ticker (Part 2)</span>
-                        <p className="text-slate-400 text-xs">Floating customer purchase ticker ("Priya Patel from Bengaluru just purchased...")</p>
-                      </div>
-                    </div>
-
-                    <button 
-                      type="button"
-                      onClick={() => updateAndSaveSectionToggle('show_sales_ticker', sectionsConfig.show_sales_ticker === 0 ? 1 : 0)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
-                        sectionsConfig.show_sales_ticker !== 0 
-                          ? 'bg-emerald-600 text-white shadow-lg' 
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
-                    >
-                      {sectionsConfig.show_sales_ticker !== 0 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      <span>{sectionsConfig.show_sales_ticker !== 0 ? 'TICKER ENABLED (ON)' : 'TICKER DISABLED (OFF)'}</span>
-                    </button>
-                  </div>
-
-                  {sectionsConfig.show_sales_ticker !== 0 && (() => {
-                    const currentTickers = (() => {
-                      if (!sectionsConfig?.sales_ticker_json) {
-                        return [
-                          { id: 1, name: 'Rohan Sharma', city: 'New Delhi', item: '5kg Organic Vermicompost', time: '2m ago' },
-                          { id: 2, name: 'Priya Patel', city: 'Bengaluru', item: '1L Liquid Seaweed Extract', time: '4m ago' },
-                          { id: 3, name: 'Amit Verma', city: 'Mumbai', item: '2kg Neem Cake Powder', time: '6m ago' },
-                          { id: 4, name: 'Neha Gupta', city: 'Pune', item: 'Organic Epsom Salt Booster', time: '8m ago' }
-                        ];
-                      }
-                      try {
-                        const parsed = typeof sectionsConfig.sales_ticker_json === 'string'
-                          ? JSON.parse(sectionsConfig.sales_ticker_json)
-                          : sectionsConfig.sales_ticker_json;
-                        return Array.isArray(parsed) ? parsed : [];
-                      } catch (e) {
-                        return [];
-                      }
-                    })();
-
-                    const handleTickerChange = (index, field, value) => {
-                      const updated = [...currentTickers];
-                      updated[index] = { ...updated[index], [field]: value };
-                      setSectionsConfig({
-                        ...sectionsConfig,
-                        sales_ticker_json: JSON.stringify(updated)
-                      });
-                    };
-
-                    const handleAddTicker = () => {
-                      const updated = [
-                        ...currentTickers,
-                        { id: Date.now(), name: 'New Customer', city: 'City', item: 'Organic Fertilizer', time: 'Just now' }
-                      ];
-                      setSectionsConfig({
-                        ...sectionsConfig,
-                        sales_ticker_json: JSON.stringify(updated)
-                      });
-                    };
-
-                    const handleDeleteTicker = (index) => {
-                      const updated = currentTickers.filter((_, i) => i !== index);
-                      setSectionsConfig({
-                        ...sectionsConfig,
-                        sales_ticker_json: JSON.stringify(updated)
-                      });
-                    };
-
-                    const handleSyncWithOrders = () => {
-                      if (!orders || orders.length === 0) {
-                        if (showToast) showToast('info', 'No Real Orders Yet', 'Added default customer ticker samples.');
-                        return;
-                      }
-                      const synced = orders.slice(0, 8).map((o, idx) => ({
-                        id: o.id || idx + 1,
-                        name: o.customer_name || 'Verified Customer',
-                        city: o.city || o.shipping_address?.split(',')[1]?.trim() || 'India',
-                        item: o.items?.[0]?.product_name || o.order_number || 'Organic Agro Product',
-                        time: o.created_at ? `${Math.max(1, Math.floor((Date.now() - new Date(o.created_at).getTime()) / (1000 * 60)))}m ago` : 'Recent'
-                      }));
-                      setSectionsConfig({
-                        ...sectionsConfig,
-                        sales_ticker_json: JSON.stringify(synced)
-                      });
-                      if (showToast) showToast('success', 'Synced with Real Customer Orders!', `Updated ticker with ${synced.length} real store purchases.`);
-                    };
-
-                    return (
-                      <div className="pt-3 border-t border-slate-800/80 space-y-3 text-xs">
-                        <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                          <span className="font-bold text-slate-300">Live Customer Purchase Notifications ({currentTickers.length})</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleSyncWithOrders}
-                              className="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-800 rounded-lg font-bold transition-all cursor-pointer"
-                            >
-                              ⚡ Auto-Sync Real Orders
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleAddTicker}
-                              className="px-2.5 py-1 bg-blue-950 hover:bg-blue-900 text-blue-400 border border-blue-800 rounded-lg font-bold transition-all cursor-pointer"
-                            >
-                              + Add Entry
-                            </button>
+                <div className="w-full bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md space-y-4">
+                  <form onSubmit={handleSectionsConfigSubmit} className="space-y-4 text-xs">
+                    
+                    {/* SECTION 1: HEADER TOP ANNOUNCEMENT BAR */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-amber-950/60 border border-amber-800 text-amber-400 rounded-xl text-lg">📢</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">1. Top Header Announcement Bar</span>
+                            <p className="text-slate-400 text-xs">Promotional banner ticker displayed at the very top of the website header.</p>
                           </div>
                         </div>
 
-                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                          {currentTickers.map((t, idx) => (
-                            <div key={t.id || idx} className="p-2 bg-slate-950 rounded-xl border border-slate-800 grid grid-cols-12 gap-2 items-center">
-                              <div className="col-span-3">
-                                <input
-                                  type="text"
-                                  value={t.name || ''}
-                                  onChange={(e) => handleTickerChange(idx, 'name', e.target.value)}
-                                  placeholder="Customer Name"
-                                  className="w-full p-1.5 bg-slate-900 border border-slate-700 rounded text-white text-xs font-bold"
-                                />
-                              </div>
-                              <div className="col-span-2">
-                                <input
-                                  type="text"
-                                  value={t.city || ''}
-                                  onChange={(e) => handleTickerChange(idx, 'city', e.target.value)}
-                                  placeholder="City"
-                                  className="w-full p-1.5 bg-slate-900 border border-slate-700 rounded text-emerald-400 text-xs font-bold"
-                                />
-                              </div>
-                              <div className="col-span-4">
-                                <input
-                                  type="text"
-                                  value={t.item || ''}
-                                  onChange={(e) => handleTickerChange(idx, 'item', e.target.value)}
-                                  placeholder="Item Purchased"
-                                  className="w-full p-1.5 bg-slate-900 border border-slate-700 rounded text-amber-300 text-xs font-bold"
-                                />
-                              </div>
-                              <div className="col-span-2">
-                                <input
-                                  type="text"
-                                  value={t.time || ''}
-                                  onChange={(e) => handleTickerChange(idx, 'time', e.target.value)}
-                                  placeholder="e.g. 5m ago"
-                                  className="w-full p-1.5 bg-slate-900 border border-slate-700 rounded text-slate-400 text-xs"
-                                />
-                              </div>
-                              <div className="col-span-1 flex justify-end">
-                                <button 
-                                  type="button" 
-                                  onClick={() => handleDeleteTicker(idx)}
-                                  className="text-rose-400 hover:text-rose-300 p-1 bg-rose-950 rounded border border-rose-900 cursor-pointer"
-                                  title="Delete notification entry"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('announcement')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Edit Content
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_announcement', sectionsConfig.show_announcement === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_announcement === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_announcement === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_announcement === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
+                    </div>
 
-                {/* SECTION 5: CIRCULAR CATEGORIES SLIDER */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-4 shadow-md">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">⭕</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">5. Shop By Categories Circular Slider</span>
-                        <p className="text-slate-400 text-xs">Horizontal infinite carousel displaying category circular badges.</p>
+                    {/* SECTION 2: HERO CAROUSEL SHOWCASE */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">🦸</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">2. Hero Banner Showcase Carousel</span>
+                            <p className="text-slate-400 text-xs">Dynamic rotating slides with headlines, CTA buttons, and high-res product visuals.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('hero')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Edit Slides
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_hero', sectionsConfig.show_hero === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_hero === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_hero === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_hero === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button 
-                        type="button"
-                        onClick={() => updateAndSaveSectionToggle('show_categories_slider', sectionsConfig.show_categories_slider === 1 ? 0 : 1)}
-                        className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                          sectionsConfig.show_categories_slider === 1 
-                            ? 'bg-emerald-600 text-white shadow-lg' 
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {sectionsConfig.show_categories_slider === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                        <span>{sectionsConfig.show_categories_slider === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                      </button>
-                    </div>
-                  </div>
+                    {/* SECTION 3: TRUST & QUALITY ASSURANCE BADGES */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex justify-between items-center border-b border-slate-850 pb-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-blue-950/60 border border-blue-800 text-blue-400 rounded-xl text-lg">🌱</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">3. Trust & Quality Assurance Badges</span>
+                            <p className="text-slate-400 text-xs">Key brand promises displayed directly below the hero showcase.</p>
+                          </div>
+                        </div>
 
-                  {sectionsConfig.show_categories_slider === 1 && (
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">Section Title</label>
-                      <input 
-                        type="text"
-                        value={sectionsConfig.category_slider_title || ''}
-                        onChange={(e) => setSectionsConfig({ ...sectionsConfig, category_slider_title: e.target.value })}
-                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
-                        placeholder="e.g. Shop By Categories"
-                      />
-                    </div>
-                  )}
-                </div>
+                        <button 
+                          type="button"
+                          onClick={() => updateAndSaveSectionToggle('show_trust_badges', sectionsConfig.show_trust_badges === 1 ? 0 : 1)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                            sectionsConfig.show_trust_badges === 1 
+                              ? 'bg-emerald-600 text-white shadow-lg' 
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {sectionsConfig.show_trust_badges === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                          <span>{sectionsConfig.show_trust_badges === 1 ? 'ON' : 'OFF'}</span>
+                        </button>
+                      </div>
 
-                {/* SECTION 6: BEST SELLER PRODUCTS SHOWCASE */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-4 shadow-md">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-amber-950/60 border border-amber-800 text-amber-400 rounded-xl text-lg">🔥</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">6. Best Seller Products Showcase</span>
-                        <p className="text-slate-400 text-xs">Curated highlight grid displaying top-selling products on storefront.</p>
+                      {sectionsConfig.show_trust_badges === 1 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
+                          <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                            <label className="block text-slate-300 font-bold mb-1">Badge 1</label>
+                            <input type="text" value={sectionsConfig.trust_badge_1_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_1_title: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-white mb-1 font-bold" placeholder="Title" />
+                            <input type="text" value={sectionsConfig.trust_badge_1_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_1_sub: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-slate-300" placeholder="Subtitle" />
+                          </div>
+                          <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                            <label className="block text-slate-300 font-bold mb-1">Badge 2</label>
+                            <input type="text" value={sectionsConfig.trust_badge_2_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_2_title: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-white mb-1 font-bold" placeholder="Title" />
+                            <input type="text" value={sectionsConfig.trust_badge_2_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_2_sub: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-slate-300" placeholder="Subtitle" />
+                          </div>
+                          <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                            <label className="block text-slate-300 font-bold mb-1">Badge 3</label>
+                            <input type="text" value={sectionsConfig.trust_badge_3_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_3_title: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-white mb-1 font-bold" placeholder="Title" />
+                            <input type="text" value={sectionsConfig.trust_badge_3_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_3_sub: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-slate-300" placeholder="Subtitle" />
+                          </div>
+                          <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                            <label className="block text-slate-300 font-bold mb-1">Badge 4</label>
+                            <input type="text" value={sectionsConfig.trust_badge_4_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_4_title: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-white mb-1 font-bold" placeholder="Title" />
+                            <input type="text" value={sectionsConfig.trust_badge_4_sub || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, trust_badge_4_sub: e.target.value })} className="w-full p-1.5 bg-slate-950 border border-slate-700 rounded text-slate-300" placeholder="Subtitle" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SECTION 4: SHOP BY CATEGORY CIRCULAR SLIDER */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">⭕</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">4. Shop By Category Circular Slider</span>
+                            <p className="text-slate-400 text-xs">Horizontal carousel displaying circular category icons.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('categories')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Categories
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_categories_slider', sectionsConfig.show_categories_slider === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_categories_slider === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_categories_slider === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_categories_slider === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {sectionsConfig.show_categories_slider === 1 && (
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">Section Title</label>
+                          <input 
+                            type="text"
+                            value={sectionsConfig.category_slider_title || ''}
+                            onChange={(e) => setSectionsConfig({ ...sectionsConfig, category_slider_title: e.target.value })}
+                            className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+                            placeholder="e.g. Shop By Category"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SECTION 5: FEATURED PRODUCTS SHOWCASE & TABS */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-indigo-950/60 border border-indigo-800 text-indigo-400 rounded-xl text-lg">✨</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">5. Featured Products Showcase & Tabs</span>
+                            <p className="text-slate-400 text-xs">Primary product tabs (All, Best Sellers, New Arrivals, On Sale) with agency pill cards.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('products')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Products
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_featured_products', sectionsConfig.show_featured_products === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_featured_products === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_featured_products === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_featured_products === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 6: EDITORIAL PROMO BANNER */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-amber-950/60 border border-amber-800 text-amber-400 rounded-xl text-lg">🏷️</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">6. Editorial Promo Banner ("Pure Products Happier Lives")</span>
+                            <p className="text-slate-400 text-xs">High-converting editorial card with badge, headlines, CTA, and quote overlay.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('editorial')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Edit Banner
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_editorial_promo', sectionsConfig.show_editorial_promo === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_editorial_promo === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_editorial_promo === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_editorial_promo === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 7: WHY CHOOSE VALUELIFE? */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-teal-950/60 border border-teal-800 text-teal-400 rounded-xl text-lg">🛡️</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">7. Why Choose ValueLife Essentials (4 Value Pillars)</span>
+                            <p className="text-slate-400 text-xs">Pillars for 100% Certified Organic, Direct Farm Sourcing, Lab-Tested Purity & Eco Packaging.</p>
+                          </div>
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={() => updateAndSaveSectionToggle('show_why_choose_us', sectionsConfig.show_why_choose_us === 1 ? 0 : 1)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                            sectionsConfig.show_why_choose_us === 1 
+                              ? 'bg-emerald-600 text-white shadow-lg' 
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {sectionsConfig.show_why_choose_us === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                          <span>{sectionsConfig.show_why_choose_us === 1 ? 'ON' : 'OFF'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* SECTION 8: BEST SELLERS SHOWCASE */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex justify-between items-center border-b border-slate-850 pb-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-orange-950/60 border border-orange-800 text-orange-400 rounded-xl text-lg">🔥</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">8. Best Sellers Showcase Carousel</span>
+                            <p className="text-slate-400 text-xs">Curated highlight grid displaying top-selling products on storefront.</p>
+                          </div>
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={() => updateAndSaveSectionToggle('show_bestsellers', sectionsConfig.show_bestsellers === 1 ? 0 : 1)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                            sectionsConfig.show_bestsellers === 1 
+                              ? 'bg-emerald-600 text-white shadow-lg' 
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {sectionsConfig.show_bestsellers === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                          <span>{sectionsConfig.show_bestsellers === 1 ? 'ON' : 'OFF'}</span>
+                        </button>
+                      </div>
+
+                      {sectionsConfig.show_bestsellers === 1 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                          <div>
+                            <label className="block text-slate-300 font-bold mb-1">Badge Tag</label>
+                            <input type="text" value={sectionsConfig.bestsellers_badge || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, bestsellers_badge: e.target.value })} className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-300 font-bold mb-1">Section Title</label>
+                            <input type="text" value={sectionsConfig.bestsellers_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, bestsellers_title: e.target.value })} className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-300 font-bold mb-1">Max Display Items</label>
+                            <input type="number" min="4" max="24" value={sectionsConfig.bestsellers_count || 8} onChange={(e) => setSectionsConfig({ ...sectionsConfig, bestsellers_count: Number(e.target.value) })} className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SECTION 9: BRAND STORY (OUR STORY) */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">📖</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">9. Brand Story ("Our Story / A Healthier Tomorrow")</span>
+                            <p className="text-slate-400 text-xs">Authentic brand narrative card communicating mission and sustainable sourcing.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('editorial')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Edit Story
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_brand_story', sectionsConfig.show_brand_story === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_brand_story === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_brand_story === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_brand_story === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 10: TESTIMONIALS */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-yellow-950/60 border border-yellow-800 text-yellow-400 rounded-xl text-lg">💬</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">10. Customer Testimonials & Reviews</span>
+                            <p className="text-slate-400 text-xs">Social proof carousel with verified buyer reviews, star ratings, and locations.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('reviews')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-yellow-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Reviews
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_testimonials', sectionsConfig.show_testimonials === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_testimonials === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_testimonials === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_testimonials === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 11: WELLNESS & ORGANIC JOURNAL (BLOG) */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">📝</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">11. Wellness & Organic Journal (Blog Studio)</span>
+                            <p className="text-slate-400 text-xs">Featured wellness & nutrition articles with read times, author badges, and full articles.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('blog')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Blog Studio
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_blog_section', sectionsConfig.show_blog_section === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_blog_section === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_blog_section === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_blog_section === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 12: INSTAGRAM FEED (6-GRID) */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-pink-950/60 border border-pink-800 text-pink-400 rounded-xl text-lg">📸</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">12. Instagram Feed (6-Grid Aesthetic Showcase)</span>
+                            <p className="text-slate-400 text-xs">6-tile visual social grid linked directly to official @valuelife_essentials Instagram.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('instagram')}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-pink-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            ✏️ Feed Studio
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => updateAndSaveSectionToggle('show_instagram_feed', sectionsConfig.show_instagram_feed === 1 ? 0 : 1)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                              sectionsConfig.show_instagram_feed === 1 
+                                ? 'bg-emerald-600 text-white shadow-lg' 
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {sectionsConfig.show_instagram_feed === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            <span>{sectionsConfig.show_instagram_feed === 1 ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 13: NEWSLETTER VIP BANNER */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-purple-950/60 border border-purple-800 text-purple-400 rounded-xl text-lg">✉️</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">13. Newsletter VIP Subscription Banner</span>
+                            <p className="text-slate-400 text-xs">Email newsletter signup card with 10% first-order discount code incentive.</p>
+                          </div>
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={() => updateAndSaveSectionToggle('show_newsletter', sectionsConfig.show_newsletter === 1 ? 0 : 1)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                            sectionsConfig.show_newsletter === 1 
+                              ? 'bg-emerald-600 text-white shadow-lg' 
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {sectionsConfig.show_newsletter === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                          <span>{sectionsConfig.show_newsletter === 1 ? 'ON' : 'OFF'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* SECTION 14: STORE FOOTER */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-lg">🦶</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">14. Storefront Footer & Legal Links</span>
+                            <p className="text-slate-400 text-xs">Footer column navigation, payment logos, contact details and copyright line.</p>
+                          </div>
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={() => updateAndSaveSectionToggle('show_footer', sectionsConfig.show_footer === 1 ? 0 : 1)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                            sectionsConfig.show_footer === 1 
+                              ? 'bg-emerald-600 text-white shadow-lg' 
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {sectionsConfig.show_footer === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                          <span>{sectionsConfig.show_footer === 1 ? 'ON' : 'OFF'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* SECTION 15: LIVE SOCIAL PROOF SALES TICKER */}
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">⚡</span>
+                          <div>
+                            <span className="font-extrabold text-sm text-white block">15. Live Social Proof Sales Ticker</span>
+                            <p className="text-slate-400 text-xs">Floating customer purchase ticker ("Priya Patel from Bengaluru just purchased...")</p>
+                          </div>
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={() => updateAndSaveSectionToggle('show_sales_ticker', sectionsConfig.show_sales_ticker === 0 ? 1 : 0)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                            sectionsConfig.show_sales_ticker !== 0 
+                              ? 'bg-emerald-600 text-white shadow-lg' 
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {sectionsConfig.show_sales_ticker !== 0 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                          <span>{sectionsConfig.show_sales_ticker !== 0 ? 'ON' : 'OFF'}</span>
+                        </button>
                       </div>
                     </div>
 
                     <button 
-                      type="button"
-                      onClick={() => updateAndSaveSectionToggle('show_bestsellers', sectionsConfig.show_bestsellers === 1 ? 0 : 1)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                        sectionsConfig.show_bestsellers === 1 
-                          ? 'bg-emerald-600 text-white shadow-lg' 
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
+                      type="submit"
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.97] transition-transform duration-140 text-white font-black py-4 rounded-xl shadow-xl uppercase tracking-wider text-xs cursor-pointer"
                     >
-                      {sectionsConfig.show_bestsellers === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      <span>{sectionsConfig.show_bestsellers === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
+                      Save Storefront Sections Configuration Live
                     </button>
-                  </div>
-
-                  {sectionsConfig.show_bestsellers === 1 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Badge Tag</label>
-                        <input type="text" value={sectionsConfig.bestsellers_badge || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, bestsellers_badge: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Section Title</label>
-                        <input type="text" value={sectionsConfig.bestsellers_title || ''} onChange={(e) => setSectionsConfig({ ...sectionsConfig, bestsellers_title: e.target.value })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-slate-300 font-bold mb-1">Max Display Items</label>
-                        <input type="number" min="4" max="24" value={sectionsConfig.bestsellers_count || 8} onChange={(e) => setSectionsConfig({ ...sectionsConfig, bestsellers_count: Number(e.target.value) })} className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold" />
-                      </div>
-                    </div>
-                  )}
+                  </form>
                 </div>
 
-                {/* SECTION 7: MAIN CATALOG PRODUCT GRID */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-blue-950/60 border border-blue-800 text-blue-400 rounded-xl text-lg">🛍️</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">7. Main Product Catalog & Filter Grid</span>
-                        <p className="text-slate-400 text-xs">Primary product catalog grid with dynamic pill filters and view controls.</p>
+                {/* RIGHT COLUMN: REAL-TIME LIVE STOREFRONT PREVIEW CANVAS (50% WIDTH STICKY) */}
+                <div className="w-full sticky top-6 space-y-3">
+                  <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-2xl space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                        <span className="font-black text-xs text-white uppercase tracking-wider font-['Outfit']">
+                          👁️ LIVE REAL-TIME STOREFRONT PREVIEW
+                        </span>
                       </div>
+                      <span className="bg-emerald-950 text-emerald-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-800">
+                        100% Live Store Sync
+                      </span>
                     </div>
 
-                    <button 
-                      type="button"
-                      onClick={() => updateAndSaveSectionToggle('show_catalog_grid', sectionsConfig.show_catalog_grid === 1 ? 0 : 1)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                        sectionsConfig.show_catalog_grid === 1 
-                          ? 'bg-emerald-600 text-white shadow-lg' 
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
-                    >
-                      {sectionsConfig.show_catalog_grid === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      <span>{sectionsConfig.show_catalog_grid === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* SECTION 8: STORE FOOTER */}
-                <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-lg">🦶</span>
-                      <div>
-                        <span className="font-extrabold text-sm text-white block">8. Storefront Footer & Legal Links</span>
-                        <p className="text-slate-400 text-xs">Footer column navigation, payment logos, contact details and copyright line.</p>
-                      </div>
-                    </div>
-
-                    <button 
-                      type="button"
-                      onClick={() => updateAndSaveSectionToggle('show_footer', sectionsConfig.show_footer === 1 ? 0 : 1)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                        sectionsConfig.show_footer === 1 
-                          ? 'bg-emerald-600 text-white shadow-lg' 
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
-                    >
-                      {sectionsConfig.show_footer === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      <span>{sectionsConfig.show_footer === 1 ? 'SECTION ENABLED (ON)' : 'SECTION DISABLED (OFF)'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <button 
-                  type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.97] transition-transform duration-140 text-white font-black py-4 rounded-xl shadow-xl uppercase tracking-wider text-xs cursor-pointer"
-                >
-                  Save Storefront Sections Configuration Live
-                </button>
-              </form>
-            </div>
-
-            {/* RIGHT COLUMN: REAL-TIME LIVE STOREFRONT PREVIEW CANVAS (50% WIDTH STICKY) */}
-            <div className="w-full sticky top-6 space-y-3">
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-2xl space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span className="font-black text-xs text-white uppercase tracking-wider font-['Outfit']">
-                      👁️ LIVE REAL-TIME STOREFRONT PREVIEW
-                    </span>
-                  </div>
-                  <span className="bg-emerald-950 text-emerald-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-800">
-                    100% Live Sync
-                  </span>
-                </div>
-
-                {/* BROWSER FRAME MOCKUP */}
-                <div className="bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner">
-                  <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center justify-between sticky top-0 z-40">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-                    </div>
-                    <div className="bg-slate-950 px-4 py-0.5 rounded-md text-[10px] text-slate-400 font-mono border border-slate-800 truncate max-w-xs">
-                      http://localhost:5173 (Live Sections Preview)
-                    </div>
-                    <span className="text-[10px] text-slate-500 font-mono">Realtime Canvas</span>
-                  </div>
-
-                  <div className="p-2 space-y-3 max-h-[720px] overflow-y-auto bg-slate-950/80">
-                    {/* SECTION 1: HEADER ANNOUNCEMENT BAR */}
-                    {sectionsConfig.show_announcement === 1 ? (
-                      <div className="bg-[#1b4332] text-white text-[10px] py-1 px-3 rounded-lg border border-emerald-900 flex justify-between items-center shadow">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <span className="bg-[#52b788] text-[#1b4332] font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase">SALE</span>
-                          <span className="truncate">{settingsForm.announcement_text || 'Get 15% OFF! Use Code: ORGANIC15'}</span>
+                    {/* BROWSER FRAME MOCKUP */}
+                    <div className="bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner">
+                      <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center justify-between sticky top-0 z-40">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
                         </div>
-                        <span className="text-[9px] text-emerald-300 font-bold">🇮🇳 (₹)</span>
+                        <div className="bg-slate-950 px-4 py-0.5 rounded-md text-[10px] text-slate-400 font-mono border border-slate-800 truncate max-w-xs">
+                          http://localhost:5173 (Live Storefront Preview)
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-mono">Realtime Canvas</span>
                       </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        📢 1. Top Announcement Bar (DISABLED)
-                      </div>
-                    )}
 
-                    {/* SECTION 2: HERO SECTION */}
-                    {sectionsConfig.show_hero === 1 ? (
-                      <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/60 p-1">
-                        <HeroSection heroConfig={heroConfig} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        🦸 2. Hero Banner Showcase (DISABLED)
-                      </div>
-                    )}
-
-                    {/* SECTION 3: TRUST BADGES */}
-                    {sectionsConfig.show_trust_badges === 1 ? (
-                      <div className="bg-white p-2.5 rounded-xl text-slate-900 grid grid-cols-2 gap-2 text-[10px] shadow">
-                        <div className="flex items-center gap-1.5"><span>🌱</span> <div><strong className="block leading-tight">{sectionsConfig.trust_badge_1_title || '100% Organic'}</strong><span className="text-[9px] text-gray-500">{sectionsConfig.trust_badge_1_sub || 'Chemical-free'}</span></div></div>
-                        <div className="flex items-center gap-1.5"><span>🚚</span> <div><strong className="block leading-tight">{sectionsConfig.trust_badge_2_title || 'Fast Delivery'}</strong><span className="text-[9px] text-gray-500">{sectionsConfig.trust_badge_2_sub || 'Across India'}</span></div></div>
-                        <div className="flex items-center gap-1.5"><span>💳</span> <div><strong className="block leading-tight">{sectionsConfig.trust_badge_3_title || 'Partial COD'}</strong><span className="text-[9px] text-gray-500">{sectionsConfig.trust_badge_3_sub || '20% deposit'}</span></div></div>
-                        <div className="flex items-center gap-1.5"><span>⭐</span> <div><strong className="block leading-tight">{sectionsConfig.trust_badge_4_title || 'Top Rating'}</strong><span className="text-[9px] text-gray-500">{sectionsConfig.trust_badge_4_sub || '4.9 ★ Reviews'}</span></div></div>
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        🌱 3. Trust & Service Badges (DISABLED)
-                      </div>
-                    )}
-
-                    {/* SECTION 4: PROMO BANNERS SLIDER */}
-                    {sectionsConfig.show_promo_banners === 1 ? (
-                      <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/60 p-1">
-                        <PromoBannerSlider navigateTo={() => {}} sectionsConfig={sectionsConfig} banners={banners} />
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        🖼️ 4. Animated Promo Banner Slider (DISABLED)
-                      </div>
-                    )}
-
-                    {/* SECTION 5: CATEGORIES CIRCULAR SLIDER */}
-                    {sectionsConfig.show_categories_slider === 1 ? (
-                      <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
-                        <span className="text-xs font-black text-white font-['Outfit'] block">{sectionsConfig.category_slider_title || 'Shop By Categories'}</span>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                          {categories.slice(0, 6).map(c => (
-                            <div key={c.id} className="p-2 bg-slate-850 rounded-xl text-center shrink-0 w-20 border border-slate-800">
-                              <div className="text-base mb-0.5">🌿</div>
-                              <span className="text-[9px] font-bold text-slate-300 block truncate">{c.name}</span>
+                      <div className="p-2 space-y-3 max-h-[750px] overflow-y-auto bg-slate-950/90 scrollbar-thin">
+                        {/* 1: ANNOUNCEMENT BAR */}
+                        {sectionsConfig.show_announcement === 1 ? (
+                          <div className="bg-[#164e3f] text-white text-[10px] py-1.5 px-3 rounded-lg border border-emerald-900 flex justify-between items-center shadow">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="bg-[#52b788] text-[#164e3f] font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase">SALE</span>
+                              <span className="truncate">{settingsForm.announcement_text || 'Free Express Shipping Across India on Orders Above ₹499!'}</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        ⭕ 5. Circular Category Slider (DISABLED)
-                      </div>
-                    )}
+                            <span className="text-[9px] text-emerald-300 font-bold">🇮🇳 (₹)</span>
+                          </div>
+                        ) : (
+                          <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            📢 1. Top Announcement Bar (DISABLED)
+                          </div>
+                        )}
 
-                    {/* SECTION 6: BEST SELLERS SHOWCASE */}
-                    {sectionsConfig.show_bestsellers === 1 ? (
-                      <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-black text-amber-400 font-['Outfit']">{sectionsConfig.bestsellers_title || '🔥 Best Seller Products'}</span>
-                          <span className="text-[9px] bg-amber-950 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-800">{sectionsConfig.bestsellers_badge || 'HIGH DEMAND'}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {products.slice(0, 2).map(p => (
-                            <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
-                              <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-full h-16 object-contain rounded bg-white" />
-                              <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
-                              <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        🔥 6. Best Seller Showcase Grid (DISABLED)
-                      </div>
-                    )}
+                        {/* 2: HERO SECTION */}
+                        {sectionsConfig.show_hero === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/60">
+                            <StoreHeroSection heroConfig={heroConfig} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            🦸 2. Hero Banner Showcase (DISABLED)
+                          </div>
+                        )}
 
-                    {/* SECTION 7: MAIN CATALOG GRID */}
-                    {sectionsConfig.show_catalog_grid === 1 ? (
-                      <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
-                        <span className="text-xs font-black text-white font-['Outfit'] block">🛍️ Main Catalog & Pill Filters</span>
-                        <div className="grid grid-cols-2 gap-2">
-                          {products.slice(2, 4).map(p => (
-                            <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
-                              <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-full h-16 object-contain rounded bg-white" />
-                              <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
-                              <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        🛍️ 7. Main Product Catalog & Filters (DISABLED)
-                      </div>
-                    )}
+                        {/* 3: CATEGORY SLIDER */}
+                        {sectionsConfig.show_categories_slider === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white/5">
+                            <CategorySlider categories={categories} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            ⭕ 4. Category Circular Slider (DISABLED)
+                          </div>
+                        )}
 
-                    {/* SECTION 8: FOOTER */}
-                    {sectionsConfig.show_footer === 1 ? (
-                      <div className="bg-[#1b4332] text-white p-3 rounded-xl text-[10px] space-y-1 border border-emerald-900 shadow">
-                        <span className="font-extrabold text-xs block">🌱 VALUELIFE ESSENTIALS Footer</span>
-                        <p className="opacity-80 text-[9px]">Your 100% trusted online organic store.</p>
+                        {/* 4: FEATURED PRODUCTS */}
+                        {sectionsConfig.show_featured_products === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white">
+                            <FeaturedProductsSection
+                              products={(products || []).slice(0, 4)}
+                              wishlist={[]}
+                              currencySymbol="₹"
+                              handleAddToCart={() => {}}
+                              handleToggleWishlist={() => {}}
+                              navigateTo={() => {}}
+                              sectionsConfig={sectionsConfig}
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            ✨ 5. Featured Products Showcase & Tabs (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 5: EDITORIAL PROMO BANNER */}
+                        {sectionsConfig.show_editorial_promo === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden">
+                            <EditorialPromoBanner navigateTo={() => {}} sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            🏷️ 6. Editorial Promo Banner (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 6: WHY CHOOSE US */}
+                        {sectionsConfig.show_why_choose_us === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white">
+                            <WhyChooseUsSection sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            🛡️ 7. Why Choose ValueLife (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 7: BEST SELLERS */}
+                        {sectionsConfig.show_bestsellers === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white">
+                            <BestSellersSection
+                              products={(products || []).slice(0, 4)}
+                              currencySymbol="₹"
+                              handleAddToCart={() => {}}
+                              navigateTo={() => {}}
+                              sectionsConfig={sectionsConfig}
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            🔥 8. Best Sellers Showcase (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 8: BRAND STORY */}
+                        {sectionsConfig.show_brand_story === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden">
+                            <BrandStorySection navigateTo={() => {}} sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            📖 9. Brand Story (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 9: TESTIMONIALS */}
+                        {sectionsConfig.show_testimonials === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white">
+                            <TestimonialsSection sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            💬 10. Customer Testimonials (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 10: BLOG SECTION */}
+                        {sectionsConfig.show_blog_section === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white">
+                            <BlogSection sectionsConfig={sectionsConfig} navigateTo={() => {}} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            📝 11. Wellness & Organic Journal (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 11: INSTAGRAM FEED */}
+                        {sectionsConfig.show_instagram_feed === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden bg-white">
+                            <InstagramFeedSection sectionsConfig={sectionsConfig} settings={settings} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            📸 12. Instagram Feed (6-Grid) (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 12: NEWSLETTER */}
+                        {sectionsConfig.show_newsletter === 1 ? (
+                          <div className="rounded-xl border border-slate-800 overflow-hidden">
+                            <NewsletterBanner sectionsConfig={sectionsConfig} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            ✉️ 13. Newsletter VIP Banner (DISABLED)
+                          </div>
+                        )}
+
+                        {/* 13: FOOTER */}
+                        {sectionsConfig.show_footer === 1 ? (
+                          <div className="bg-[#164e3f] text-white p-3.5 rounded-xl text-[10px] space-y-1 border border-emerald-900 shadow">
+                            <span className="font-extrabold text-xs block">🌱 VALUELIFE ESSENTIALS Footer</span>
+                            <p className="opacity-80 text-[9px]">Your 100% trusted online organic store. Natural, chemical-free superfoods delivered across India.</p>
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                            🦶 14. Storefront Footer (DISABLED)
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                        🦶 8. Storefront Footer & Links (DISABLED)
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
           {/* TAB: PAYMENT SETTINGS (PARTIAL COD, FULL COD, GATEWAYS) */}
           {activeTab === 'payment' && (
