@@ -558,7 +558,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleSectionsConfigSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     try {
-      const res = await fetch('/api/admin/sections-config', {
+      const res = await fetch(getApiUrl('/api/admin/sections-config'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sectionsConfig)
@@ -576,7 +576,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     setSectionsConfig(updated);
     if (onUpdateSectionsConfig) onUpdateSectionsConfig(updated);
     try {
-      const res = await fetch('/api/admin/sections-config', {
+      const res = await fetch(getApiUrl('/api/admin/sections-config'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -1358,7 +1358,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       body: JSON.stringify(heroConfig)
     });
     if (res.ok) {
-      await fetch('/api/admin/sections-config', {
+      await fetch(getApiUrl('/api/admin/sections-config'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...sectionsConfig, show_hero: heroConfig.hero_enabled })

@@ -8,7 +8,7 @@ export default function BlogSection({ sectionsConfig, navigateTo }) {
 
 
   useEffect(() => {
-    fetch('/api/blogs?limit=3')
+    fetch(getApiUrl('/api/blogs?limit=3'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setBlogs(data);
