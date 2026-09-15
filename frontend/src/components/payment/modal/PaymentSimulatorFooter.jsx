@@ -7,6 +7,7 @@ export default function PaymentSimulatorFooter({
   displayAmount,
   currencySymbol = '₹',
   selectedGateway,
+  onPayNow,
   onSimulatePayment,
   onClose
 }) {
@@ -16,7 +17,7 @@ export default function PaymentSimulatorFooter({
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center space-y-1.5 animate-pulse">
           <RefreshCw className="animate-spin text-blue-600 mx-auto" size={20} />
           <p className="font-extrabold text-xs text-blue-900">
-            {processStatus === 'authorizing' ? 'Contacting Payment Gateway Simulator...' :
+            {processStatus === 'authorizing' ? 'Connecting to Payment Gateway...' :
              processStatus === 'verifying' ? 'Verifying HMAC Signature & Updating Order...' :
              'Confirming transaction...'}
           </p>
@@ -24,10 +25,10 @@ export default function PaymentSimulatorFooter({
         </div>
       ) : (
         <>
-          {/* PRIMARY PAY NOW BUTTON (SIMULATE SUCCESS) */}
+          {/* PRIMARY PAY NOW BUTTON */}
           <button
             type="button"
-            onClick={() => onSimulatePayment(true)}
+            onClick={onPayNow || (() => onSimulatePayment(true))}
             className="w-full bg-gradient-to-r from-emerald-600 to-[#2d6a4f] hover:from-emerald-500 hover:to-[#1b4332] text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-lg shadow-emerald-950/20 text-sm flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01]"
             data-reticle-target="payment-modal-pay-now-btn"
           >

@@ -248,13 +248,18 @@ export default function SelectVariantModal({
               onClick={handleAddToWishlistClick}
               className={`p-3.5 rounded-2xl border transition-all flex items-center justify-center cursor-pointer ${
                 isWishlisted 
-                  ? 'bg-rose-50 border-rose-300 text-rose-600' 
-                  : 'bg-white border-gray-200 hover:border-rose-300 text-gray-700 hover:text-rose-600'
+                  ? 'bg-red-50 border-red-300 text-[#b91c1c] shadow-sm' 
+                  : 'bg-white border-gray-200 hover:border-red-300 text-gray-400 hover:text-[#b91c1c]'
               }`}
               title={isWishlisted ? 'Saved in Wishlist' : 'Add to Wishlist'}
               data-reticle-target="variant-modal-wishlist-btn"
             >
-              <Heart size={20} fill={isWishlisted ? 'currentColor' : 'none'} />
+              <Heart 
+                size={20} 
+                fill={isWishlisted ? '#b91c1c' : 'none'} 
+                color={isWishlisted ? '#b91c1c' : 'currentColor'} 
+                strokeWidth={2}
+              />
             </button>
 
             <button

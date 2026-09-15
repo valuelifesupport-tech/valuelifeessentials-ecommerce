@@ -41,13 +41,20 @@ export default function CatalogProductCard({
           <button 
             type="button"
             onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p); }}
-            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-md z-10 cursor-pointer ${
-              isWishlist ? 'bg-rose-600 text-white scale-105' : 'bg-[#f87171] hover:bg-rose-600 text-white hover:scale-105'
+            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm z-10 cursor-pointer ${
+              isWishlist 
+                ? 'bg-white text-[#b91c1c] border border-red-300 shadow-md scale-105' 
+                : 'bg-white/90 hover:bg-white text-gray-400 hover:text-[#b91c1c] border border-gray-200/80 hover:scale-105'
             }`}
             title={isWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
             data-reticle-target={`catalog-wishlist-btn-${p.id}`}
           >
-            <Heart size={14} fill="currentColor" color="white" />
+            <Heart 
+              size={14} 
+              fill={isWishlist ? '#b91c1c' : 'none'} 
+              color={isWishlist ? '#b91c1c' : 'currentColor'} 
+              strokeWidth={2}
+            />
           </button>
           <button
             type="button"
@@ -148,13 +155,20 @@ export default function CatalogProductCard({
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p); }}
-          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-md z-10 cursor-pointer ${
-            isWishlist ? 'bg-rose-600 text-white scale-105' : 'bg-[#f87171] hover:bg-rose-600 text-white hover:scale-105'
+          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm z-10 cursor-pointer ${
+            isWishlist 
+              ? 'bg-white text-[#b91c1c] border border-red-300 shadow-md scale-105' 
+              : 'bg-white/90 hover:bg-white text-gray-400 hover:text-[#b91c1c] border border-gray-200/80 hover:scale-105'
           }`}
           title={isWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
           data-reticle-target={`catalog-wishlist-btn-${p.id}`}
         >
-          <Heart size={15} fill="currentColor" color="white" />
+          <Heart 
+            size={15} 
+            fill={isWishlist ? '#b91c1c' : 'none'} 
+            color={isWishlist ? '#b91c1c' : 'currentColor'} 
+            strokeWidth={2}
+          />
         </button>
       </div>
 

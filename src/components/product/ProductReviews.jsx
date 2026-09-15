@@ -95,11 +95,8 @@ export default function ProductReviews({
             Write a review
           </button>
 
-          <div className="flex justify-center gap-4 text-[9px] font-black text-blue-900">
-            <div className="flex items-center gap-1 border border-blue-200 bg-blue-50 px-2 py-1 rounded-lg">
-              🛡️ DIAMOND AUTHENTICITY 100.0
-            </div>
-            <div className="flex items-center gap-1 border border-amber-200 bg-amber-50 px-2 py-1 rounded-lg text-amber-900">
+          <div className="flex justify-center gap-4 text-[9px] font-black">
+            <div className="flex items-center gap-1 border border-amber-200 bg-amber-50 px-2.5 py-1 rounded-lg text-amber-900">
               🏆 100% VERIFIED BUYERS
             </div>
           </div>

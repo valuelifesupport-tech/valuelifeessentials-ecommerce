@@ -17,6 +17,7 @@ export default function Header({
   onOpenAuth, 
   categories = [], 
   collections = [], 
+  products = [],
   onSelectCategory, 
   onSelectCollection, 
   onSelectAllProducts, 
@@ -52,7 +53,7 @@ export default function Header({
       />
 
       {/* 2. MAIN HEADER BAR (LOGO, SEARCH & USER ACTIONS) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 relative z-50">
         {/* Left: Mobile Menu Toggle & Brand Logo */}
         <div className="flex items-center gap-3">
           <button 
@@ -94,6 +95,10 @@ export default function Header({
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onSearchSubmit={onSearchSubmit}
+          products={products}
+          categories={categories}
+          navigateTo={navigateTo}
+          currencySymbol={currencySymbol}
         />
 
         {/* Right: User Account, Wishlist & Cart Actions */}
@@ -168,19 +173,17 @@ export default function Header({
       />
 
       {/* 4. MOBILE SEARCH BAR FOR SMALL VIEWPORTS */}
-      <div className="md:hidden px-4 pb-2.5 pt-1">
-        <form onSubmit={handleSearch} className="relative w-full">
-          <input 
-            type="text" 
-            placeholder="Search organic products..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#f4f7f5] border border-gray-200 rounded-full py-2 pl-4 pr-10 text-xs font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#164e3f]"
-          />
-          <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-            <Search size={15} />
-          </button>
-        </form>
+      <div className="md:hidden px-4 pb-2.5 pt-1 relative z-50">
+        <SearchForm
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onSearchSubmit={onSearchSubmit}
+          products={products}
+          categories={categories}
+          navigateTo={navigateTo}
+          currencySymbol={currencySymbol}
+          isMobile={true}
+        />
       </div>
 
       {/* 5. MOBILE DRAWER NAVIGATION MENU */}

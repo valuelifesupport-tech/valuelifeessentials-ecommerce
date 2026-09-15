@@ -36,7 +36,11 @@ export default function App() {
     if (path.startsWith('/admin')) return { view: 'admin', slug: null, category: null, collection: null };
     if (path.startsWith('/account') || path.startsWith('/profile')) return { view: 'account', slug: null, category: null, collection: null };
     if (path.startsWith('/products/')) {
-      const slug = path.replace('/products/', '');
+      const slug = path.replace('/products/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
+      return { view: 'pdp', slug, category: null, collection: null };
+    }
+    if (path.startsWith('/product/')) {
+      const slug = path.replace('/product/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
       return { view: 'pdp', slug, category: null, collection: null };
     }
     if (path === '/products') return { view: 'all_products', slug: null, category: null, collection: null };
@@ -167,7 +171,15 @@ export default function App() {
 
   const navigateTo = (path, newRouteState) => {
     window.history.pushState({}, '', path);
-    setRoute(newRouteState);
+    let state = newRouteState;
+    if (!state) {
+      state = getInitialRouteState();
+    } else {
+      if (state.view === 'product') {
+        state = { ...state, view: 'pdp' };
+      }
+    }
+    setRoute(state);
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
@@ -384,6 +396,38 @@ export default function App() {
   };
 
   // Filter & Sort
+  const FILTER_MATCHERS = {
+    // 1. Form & Texture
+    'fine-powder': ['powder', 'churna', 'flour', 'atta', 'choornam', 'bhasma'],
+    'whole-seeds': ['seed', 'seeds', 'grain', 'grains', 'millet', 'millets', 'flax', 'chia', 'methi', 'mustard', 'sesame'],
+    'raw-roots-bark': ['root', 'roots', 'bark', 'stem', 'leaf', 'leaves', 'dry fruit', 'raw'],
+    'whole-split-pulses': ['dal', 'pulse', 'pulses', 'lentil', 'lentils', 'gram', 'urad', 'moong', 'chana', 'toor', 'rajma', 'beans'],
+    'crystals': ['salt', 'crystal', 'crystals', 'rock salt', 'sendha', 'kala namak', 'mineral'],
+    'tea-cut-leafs': ['leaf', 'leaves', 'tea', 'tisane', 'tulsi', 'moringa', 'senna'],
+    'stoneground-flour': ['flour', 'atta', 'ground', 'besan'],
+    'resins-gums': ['resin', 'gum', 'gond', 'hing', 'dhoop', 'sambrani', 'camphor'],
+
+    // 2. Organic Certification & Purity
+    '100-certified-organic': ['organic', 'certified', 'natural', 'pure', 'authentic'],
+    'naturally-grown-heirloom': ['heirloom', 'desi', 'traditional', 'native', 'natural', 'raw'],
+    'chemical-pesticide-free': ['chemical free', 'pesticide free', 'unpolished', 'raw', 'pure', 'preservative'],
+    'wild-harvested-himalayan': ['wild', 'himalayan', 'forest', 'natural', 'harvested', 'mountain'],
+
+    // 3. Pack Size
+    '100g': ['100g', '100 g', '100gm', '100 gm', '100gms'],
+    '250g': ['250g', '250 g', '250gm', '250 gm', '250gms', '200g', '200 g'],
+    '500g': ['500g', '500 g', '500gm', '500 gm', '500gms', '490g', '490 g', '400g'],
+    '1kg': ['1kg', '1 kg', '1000g', '990g', '900g', '1 kilo'],
+    '5kg-eco-pack': ['2kg', '2 kg', '3kg', '5kg', '5 kg', 'bulk', 'eco pack'],
+
+    // 4. Dietary & Health
+    'immunity-booster': ['immunity', 'immune', 'vitality', 'antioxidant', 'ayush', 'strength', 'ojas'],
+    'high-protein-fiber': ['protein', 'fiber', 'fibre', 'energy', 'superfood', 'nutrient'],
+    'diabetic-friendly': ['diabetic', 'diabetes', 'blood sugar', 'sugar control', 'karela', 'jamun', 'methi', 'fenugreek'],
+    'gluten-free': ['gluten free', 'gluten-free', 'millet', 'quinoa', 'ragi', 'jowar', 'bajra', 'flax'],
+    'digestive-care': ['digestive', 'digestion', 'gut', 'triphala', 'isabgol', 'constipation', 'gastric', 'acidity', 'ajwain', 'saunf', 'jeera']
+  };
+
   const filteredProducts = products.filter(p => {
     for (const [key, val] of Object.entries(selectedFilters)) {
       if (!val) continue;
@@ -395,8 +439,17 @@ export default function App() {
         if (val === 'above_1000' && pPrice <= 1000) return false;
         continue;
       }
-      const text = `${p.title || ''} ${p.tags || ''} ${p.description || ''}`.toLowerCase();
-      if (!text.includes(String(val).toLowerCase())) return false;
+      const vText = Array.isArray(p.variants) ? p.variants.map(v => `${v.variant_name || ''} ${v.sku || ''}`).join(' ') : '';
+      const fullText = `${p.title || ''} ${p.tags || ''} ${p.description || ''} ${vText}`.toLowerCase();
+
+      const matchKeywords = FILTER_MATCHERS[val];
+      if (matchKeywords && matchKeywords.length > 0) {
+        const matches = matchKeywords.some(kw => fullText.includes(kw.toLowerCase()));
+        if (!matches) return false;
+      } else {
+        const cleanVal = String(val).replace(/[-_]/g, ' ').toLowerCase();
+        if (!fullText.includes(cleanVal) && !fullText.includes(String(val).toLowerCase())) return false;
+      }
     }
     return true;
   });
@@ -464,6 +517,7 @@ export default function App() {
         onOpenAuth={() => currentUser ? navigateTo('/account', { view: 'account', slug: null, category: null, collection: null }) : setIsAuthOpen(true)}
         categories={categories}
         collections={collections}
+        products={products}
         onSelectCategory={(cat) => navigateTo(`/category/${cat}`, { view: 'catalog', slug: null, category: cat, collection: null })}
         onSelectCollection={(coll) => navigateTo(`/collection/${coll}`, { view: 'catalog', slug: null, category: null, collection: coll })}
         onSelectAllProducts={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
@@ -492,17 +546,18 @@ export default function App() {
             onSelectProduct={(slug, pObj) => navigateTo(`/products/${slug || pObj?.slug}`, { view: 'pdp', slug: slug || pObj?.slug, id: pObj?.id, category: null, collection: null })}
           />
         </SectionErrorBoundary>
-      ) : route.view === 'pdp' && route.slug ? (
+      ) : (route.view === 'pdp' || route.view === 'product') && route.slug ? (
         <SectionErrorBoundary name="Product Details Page">
           <ProductDetailPage 
             productSlug={route.slug}
             productId={route.id}
             currency={currency}
             currencySymbol={currencySymbol}
+            wishlist={wishlist}
             onAddToCart={handleAddToCart}
             onAddToWishlist={handleToggleWishlist}
             onBack={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
-            onSelectProduct={(slug) => navigateTo(`/products/${slug}`, { view: 'pdp', slug, category: null, collection: null })}
+            onSelectProduct={(slug) => navigateTo(`/product/${slug}`, { view: 'pdp', slug, category: null, collection: null })}
             showToast={showToast}
           />
         </SectionErrorBoundary>

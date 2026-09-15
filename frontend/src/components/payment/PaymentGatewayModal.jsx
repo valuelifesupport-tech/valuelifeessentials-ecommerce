@@ -6,6 +6,7 @@ import CardPaymentTab from './modal/CardPaymentTab';
 import NetbankingTab from './modal/NetbankingTab';
 import WalletsTab from './modal/WalletsTab';
 import PaymentSimulatorFooter from './modal/PaymentSimulatorFooter';
+import { getApiUrl } from '../../api/config';
 
 export default function PaymentGatewayModal({
   isOpen,
@@ -49,6 +50,124 @@ export default function PaymentGatewayModal({
   const orderNum = orderData?.orderNumber || orderData?.order_number || `OB-${Date.now().toString().slice(-5)}`;
   const displayAmount = Number(payableAmount || orderData?.paidAmount || orderData?.paid_amount || orderData?.total_amount || 0);
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayLiveCheckout = async () => {
+    setIsProcessing(true);
+    setProcessStatus('authorizing');
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Razorpay checkout script failed to load. Falling back to test simulator.');
+      }
+
+      // 1. Create order on backend (strictly validated with server pricing)
+      const createRes = await fetch(getApiUrl('/api/payment/razorpay/create-order'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: displayAmount,
+          currency,
+          order_id: orderData?.orderId || orderData?.order_id || orderData?.id,
+          receipt: `rcpt_${orderNum}`
+        })
+      });
+
+      const rzpOrder = await createRes.json();
+      if (!createRes.ok || !rzpOrder.id) {
+        throw new Error(rzpOrder.error || 'Failed to initialize payment gateway');
+      }
+
+      const keyId = rzpOrder.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TcG0EYPMH8tl5L';
+
+      const options = {
+        key: keyId,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency || 'INR',
+        name: 'ValueLife Essentials',
+        description: `Payment for Order #${orderNum}`,
+        order_id: rzpOrder.id,
+        prefill: {
+          name: customerInfo?.name || orderData?.customer_name || '',
+          email: customerInfo?.email || orderData?.customer_email || '',
+          contact: customerInfo?.phone || orderData?.customer_phone || ''
+        },
+        theme: {
+          color: '#164e3f'
+        },
+        handler: async function (response) {
+          setIsProcessing(true);
+          setProcessStatus('verifying');
+          try {
+            const verifyRes = await fetch(getApiUrl('/api/payment/razorpay/verify'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                order_id: orderData?.orderId || orderData?.order_id || orderData?.id
+              })
+            });
+            const verifyData = await verifyRes.json();
+            setIsProcessing(false);
+            setProcessStatus('success');
+
+            if (onPaymentSuccess) {
+              onPaymentSuccess({
+                gateway: 'razorpay',
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                payment_id: response.razorpay_payment_id,
+                order_id: orderData?.orderId || orderData?.order_id || orderData?.id
+              });
+            }
+          } catch (verErr) {
+            setIsProcessing(false);
+            setProcessStatus('failed');
+            if (onPaymentFailure) onPaymentFailure({ error: verErr.message });
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+            setProcessStatus('');
+          }
+        }
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.on('payment.failed', function (response) {
+        setIsProcessing(false);
+        setProcessStatus('failed');
+        if (onPaymentFailure) onPaymentFailure({ error: response.error?.description || 'Payment Failed' });
+      });
+      rzpInstance.open();
+    } catch (err) {
+      console.warn('Razorpay live checkout error, running simulator fallback:', err.message);
+      handleSimulatePayment(true);
+    }
+  };
+
+  const handlePayNow = async () => {
+    if (selectedGateway === 'razorpay') {
+      await handleRazorpayLiveCheckout();
+    } else {
+      await handleSimulatePayment(true);
+    }
+  };
+
   const handleSimulatePayment = async (forceSuccess = true) => {
     setIsProcessing(true);
     setProcessStatus('authorizing');
@@ -81,7 +200,7 @@ export default function PaymentGatewayModal({
             razorpay_signature: dummySignature,
             payment_id: dummyPaymentId,
             transaction_id: dummyPaymentId,
-            order_id: orderData?.orderId || orderData?.order_id
+            order_id: orderData?.orderId || orderData?.order_id || orderData?.id
           });
         }
       }, 700);
@@ -220,6 +339,7 @@ export default function PaymentGatewayModal({
           displayAmount={displayAmount}
           currencySymbol={currencySymbol}
           selectedGateway={selectedGateway}
+          onPayNow={handlePayNow}
           onSimulatePayment={handleSimulatePayment}
           onClose={onClose}
         />

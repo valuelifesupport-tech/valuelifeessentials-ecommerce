@@ -11,6 +11,7 @@ export default function ProductDetailPage({
   productId,
   currency, 
   currencySymbol, 
+  wishlist = [],
   onAddToCart, 
   onAddToWishlist, 
   onBack,
@@ -213,6 +214,7 @@ export default function ProductDetailPage({
             isINR={isINR}
             onAddToCart={onAddToCart}
             onAddToWishlist={onAddToWishlist}
+            isWishlisted={Boolean(productData && Array.isArray(wishlist) && wishlist.some(w => w.id === productData.id || w.slug === productData.slug))}
             showToast={showToast}
           />
         </div>

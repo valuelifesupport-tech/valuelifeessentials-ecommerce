@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Download, Eye } from 'lucide-react';
+import { Search, Download, Eye, Trash2 } from 'lucide-react';
 
 export default function UsersTab({
   users = [],
@@ -11,7 +11,8 @@ export default function UsersTab({
   setUserPage,
   userItemsPerPage = 10,
   handleDownloadUsersCSV,
-  handleViewUserDetails
+  handleViewUserDetails,
+  handleDeleteUser
 }) {
   const filteredUsers = users.filter(u => {
     const query = userSearchQuery.trim().toLowerCase();
@@ -150,14 +151,27 @@ export default function UsersTab({
                     <td className="p-3 font-black text-emerald-400">₹{(u.total_spent || 0).toLocaleString('en-IN')}</td>
                     <td className="p-3 text-slate-400">{new Date(u.created_at || Date.now()).toLocaleDateString('en-IN')}</td>
                     <td className="p-3 text-right">
-                      <button 
-                        type="button"
-                        onClick={() => handleViewUserDetails(u)}
-                        className="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 font-bold px-3 py-1.5 rounded-xl text-[11px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                        data-reticle-target={`admin-view-user-btn-${u.id}`}
-                      >
-                        <Eye size={13} /> View Details
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          type="button"
+                          onClick={() => handleViewUserDetails(u)}
+                          className="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 font-bold px-3 py-1.5 rounded-xl text-[11px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                          data-reticle-target={`admin-view-user-btn-${u.id}`}
+                        >
+                          <Eye size={13} /> View Details
+                        </button>
+                        {!isAdmin && handleDeleteUser && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold p-1.5 rounded-xl transition-colors cursor-pointer"
+                            title="Delete Customer Account"
+                            data-reticle-target={`admin-delete-user-btn-${u.id}`}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

@@ -116,12 +116,19 @@ export default function ProductCard({
 
               <button 
                 onClick={(e) => { e.stopPropagation(); onToggleWishlist(p); }}
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors shadow-sm flex-shrink-0 ${
-                  isWishlisted ? 'bg-rose-600 text-white' : 'bg-[#f87171] hover:bg-rose-600 text-white'
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm flex-shrink-0 cursor-pointer ${
+                  isWishlisted 
+                    ? 'bg-white text-[#b91c1c] border border-red-300 shadow-md scale-105' 
+                    : 'bg-white/90 hover:bg-white text-gray-400 hover:text-[#b91c1c] border border-gray-200/80 hover:scale-105'
                 }`}
                 title="Wishlist"
               >
-                <Heart size={14} fill="currentColor" color="white" />
+                <Heart 
+                  size={14} 
+                  fill={isWishlisted ? '#b91c1c' : 'none'} 
+                  color={isWishlisted ? '#b91c1c' : 'currentColor'} 
+                  strokeWidth={2}
+                />
               </button>
             </div>
           </div>
@@ -206,12 +213,19 @@ export default function ProductCard({
 
             <button 
               onClick={(e) => { e.stopPropagation(); onToggleWishlist(p); }}
-              className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors shadow-sm flex-shrink-0 ${
-                isWishlisted ? 'bg-rose-600 text-white' : 'bg-[#f87171] hover:bg-rose-600 text-white'
+              className={`w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm flex-shrink-0 cursor-pointer ${
+                isWishlisted 
+                  ? 'bg-white text-[#b91c1c] border border-red-300 shadow-md scale-105' 
+                  : 'bg-white/90 hover:bg-white text-gray-400 hover:text-[#b91c1c] border border-gray-200/80 hover:scale-105'
               }`}
               title="Wishlist"
             >
-              <Heart size={14} fill="currentColor" color="white" />
+              <Heart 
+                size={14} 
+                fill={isWishlisted ? '#b91c1c' : 'none'} 
+                color={isWishlisted ? '#b91c1c' : 'currentColor'} 
+                strokeWidth={2}
+              />
             </button>
           </div>
         </div>

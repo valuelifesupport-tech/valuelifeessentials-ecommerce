@@ -240,7 +240,7 @@ export default function InventoryTab({
                             type="number"
                             value={p.stock !== undefined ? p.stock : 100}
                             onChange={(e) => {
-                              const val = Number(e.target.value);
+                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
                               handleUpdateProductStock(p.id, val);
                             }}
                             className="w-16 p-1.5 bg-slate-800 border border-slate-700 rounded-lg text-center font-extrabold text-white text-xs"
@@ -353,7 +353,10 @@ export default function InventoryTab({
                             <input 
                               type="number"
                               value={v.stock !== undefined ? v.stock : 50}
-                              onChange={(e) => handleUpdateVariantStock(v.id, Number(e.target.value))}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                                handleUpdateVariantStock(v.id, val);
+                              }}
                               className="w-14 p-1 bg-slate-800 border border-slate-700 rounded text-center font-bold text-white text-xs"
                               data-reticle-target={`admin-variant-stock-input-${v.id}`}
                             />

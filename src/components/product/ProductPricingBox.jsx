@@ -15,6 +15,7 @@ export default function ProductPricingBox({
   isINR,
   onAddToCart,
   onAddToWishlist,
+  isWishlisted = false,
   showToast
 }) {
   const activeVariant = selectedVariant || (variantsList && variantsList.length > 0 ? variantsList[0] : null);
@@ -150,10 +151,18 @@ export default function ProductPricingBox({
         <button 
           type="button"
           onClick={() => onAddToWishlist(productData, activeVariant)}
-          className="flex items-center gap-1.5 font-bold hover:text-emerald-700 transition-colors cursor-pointer"
+          className={`flex items-center gap-1.5 font-bold transition-colors cursor-pointer ${
+            isWishlisted ? 'text-[#b91c1c] hover:text-[#991b1b]' : 'text-gray-600 hover:text-[#b91c1c]'
+          }`}
           data-reticle-target="pdp-wishlist-btn"
         >
-          <Heart size={16} /> Add To Wishlist
+          <Heart 
+            size={16} 
+            fill={isWishlisted ? '#b91c1c' : 'none'} 
+            color={isWishlisted ? '#b91c1c' : 'currentColor'} 
+            strokeWidth={2}
+          /> 
+          <span>{isWishlisted ? 'Saved in Wishlist' : 'Add To Wishlist'}</span>
         </button>
 
         <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-200/80 text-[11px]">

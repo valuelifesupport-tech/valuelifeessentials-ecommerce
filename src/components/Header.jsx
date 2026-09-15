@@ -49,12 +49,15 @@ export default function Header({
 
   // SEARCH BAR TYPEWRITER ANIMATION EFFECT
   const searchPhrases = [
-    "Search 'Organic Vermicompost Fertilizer'...",
-    "Search 'Raw Chia Seeds 500g'...",
-    "Search 'HDPE Heavy Duty Grow Bags'...",
-    "Search 'Pure Ashwagandha & Moringa Powder'...",
-    "Search 'Terrace Garden Vegetable Seeds'...",
-    "Search 'Cold Pressed Neem Oil Spray'..."
+    "Search 'Raw Organic Chia Seeds 500g'...",
+    "Search 'Pure Himalayan Pink Rock Salt'...",
+    "Search 'Organic Ashwagandha Root Powder'...",
+    "Search 'Pure Triphala Churna / Powder'...",
+    "Search 'Unpolished Foxtail Millet'...",
+    "Search 'Wild Kasturi Haldi Turmeric'...",
+    "Search 'Organic Unpolished Moong Dal'...",
+    "Search 'Pure Hibiscus Flower Herbal Tea'...",
+    "Search 'Natural Crystal Fitkari Stone'..."
   ];
   const [placeholderText, setPlaceholderText] = useState('');
   const [phraseIndex, setPhraseIndex] = useState(0);

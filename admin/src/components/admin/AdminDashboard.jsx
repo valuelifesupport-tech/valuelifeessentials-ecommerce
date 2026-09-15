@@ -445,6 +445,32 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     }
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    askConfirmation({
+      title: `Delete Customer ${userName || ''}?`,
+      message: `Are you sure you want to permanently delete customer #${userId}? This customer account will be removed from the Customer Directory.`,
+      confirmText: 'Delete Customer',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+          if (res.ok) {
+            if (showToast) showToast('success', 'Customer Deleted', `Customer #${userId} removed successfully.`);
+            fetchUsersData();
+            if (selectedUserDossier && selectedUserDossier.user.id === userId) {
+              setSelectedUserDossier(null);
+            }
+          } else {
+            const data = await res.json();
+            if (showToast) showToast('error', 'Delete Failed', data.error || 'Failed to delete customer.');
+          }
+        } catch (err) {
+          if (showToast) showToast('error', 'Network Error', 'Failed to delete customer.');
+        }
+      }
+    });
+  };
+
   const fetchGstSummaryData = async (monthKey = selectedGstMonth) => {
     try {
       const res = await adminFetch(`/api/admin/gst-report/summary?month=${monthKey}`);
@@ -864,9 +890,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     if (showToast) showToast('info', 'Downloading CSV', 'Exporting user details CSV file...');
   };
 
-  const handleDownloadGstCSV = (monthKey = selectedGstMonth) => {
-    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey}`), '_blank');
-    if (showToast) showToast('info', 'Downloading Monthly GST Tax Register', `Exporting GST B2C & B2B Sales Report CSV for ${monthKey === 'ALL' ? 'All Months' : monthKey}...`);
+  const handleDownloadGstCSV = (monthKey = selectedGstMonth, type = 'ALL') => {
+    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey}&type=${type}`), '_blank');
+    if (showToast) showToast('info', 'Downloading Monthly GST Tax Register', `Exporting GST ${type === 'returns' ? 'Returns & Credit Notes' : 'Sales Report'} CSV for ${monthKey === 'ALL' ? 'All Months' : monthKey}...`);
   };
 
   const handleAddImage = () => {
@@ -1260,31 +1286,57 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const handleUpdateProductStock = async (productId, newStock) => {
+    const val = Math.max(0, Number(newStock) || 0);
+    // Optimistic UI update: immediately update product stock in state
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: val } : p));
     try {
       const res = await adminFetch(`/api/products/${productId}/stock`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stock: Number(newStock) })
+        body: JSON.stringify({ stock: val })
       });
       if (res.ok) {
+        if (showToast) showToast('success', 'Stock Updated Live', `Product stock updated to ${val} units.`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Update Failed', err.error || `Server error (${res.status})`);
         fetchAdminData();
-        if (showToast) showToast('success', 'Stock Updated Live', `Product stock updated to ${newStock} units.`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Update Failed', err.message);
+      fetchAdminData();
+    }
   };
 
   const handleUpdateVariantStock = async (variantId, newStock) => {
+    const val = Math.max(0, Number(newStock) || 0);
+    // Optimistic UI update: immediately update variant stock in state
+    setProducts(prev => prev.map(p => {
+      if (p.variants && p.variants.some(v => v.id === variantId)) {
+        return {
+          ...p,
+          variants: p.variants.map(v => v.id === variantId ? { ...v, stock: val } : v)
+        };
+      }
+      return p;
+    }));
     try {
       const res = await adminFetch(`/api/variants/${variantId}/stock`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stock: Number(newStock) })
+        body: JSON.stringify({ stock: val })
       });
       if (res.ok) {
+        if (showToast) showToast('success', 'Variant Stock Updated', `Variant stock updated to ${val} units.`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Update Failed', err.error || `Server error (${res.status})`);
         fetchAdminData();
-        if (showToast) showToast('success', 'Variant Stock Updated', `Variant stock updated to ${newStock} units.`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Update Failed', err.message);
+      fetchAdminData();
+    }
   };
 
   const handleDeleteVariant = async (id) => {
@@ -2016,6 +2068,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               userItemsPerPage={userItemsPerPage}
               handleDownloadUsersCSV={handleDownloadUsersCSV}
               handleViewUserDetails={handleViewUserDetails}
+              handleDeleteUser={handleDeleteUser}
             />
           )}
 
@@ -2139,6 +2192,10 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               handleCreateTaxOverride={handleCreateTaxOverride}
               handleDeleteTaxOverride={handleDeleteTaxOverride}
               collections={collections}
+              orders={orders}
+              handleFetchOrderDetails={handleFetchOrderDetails}
+              adminFetch={adminFetch}
+              showToast={showToast}
             />
           )}
 

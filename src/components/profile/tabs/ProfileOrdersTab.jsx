@@ -128,6 +128,39 @@ export default function ProfileOrdersTab({
                         Total: <span className="text-[#3b6e14] font-black">₹{(order.total_amount || 0).toLocaleString('en-IN')}</span> 
                         <span className="text-[10px] text-gray-400 ml-1.5 uppercase">({order.payment_mode || 'FULL'})</span>
                       </p>
+
+                      {(() => {
+                        const taxAmt = Number(order.tax_amount || order.gst_amount || 0);
+                        const cgst = Number(order.cgst_amount || 0);
+                        const sgst = Number(order.sgst_amount || 0);
+                        const igst = Number(order.igst_amount || 0);
+                        const isIntra = (!order.state_name || order.state_name.toLowerCase() === 'maharashtra');
+
+                        if (taxAmt <= 0) return null;
+
+                        return (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] border ${
+                              isCancelled
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {isCancelled ? (
+                                <>↩️ Includes ₹{taxAmt.toFixed(2)} GST (Refunded / Reversed)</>
+                              ) : (
+                                <>🏛️ Includes ₹{taxAmt.toFixed(2)} GST (5%)</>
+                              )}
+                            </span>
+
+                            <span className="text-gray-400 text-[10px] font-mono">
+                              {isIntra || (cgst > 0 || sgst > 0)
+                                ? `(CGST: ₹${(cgst || taxAmt / 2).toFixed(1)} + SGST: ₹${(sgst || taxAmt / 2).toFixed(1)})`
+                                : `(IGST: ₹${(igst || taxAmt).toFixed(1)})`
+                              }
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* STATUS BADGE */}

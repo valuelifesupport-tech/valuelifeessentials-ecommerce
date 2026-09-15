@@ -239,7 +239,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
         {/* Bottom Copyright Bar */}
         <div className="pt-8 border-t border-emerald-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-emerald-300/70 text-[11px]">
           <div>
-            © 2024 ValueLife. All rights reserved.
+            © 2026 ValueLife. All rights reserved.
           </div>
           <div className="flex items-center gap-1.5 italic font-serif text-xs text-emerald-200">
             <span>Good Products, Brighter Days.</span>

@@ -104,7 +104,7 @@ export default function NavMegaMenu({
   const isMenuVisible = isMegaMenuOpen || activeCategoryDropdown === 'MEGA_MENU';
 
   return (
-    <nav className="bg-gradient-to-r from-emerald-950 via-[#1b4332] to-emerald-950 text-white border-t border-emerald-800/60 hidden md:block shadow-md relative z-40" data-reticle-target="nav-mega-menu-bar">
+    <nav className="bg-gradient-to-r from-emerald-950 via-[#1b4332] to-emerald-950 text-white border-t border-emerald-800/60 hidden md:block shadow-md relative z-30" data-reticle-target="nav-mega-menu-bar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-6 py-2 text-xs font-bold">
         <div className="flex items-center gap-5 sm:gap-6">
           {/* HOME LINK */}

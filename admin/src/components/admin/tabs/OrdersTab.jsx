@@ -177,12 +177,13 @@ export default function OrdersTab({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-800 custom-scrollbar" data-reticle-target="admin-orders-table-container">
-        <table className="w-full text-left text-xs min-w-[840px]">
+        <table className="w-full text-left text-xs min-w-[920px]">
           <thead className="bg-slate-800 text-slate-400 font-bold uppercase border-b border-slate-700">
             <tr>
               <th className="p-3">Order #</th>
               <th className="p-3">Customer</th>
               <th className="p-3">Total Amount</th>
+              <th className="p-3">GST / Tax Paid</th>
               <th className="p-3">Paid Online</th>
               <th className="p-3">COD Balance</th>
               <th className="p-3">Status</th>
@@ -193,7 +194,7 @@ export default function OrdersTab({
           <tbody className="divide-y divide-slate-800 text-slate-300 font-medium">
             {paginatedOrders.length === 0 ? (
               <tr>
-                <td colSpan="8" className="p-8 text-center text-slate-400">
+                <td colSpan="9" className="p-8 text-center text-slate-400">
                   No orders match your filter criteria.
                 </td>
               </tr>
@@ -217,6 +218,52 @@ export default function OrdersTab({
                   </td>
                   <td className="p-3 font-black text-white text-sm">
                     {o.currency === 'USD' ? '$' : '₹'}{(Number(o.total_amount) || 0).toLocaleString('en-IN')}
+                  </td>
+                  <td className="p-3">
+                    {(() => {
+                      const taxAmt = Number(o.tax_amount || o.gst_amount || 0);
+                      const isCancelled = o.order_status === 'CANCELLED' || o.payment_status === 'REFUNDED';
+                      const cgst = Number(o.cgst_amount || 0);
+                      const sgst = Number(o.sgst_amount || 0);
+                      const igst = Number(o.igst_amount || 0);
+                      const isIntra = (!o.state_name || o.state_name.toLowerCase() === 'maharashtra');
+                      const taxable = Number(o.subtotal || 0) > 0 ? Number(o.subtotal) - Number(o.discount_amount || 0) : Math.max(0, Number(o.total_amount || 0) - taxAmt);
+
+                      return (
+                        <div className="space-y-0.5">
+                          <div className="font-extrabold text-xs flex items-center gap-1">
+                            <span className={isCancelled ? 'text-rose-400 line-through' : 'text-emerald-400'}>
+                              ₹{taxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              (5% GST)
+                            </span>
+                          </div>
+
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {isIntra || (cgst > 0 || sgst > 0) ? (
+                              <span>CGST: ₹{(cgst || taxAmt/2).toFixed(1)} | SGST: ₹{(sgst || taxAmt/2).toFixed(1)}</span>
+                            ) : (
+                              <span>IGST: ₹{(igst || taxAmt).toFixed(1)}</span>
+                            )}
+                          </div>
+
+                          <div className="text-[9px] text-slate-500">
+                            Base: ₹{taxable.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                          </div>
+
+                          {isCancelled ? (
+                            <span className="inline-block bg-rose-950/80 text-rose-300 border border-rose-800 text-[9px] font-black px-1.5 py-0.5 rounded">
+                              ↩️ Tax Reversed
+                            </span>
+                          ) : (
+                            <span className="inline-block bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded">
+                              ✓ Tax Collected
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="p-3 font-bold text-emerald-400 text-xs">
                     {o.currency === 'USD' ? '$' : '₹'}{(Number(o.paid_amount) || 0).toLocaleString('en-IN')}

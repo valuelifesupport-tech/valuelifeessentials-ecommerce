@@ -18,9 +18,9 @@ export default function WishlistDrawer({
         {/* Header */}
         <div className="p-4 border-b flex justify-between items-center bg-amber-50/80">
           <div className="flex items-center gap-2">
-            <Heart size={22} className="text-red-500 fill-red-500" />
+            <Heart size={22} className="text-[#b91c1c] fill-[#b91c1c]" />
             <h3 className="font-extrabold text-gray-900 text-lg font-['Outfit']">Your Saved Wishlist</h3>
-            <span className="bg-amber-500 text-white text-xs font-black px-2.5 py-0.5 rounded-full">
+            <span className="bg-[#b91c1c] text-white text-xs font-black px-2.5 py-0.5 rounded-full">
               {wishlistItems.length} items
             </span>
           </div>
@@ -33,12 +33,12 @@ export default function WishlistDrawer({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {wishlistItems.length === 0 ? (
             <div className="text-center py-16 text-gray-500 space-y-3">
-              <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
-                <Heart size={32} />
+              <div className="w-16 h-16 rounded-full bg-red-50 text-[#b91c1c] flex items-center justify-center mx-auto">
+                <Heart size={32} className="fill-[#b91c1c]/20 text-[#b91c1c]" />
               </div>
               <h4 className="font-extrabold text-gray-800 text-base">Your Wishlist is Empty</h4>
               <p className="text-xs text-gray-500 max-w-xs mx-auto">
-                Click the heart icon on any product to save your favorite bio-fertilizers & garden tools for later!
+                Click the heart icon on any product to save your favorite organic essentials for later!
               </p>
             </div>
           ) : (

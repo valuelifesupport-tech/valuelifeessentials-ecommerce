@@ -5,12 +5,16 @@ import { resolveImgUrl } from '../../api/config';
 export default function FeaturedProductsSection({ 
   products = [], 
   onAddToCart, 
+  handleAddToCart,
   onToggleWishlist, 
+  handleToggleWishlist,
   isWishlisted, 
   navigateTo,
   currencySymbol = '₹',
   sectionsConfig
 }) {
+  const addToCartHandler = onAddToCart || handleAddToCart;
+  const toggleWishlistHandler = onToggleWishlist || handleToggleWishlist;
   const [activeTab, setActiveTab] = useState('ALL');
 
   const tabs = [
@@ -21,7 +25,7 @@ export default function FeaturedProductsSection({
   ];
 
   const handleProductClick = (slug) => {
-    if (navigateTo) navigateTo(`/product/${slug}`, { view: 'product', slug });
+    if (navigateTo) navigateTo(`/product/${slug}`, { view: 'pdp', slug });
   };
 
   // Real products from database only - no fake hardcoded products
@@ -111,11 +115,20 @@ export default function FeaturedProductsSection({
                   />
                   <button
                     type="button"
-                    onClick={() => onToggleWishlist && onToggleWishlist(item.rawProduct || item)}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-white text-gray-400 hover:text-red-500 shadow-sm transition-colors cursor-pointer"
+                    onClick={() => toggleWishlistHandler && toggleWishlistHandler(item.rawProduct || item)}
+                    className={`absolute top-2 right-2 p-1.5 rounded-full transition-all shadow-sm cursor-pointer ${
+                      isWishlisted && isWishlisted(item.id)
+                        ? 'bg-white text-[#b91c1c] border border-red-300 shadow-md scale-105'
+                        : 'bg-white/90 hover:bg-white text-gray-400 hover:text-[#b91c1c] border border-gray-200/80 hover:scale-105'
+                    }`}
                     aria-label="Add to Wishlist"
                   >
-                    <Heart size={14} fill={isWishlisted && isWishlisted(item.id) ? '#ef4444' : 'none'} color={isWishlisted && isWishlisted(item.id) ? '#ef4444' : 'currentColor'} />
+                    <Heart 
+                      size={14} 
+                      fill={isWishlisted && isWishlisted(item.id) ? '#b91c1c' : 'none'} 
+                      color={isWishlisted && isWishlisted(item.id) ? '#b91c1c' : 'currentColor'} 
+                      strokeWidth={2}
+                    />
                   </button>
                 </div>
 
@@ -151,7 +164,7 @@ export default function FeaturedProductsSection({
                 <div className="pt-3">
                   <button
                     type="button"
-                    onClick={() => onAddToCart && onAddToCart(item.rawProduct || item)}
+                    onClick={() => addToCartHandler && addToCartHandler(item.rawProduct || item)}
                     className="w-full bg-[#164e3f] hover:bg-[#0f382d] text-white py-2 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <ShoppingBag size={13} />
