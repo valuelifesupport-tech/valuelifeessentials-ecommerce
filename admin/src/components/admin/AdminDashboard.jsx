@@ -2166,6 +2166,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               settingsForm={settingsForm}
               setSettingsForm={setSettingsForm}
               handleSettingsSubmit={handleSettingsSubmit}
+              adminFetch={adminFetch}
+              showToast={showToast}
             />
           )}
 

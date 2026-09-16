@@ -9,6 +9,7 @@ export default function CheckoutModal({
   currencySymbol = '₹',
   customerForm,
   setCustomerForm,
+  currentUser,
   handleOrderSubmit,
   isSubmittingOrder,
   selectedPaymentGateway,
@@ -19,12 +20,25 @@ export default function CheckoutModal({
 }) {
   if (!isOpen && !orderSuccess) return null;
 
+  // Auto-fill logged-in user credentials and address when checkout opens
+  React.useEffect(() => {
+    if (isOpen && currentUser) {
+      setCustomerForm(prev => ({
+        name: prev?.name || currentUser.name || '',
+        phone: prev?.phone || currentUser.phone || '',
+        email: prev?.email || currentUser.email || '',
+        address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+        remark: prev?.remark || ''
+      }));
+    }
+  }, [isOpen, currentUser]);
+
   return (
     <>
       {/* CHECKOUT MODAL */}
       {isOpen && checkoutData && !orderSuccess && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]" data-reticle-target="checkout-modal-backdrop">
-          <div className="bg-white border border-gray-200 text-gray-900 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto relative" data-reticle-target="checkout-modal-dialog">
+          <div className="bg-white border border-gray-200 text-gray-900 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto relative" data-reticle-target="checkout-modal-dialog">
             <div className="flex justify-between items-center border-b pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🔒</span>
@@ -38,6 +52,21 @@ export default function CheckoutModal({
                 ✕
               </button>
             </div>
+
+            {/* AUTO-FILLED USER BANNER */}
+            {currentUser && (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200/80 px-3.5 py-2 rounded-xl text-xs">
+                <div className="flex items-center gap-2 text-emerald-950 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>
+                    Logged in as: <strong className="font-bold text-emerald-900">{currentUser.name || currentUser.phone || currentUser.email}</strong>
+                  </span>
+                </div>
+                <span className="text-[10px] bg-emerald-200/80 text-emerald-900 font-black uppercase px-2 py-0.5 rounded-md tracking-wider">
+                  Details Auto-Filled
+                </span>
+              </div>
+            )}
 
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-xs space-y-1.5">
               <div className="flex justify-between font-bold text-gray-700 pb-1 border-b border-emerald-200/60">
@@ -126,7 +155,7 @@ export default function CheckoutModal({
                 <label className="block font-bold text-gray-700 mb-1">Full Name *</label>
                 <input 
                   type="text" required placeholder="e.g. Rajesh Gupta"
-                  value={customerForm.name}
+                  value={customerForm?.name || ''}
                   onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
                   data-reticle-target="checkout-input-name"
@@ -138,7 +167,7 @@ export default function CheckoutModal({
                   <label className="block font-bold text-gray-700 mb-1">Mobile Phone Number * (Mandatory)</label>
                   <input 
                     type="tel" required placeholder="e.g. +91 98123 45678"
-                    value={customerForm.phone}
+                    value={customerForm?.phone || ''}
                     onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
                     data-reticle-target="checkout-input-phone"
@@ -148,7 +177,7 @@ export default function CheckoutModal({
                   <label className="block font-bold text-gray-700 mb-1">Email Address (Optional)</label>
                   <input 
                     type="email" placeholder="e.g. rajesh@gmail.com (Optional)"
-                    value={customerForm.email}
+                    value={customerForm?.email || ''}
                     onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
                     data-reticle-target="checkout-input-email"
@@ -160,7 +189,7 @@ export default function CheckoutModal({
                 <label className="block font-bold text-gray-700 mb-1">Shipping Home Address *</label>
                 <textarea 
                   rows={2} required placeholder="Flat No., Street, Area, City, Pincode"
-                  value={customerForm.address}
+                  value={customerForm?.address || ''}
                   onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-address"

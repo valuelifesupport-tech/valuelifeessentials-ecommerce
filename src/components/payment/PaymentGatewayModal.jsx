@@ -113,6 +113,7 @@ export default function PaymentGatewayModal({
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
+                transaction_id: rzpOrder.transaction_id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
@@ -120,12 +121,17 @@ export default function PaymentGatewayModal({
               })
             });
             const verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData.verified) {
+              throw new Error(verifyData.message || 'Payment signature verification failed');
+            }
+
             setIsProcessing(false);
             setProcessStatus('success');
 
             if (onPaymentSuccess) {
               onPaymentSuccess({
                 gateway: 'razorpay',
+                transaction_id: rzpOrder.transaction_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_signature: response.razorpay_signature,
@@ -143,6 +149,18 @@ export default function PaymentGatewayModal({
           ondismiss: function () {
             setIsProcessing(false);
             setProcessStatus('');
+            // Log modal cancellation to database
+            fetch(getApiUrl('/api/payment/razorpay/failure'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                transaction_id: rzpOrder.transaction_id,
+                gateway_order_id: rzpOrder.id,
+                error_code: 'MODAL_DISMISSED',
+                error_description: 'User dismissed Razorpay checkout window',
+                order_id: orderData?.orderId || orderData?.order_id || orderData?.id
+              })
+            }).catch(() => {});
           }
         }
       };
@@ -151,6 +169,21 @@ export default function PaymentGatewayModal({
       rzpInstance.on('payment.failed', function (response) {
         setIsProcessing(false);
         setProcessStatus('failed');
+
+        // Log payment failure to database
+        fetch(getApiUrl('/api/payment/razorpay/failure'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transaction_id: rzpOrder.transaction_id,
+            gateway_order_id: rzpOrder.id,
+            gateway_payment_id: response.error?.metadata?.payment_id,
+            error_code: response.error?.code || 'PAYMENT_FAILED',
+            error_description: response.error?.description || 'Payment declined by gateway',
+            order_id: orderData?.orderId || orderData?.order_id || orderData?.id
+          })
+        }).catch(() => {});
+
         if (onPaymentFailure) onPaymentFailure({ error: response.error?.description || 'Payment Failed' });
       });
       rzpInstance.open();

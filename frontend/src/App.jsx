@@ -120,7 +120,21 @@ export default function App() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutData, setCheckoutData] = useState(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [customerForm, setCustomerForm] = useState({ name: '', phone: '', email: '', address: '', remark: '' });
+  const [customerForm, setCustomerForm] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('customerUser'));
+      const savedAddr = localStorage.getItem('user_last_shipping_address') || '';
+      return {
+        name: u?.name || '',
+        phone: u?.phone || '',
+        email: u?.email || '',
+        address: u?.address || savedAddr || '',
+        remark: ''
+      };
+    } catch (e) {
+      return { name: '', phone: '', email: '', address: '', remark: '' };
+    }
+  });
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [selectedPaymentGateway, setSelectedPaymentGateway] = useState('razorpay');
   const [availableGateways, setAvailableGateways] = useState(['razorpay', 'phonepe', 'cod']);
@@ -130,6 +144,34 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
+
+  // Keep customerForm automatically synced with logged in user
+  useEffect(() => {
+    if (currentUser) {
+      setCustomerForm(prev => ({
+        name: currentUser.name || prev.name || '',
+        phone: currentUser.phone || prev.phone || '',
+        email: currentUser.email || prev.email || '',
+        address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev.address || '',
+        remark: prev.remark || ''
+      }));
+
+      // If address is missing, fetch user profile & last order address
+      if (!currentUser.address && currentUser.email) {
+        fetch(getApiUrl(`/api/users/${encodeURIComponent(currentUser.email)}/profile`))
+          .then(res => res.ok ? res.json() : null)
+          .then(profile => {
+            if (profile?.address) {
+              const updated = { ...currentUser, address: profile.address };
+              setCurrentUser(updated);
+              try { localStorage.setItem('customerUser', JSON.stringify(updated)); } catch (e) {}
+              setCustomerForm(prev => ({ ...prev, address: profile.address }));
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsAppLoading(false), 300);
@@ -312,6 +354,14 @@ export default function App() {
       setIsAuthOpen(true);
       return;
     }
+    // Automatically populate form with logged-in user credentials and saved address
+    setCustomerForm(prev => ({
+      name: currentUser.name || prev?.name || '',
+      phone: currentUser.phone || prev?.phone || '',
+      email: currentUser.email || prev?.email || '',
+      address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+      remark: prev?.remark || ''
+    }));
     setCheckoutData(data);
     setIsCartOpen(false);
     setShowCheckoutModal(true);
@@ -362,6 +412,21 @@ export default function App() {
 
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order');
+
+      // Save shipping address for future checkouts and update user profile
+      if (customerForm.address) {
+        try { localStorage.setItem('user_last_shipping_address', customerForm.address); } catch (e) {}
+      }
+      if (currentUser && customerForm.address) {
+        const updatedUser = {
+          ...currentUser,
+          name: customerForm.name || currentUser.name,
+          phone: finalPhone,
+          address: customerForm.address
+        };
+        setCurrentUser(updatedUser);
+        try { localStorage.setItem('customerUser', JSON.stringify(updatedUser)); } catch (e) {}
+      }
 
       if (!isOnlinePay || currency !== 'INR') {
         setShowCheckoutModal(false);
@@ -673,6 +738,7 @@ export default function App() {
         currencySymbol={currencySymbol}
         customerForm={customerForm}
         setCustomerForm={setCustomerForm}
+        currentUser={currentUser}
         handleOrderSubmit={handleOrderSubmit}
         isSubmittingOrder={isSubmittingOrder}
         selectedPaymentGateway={selectedPaymentGateway}
@@ -700,8 +766,25 @@ export default function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         currentUser={currentUser}
-        onLoginSuccess={(u) => { setCurrentUser(u); localStorage.setItem('customerUser', JSON.stringify(u)); setIsAuthOpen(false); showToast('success', 'Signed In', `Welcome back, ${u.name || u.phone}!`); }}
-        onLogout={() => { setCurrentUser(null); localStorage.removeItem('customerUser'); showToast('info', 'Signed Out', 'Signed out successfully.'); }}
+        onLoginSuccess={(u) => {
+          setCurrentUser(u);
+          try { localStorage.setItem('customerUser', JSON.stringify(u)); } catch (e) {}
+          setCustomerForm(prev => ({
+            name: u.name || prev?.name || '',
+            phone: u.phone || prev?.phone || '',
+            email: u.email || prev?.email || '',
+            address: u.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+            remark: prev?.remark || ''
+          }));
+          setIsAuthOpen(false);
+          showToast('success', 'Signed In', `Welcome back, ${u.name || u.phone}!`);
+        }}
+        onLogout={() => {
+          setCurrentUser(null);
+          try { localStorage.removeItem('customerUser'); } catch (e) {}
+          setCustomerForm({ name: '', phone: '', email: '', address: '', remark: '' });
+          showToast('info', 'Signed Out', 'Signed out successfully.');
+        }}
       />
 
       <MobileBottomNav 
