@@ -80,10 +80,12 @@ router.get('/api/products', async (req, res) => {
     const enriched = prods.map(p => {
       const pImages = images.filter(img => img.product_id === p.id).map(img => img.image_url);
       const pVariants = variants.filter(v => v.product_id === p.id);
+      const primaryImg = p.image_url || (pImages.length > 0 ? pImages[0] : null);
       return {
         ...p,
-        images: pImages.length > 0 ? pImages : (p.image_url ? [p.image_url] : []),
-        image_url: p.image_url || (pImages.length > 0 ? pImages[0] : null),
+        images: pImages.length > 0 ? pImages : (primaryImg ? [primaryImg] : []),
+        image_url: primaryImg,
+        thumbnail: p.thumbnail || primaryImg,
         variants: pVariants
       };
     });
@@ -117,6 +119,7 @@ router.get(['/api/products/slug/:slug', '/api/products/:slug'], async (req, res)
     prod.variants = variants;
     prod.images = images.map(i => i.image_url);
     if (!prod.image_url && prod.images.length > 0) prod.image_url = prod.images[0];
+    if (!prod.thumbnail) prod.thumbnail = prod.image_url || (prod.images && prod.images[0]) || null;
     prod.reviews = reviews;
     prod.review_count = reviews.length;
     prod.rating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 5.0;

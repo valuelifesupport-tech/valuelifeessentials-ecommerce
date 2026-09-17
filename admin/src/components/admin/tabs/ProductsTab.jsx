@@ -124,7 +124,10 @@ export default function ProductsTab({
                     src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                     alt={p.title}
                     className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" 
-                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }}
+                    onError={(e) => { 
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; 
+                    }}
                   />
                 </td>
                 <td className="p-3">

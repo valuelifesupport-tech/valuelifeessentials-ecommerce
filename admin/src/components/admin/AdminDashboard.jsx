@@ -70,12 +70,13 @@ const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-158532
     return getApiUrl(`/api/media/file/${filename}`);
   }
 
+  // External full URLs (Amazon CDN, Unsplash, external media, etc.)
+  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
   if (clean.includes('/images/')) {
     const relative = clean.split('/images/').pop();
     return `/images/${relative}`;
   }
-
-  if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
 
   const path = clean.startsWith('/') ? clean : `/${clean}`;
   return getApiUrl(path);

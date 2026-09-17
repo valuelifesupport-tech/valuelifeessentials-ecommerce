@@ -22,12 +22,13 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
       return getApiUrl(`/api/media/file/${filename}`);
     }
 
+    // External full URLs (Amazon CDN, Unsplash, etc.)
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+
     if (clean.includes('/images/')) {
       const relative = clean.split('/images/').pop();
       return `/images/${relative}`;
     }
-
-    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
 
     const path = clean.startsWith('/') ? clean : `/${clean}`;
     return getApiUrl(path);

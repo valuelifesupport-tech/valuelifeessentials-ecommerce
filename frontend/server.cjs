@@ -17,6 +17,27 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', app: 'ValueLife Essentials Frontend' });
 });
 
+// Reverse proxy /api requests to backend server (port 5000)
+const http = require('http');
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5000';
+app.use('/api', (req, res) => {
+  const targetUrl = new URL(req.originalUrl, BACKEND_URL);
+  const proxyReq = http.request(targetUrl, {
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: targetUrl.host
+    }
+  }, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+  proxyReq.on('error', (err) => {
+    res.status(502).json({ error: 'Backend proxy error', details: err.message });
+  });
+  req.pipe(proxyReq);
+});
+
 // Serve compiled static assets from dist/
 app.use(express.static(path.join(__dirname, 'dist'), { maxAge: '1h' }));
 
