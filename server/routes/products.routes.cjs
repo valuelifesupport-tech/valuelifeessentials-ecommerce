@@ -120,9 +120,15 @@ router.get(['/api/products/slug/:slug', '/api/products/:slug'], async (req, res)
     prod.images = images.map(i => i.image_url);
     if (!prod.image_url && prod.images.length > 0) prod.image_url = prod.images[0];
     if (!prod.thumbnail) prod.thumbnail = prod.image_url || (prod.images && prod.images[0]) || null;
-    prod.reviews = reviews;
-    prod.review_count = reviews.length;
-    prod.rating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 5.0;
+    const normalizedReviews = (reviews || []).map(r => ({
+      ...r,
+      user_name: r.user_name || r.customer_name || 'Verified Customer',
+      comment: r.comment || r.review_text || '',
+      title: r.title || r.review_title || ''
+    }));
+    prod.reviews = normalizedReviews;
+    prod.review_count = normalizedReviews.length;
+    prod.rating = normalizedReviews.length > 0 ? (normalizedReviews.reduce((s, r) => s + (Number(r.rating) || 5), 0) / normalizedReviews.length) : 5.0;
 
     res.json(prod);
   } catch (err) {

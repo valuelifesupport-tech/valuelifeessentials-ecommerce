@@ -728,7 +728,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [loadedTabs, setLoadedTabs] = useState(new Set());
 
   const fetchTabData = async (tab) => {
-    if (loadedTabs.has(tab)) return;
+    if (loadedTabs.has(tab) && tab !== 'reviews') return;
 
     try {
       if (tab === 'media') {
@@ -771,13 +771,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   }, [activeTab]);
 
   const fetchAdminData = async () => {
-    // Fast Essential Data load ONLY
-    const [prods, cats, colls, ords, sets] = await Promise.all([
+    // Fast Essential Data load
+    const [prods, cats, colls, ords, sets, revs] = await Promise.all([
       safeFetchJson('/api/products?includeDrafts=true'),
       safeFetchJson('/api/categories'),
       safeFetchJson('/api/collections'),
       safeFetchJson('/api/admin/orders'),
-      safeFetchJson('/api/settings')
+      safeFetchJson('/api/settings'),
+      safeFetchJson('/api/admin/reviews')
     ]);
 
     if (prods) {
@@ -796,6 +797,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     if (sets) {
       setSettings(sets);
       setSettingsForm(sets);
+    }
+    if (revs && Array.isArray(revs)) {
+      setReviews(revs);
     }
   };
 

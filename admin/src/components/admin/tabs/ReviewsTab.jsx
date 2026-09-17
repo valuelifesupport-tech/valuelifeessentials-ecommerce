@@ -31,7 +31,7 @@ export default function ReviewsTab({
       (r.comment && r.comment.toLowerCase().includes(query));
 
     const matchesProduct = reviewProductFilter === 'ALL' || String(r.product_id) === String(reviewProductFilter);
-    const matchesStatus = reviewStatusFilter === 'ALL' || (r.status || 'APPROVED') === reviewStatusFilter;
+    const matchesStatus = reviewStatusFilter === 'ALL' || (r.status || 'PENDING') === reviewStatusFilter;
     const matchesRating = reviewRatingFilter === 'ALL' || Number(r.rating) === Number(reviewRatingFilter);
 
     return matchesSearch && matchesProduct && matchesStatus && matchesRating;
@@ -174,30 +174,71 @@ export default function ReviewsTab({
                 <div className="flex items-center gap-2">
                   <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border ${
                     r.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-300 border-emerald-800' :
-                    r.status === 'REJECTED' ? 'bg-rose-950 text-rose-300 border-rose-800' : 'bg-amber-950 text-amber-300 border-amber-800'
+                    r.status === 'REJECTED' ? 'bg-rose-950 text-rose-300 border-rose-800' : 'bg-amber-950 text-amber-300 border-amber-800 animate-pulse'
                   }`}>
-                    {r.status || 'APPROVED'}
+                    {r.status === 'PENDING' ? '⏳ PENDING APPROVAL' : (r.status || 'PENDING')}
                   </span>
 
-                  <button 
-                    type="button"
-                    onClick={async () => {
-                      const newStatus = r.status === 'APPROVED' ? 'REJECTED' : 'APPROVED';
-                      const res = await adminFetch(`/api/admin/reviews/${r.id}/status`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: newStatus })
-                      });
-                      if (res.ok) {
-                        setReviews(prev => prev.map(rev => rev.id === r.id ? { ...rev, status: newStatus } : rev));
-                        showToast('success', 'Status Updated', `Review set to ${newStatus}`);
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 text-[11px] cursor-pointer"
-                    data-reticle-target={`admin-toggle-review-status-${r.id}`}
-                  >
-                    {r.status === 'APPROVED' ? '✕ Mark Rejected' : '✓ Approve Review'}
-                  </button>
+                  {r.status === 'PENDING' ? (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          const res = await adminFetch(`/api/admin/reviews/${r.id}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'APPROVED' })
+                          });
+                          if (res.ok) {
+                            setReviews(prev => prev.map(rev => rev.id === r.id ? { ...rev, status: 'APPROVED' } : rev));
+                            if (showToast) showToast('success', 'Review Approved', 'Customer review is now publicly visible on the storefront.');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-[11px] cursor-pointer shadow-sm transition-all"
+                        data-reticle-target={`admin-approve-review-btn-${r.id}`}
+                      >
+                        ✓ Approve Review
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          const res = await adminFetch(`/api/admin/reviews/${r.id}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'REJECTED' })
+                          });
+                          if (res.ok) {
+                            setReviews(prev => prev.map(rev => rev.id === r.id ? { ...rev, status: 'REJECTED' } : rev));
+                            if (showToast) showToast('info', 'Review Rejected', 'Customer review was rejected and hidden.');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 font-bold rounded-xl border border-slate-700 text-[11px] cursor-pointer transition-all"
+                        data-reticle-target={`admin-reject-review-btn-${r.id}`}
+                      >
+                        ✕ Reject
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        const newStatus = r.status === 'APPROVED' ? 'REJECTED' : 'APPROVED';
+                        const res = await adminFetch(`/api/admin/reviews/${r.id}/status`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: newStatus })
+                        });
+                        if (res.ok) {
+                          setReviews(prev => prev.map(rev => rev.id === r.id ? { ...rev, status: newStatus } : rev));
+                          if (showToast) showToast('success', 'Status Updated', `Review set to ${newStatus}`);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 text-[11px] cursor-pointer transition-all"
+                      data-reticle-target={`admin-toggle-review-status-${r.id}`}
+                    >
+                      {r.status === 'APPROVED' ? '✕ Mark Rejected' : '✓ Approve Review'}
+                    </button>
+                  )}
 
                   <button 
                     type="button"

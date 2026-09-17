@@ -232,11 +232,17 @@ export default function CustomerAuthModal({
       const res = await fetch(getApiUrl('/api/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email_or_phone: forgotInput })
+        body: JSON.stringify({
+          email: forgotInput.trim(),
+          email_or_phone: forgotInput.trim(),
+          identifier: forgotInput.trim(),
+          phone: forgotInput.trim()
+        })
       });
       const data = await res.json();
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset OTP sent to your email.');
+        if (data.email) setPendingEmail(data.email);
         setForgotOtp('');
         setForgotStep(2);
       } else {
@@ -267,19 +273,37 @@ export default function CustomerAuthModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email_or_phone: forgotInput,
-          otp: forgotOtp,
+          email: forgotInput.trim(),
+          email_or_phone: forgotInput.trim(),
+          identifier: forgotInput.trim(),
+          phone: forgotInput.trim(),
+          otp: forgotOtp.trim(),
           new_password: forgotNewPassword
         })
       });
       const data = await res.json();
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset successfully!');
-        setTimeout(() => {
-          setActiveTab('LOGIN');
+        if (data.user) {
+          onLoginSuccess(data.user);
+          fetchMyOrders(data.user.email);
+          setTimeout(() => {
+            setActiveTab('PROFILE');
+            setForgotStep(1);
+            setForgotOtp('');
+            setForgotNewPassword('');
+          }, 1000);
+        } else {
+          setEmail(forgotInput);
+          setPhone(forgotInput);
           setPassword(forgotNewPassword);
-          setForgotStep(1);
-        }, 1500);
+          setTimeout(() => {
+            setActiveTab('LOGIN');
+            setForgotStep(1);
+            setForgotOtp('');
+            setForgotNewPassword('');
+          }, 1200);
+        }
       } else {
         setErrorMsg(data.error || 'Password reset failed.');
       }

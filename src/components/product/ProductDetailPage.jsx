@@ -126,7 +126,7 @@ export default function ProductDetailPage({
         setShowReviewModal(false);
         setReviewForm({ user_name: '', user_email: '', rating: 5, title: '', comment: '', images: [] });
         fetchProductDetail();
-        if (showToast) showToast('success', 'Review Submitted!', 'Thank you for your feedback.');
+        if (showToast) showToast('success', 'Review Submitted for Moderation!', 'Thank you! Your review was submitted for admin verification and will be published once approved.');
       }
     } catch (err) {
       if (showToast) showToast('error', 'Review Error', err.message);
