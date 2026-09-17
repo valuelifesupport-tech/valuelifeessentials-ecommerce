@@ -70,7 +70,7 @@ export default function App() {
   const [route, setRoute] = useState(getInitialRouteState());
   const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
   const [isMaintenanceUnlocked, setIsMaintenanceUnlocked] = useState(() => {
-    return localStorage.getItem('maintenance_unlocked') === 'true';
+    return sessionStorage.getItem('maintenance_unlocked') === 'true';
   });
 
   const [currency, setCurrency] = useState('INR');
@@ -190,7 +190,17 @@ export default function App() {
     fetch(getApiUrl('/api/hero-config')).then(r => r.json()).then(d => d && setHeroConfig(d)).catch(() => {});
     fetch(getApiUrl('/api/theme-config')).then(r => r.json()).then(d => d && setThemeConfig(d)).catch(() => {});
     fetch(getApiUrl('/api/sections-config')).then(r => r.json()).then(d => d && setSectionsConfig(d)).catch(() => {});
-    fetch(getApiUrl('/api/maintenance/status')).then(r => r.json()).then(d => d?.maintenance_mode && setIsMaintenanceActive(true)).catch(() => {});
+    fetch(getApiUrl('/api/maintenance/status'))
+      .then(r => r.json())
+      .then(d => {
+        const active = Boolean(d?.maintenance_mode || d?.mode);
+        setIsMaintenanceActive(active);
+        if (active && sessionStorage.getItem('maintenance_unlocked') !== 'true') {
+          setIsMaintenanceUnlocked(false);
+          localStorage.removeItem('maintenance_unlocked');
+        }
+      })
+      .catch(() => {});
     fetch(getApiUrl('/api/currency/detect')).then(r => r.json()).then(d => { if (d.currency) { setCurrency(d.currency); setCurrencySymbol(d.symbol); } }).catch(() => {});
   }, []);
 
@@ -561,7 +571,7 @@ export default function App() {
   }
 
   if (isMaintenanceActive && !isMaintenanceUnlocked && route.view !== 'admin') {
-    return <MaintenancePage onUnlock={() => { setIsMaintenanceUnlocked(true); localStorage.setItem('maintenance_unlocked', 'true'); }} />;
+    return <MaintenancePage onUnlock={() => { setIsMaintenanceUnlocked(true); sessionStorage.setItem('maintenance_unlocked', 'true'); }} />;
   }
 
   const isCatalog = route.view === 'catalog' || route.view === 'all_products' || route.view === 'offers' || route.view === 'bestsellers' || route.view === 'new_arrivals' || !!searchQuery;
