@@ -24,35 +24,44 @@ router.get(['/uploads/:filename', '/api/uploads/:filename', '/api/media/file/:fi
   return sendSvgFallback(res);
 });
 
-// Upload File
-router.post('/api/upload', upload.single('file'), async (req, res) => {
-  try {
-    if (req.file) {
-      const url = `/uploads/${req.file.filename}`;
-      return res.json({
-        url,
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size
-      });
+// Upload File - accepts 'file', 'image', or any field name
+router.post('/api/upload', (req, res) => {
+  upload.any()(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message, code: err.code });
     }
-
-    // Base64 Data URL fallback
-    if (req.body && req.body.dataUrl) {
-      const match = req.body.dataUrl.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-      if (match) {
-        const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
-        const filename = `${Date.now()}-base64.${ext}`;
-        const buffer = Buffer.from(match[2], 'base64');
-        fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-        return res.json({ url: `/uploads/${filename}`, filename });
+    try {
+      const file = (req.files && req.files.length > 0) ? req.files[0] : req.file;
+      if (file) {
+        const url = `/uploads/${file.filename}`;
+        return res.json({
+          url,
+          imageUrl: url,
+          fullUrl: url,
+          filename: file.filename,
+          originalName: file.originalname,
+          size: file.size
+        });
       }
-    }
 
-    return res.status(400).json({ error: 'No file or valid dataUrl uploaded' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+      // Base64 Data URL fallback
+      if (req.body && req.body.dataUrl) {
+        const match = req.body.dataUrl.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+        if (match) {
+          const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+          const filename = `${Date.now()}-base64.${ext}`;
+          const buffer = Buffer.from(match[2], 'base64');
+          fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+          const url = `/uploads/${filename}`;
+          return res.json({ url, imageUrl: url, fullUrl: url, filename });
+        }
+      }
+
+      return res.status(400).json({ error: 'No file or valid dataUrl uploaded' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 });
 
 // List Media Files

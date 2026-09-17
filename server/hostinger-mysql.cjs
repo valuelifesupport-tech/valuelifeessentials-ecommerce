@@ -87,9 +87,11 @@ async function setupHostingerMySQL() {
         description TEXT,
         image_url TEXT,
         icon VARCHAR(50),
+        sort_order INT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+    try { await connection.query(`ALTER TABLE categories ADD COLUMN sort_order INT DEFAULT 0`); } catch(e){}
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS subcategories (
