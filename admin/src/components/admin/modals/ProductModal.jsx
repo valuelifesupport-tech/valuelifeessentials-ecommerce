@@ -55,11 +55,16 @@ export default function ProductModal({
   products = [],
   fetchAdminData,
   adminFetch,
-  showToast
+  showToast,
+  setShowBrowseModal = () => {},
+  setBrowseTargetType = () => {},
+  setBrowseTargetField = () => {}
 }) {
   if (!showProductModal) return null;
 
   const selectedCategoryObj = categories.find(c => c.id === Number(productForm.category_id));
+  const pageTitle = productForm.seo_title || productForm.title || 'Product Title';
+  const metaDesc = productForm.seo_description || productForm.description || 'Product description for search engine listing...';
 
   return (
         <div data-reticle-target="admin-product-modal" className="drawer-overlay flex items-center justify-center p-2 sm:p-4 z-50">

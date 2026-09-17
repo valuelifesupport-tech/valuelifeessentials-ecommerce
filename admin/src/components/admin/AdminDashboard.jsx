@@ -2265,6 +2265,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         fetchAdminData={fetchAdminData}
         adminFetch={adminFetch}
         showToast={showToast}
+        setShowBrowseModal={setShowBrowseModal}
+        setBrowseTargetType={setBrowseTargetType}
+        setBrowseTargetField={setBrowseTargetField}
       />
 
       <CollectionModal
