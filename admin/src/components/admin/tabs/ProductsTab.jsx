@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Search, Edit, Trash2, Wrench } from 'lucide-react';
-import { resolveImgUrl } from '../../../utils/resolveImgUrl';
+import { resolveImgUrl, getProxyImgUrl, DEFAULT_FALLBACK_SVG } from '../../../utils/resolveImgUrl';
 
 export default function ProductsTab({
   categories = [],
@@ -124,9 +124,17 @@ export default function ProductsTab({
                     src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                     alt={p.title}
                     className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" 
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={(e) => { 
+                      const raw = p.thumbnail || p.image_url || p.images?.[0];
+                      if (raw && !e.target.dataset.triedProxy) {
+                        e.target.dataset.triedProxy = 'true';
+                        e.target.src = getProxyImgUrl(raw);
+                        return;
+                      }
                       e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; 
+                      e.target.src = DEFAULT_FALLBACK_SVG; 
                     }}
                   />
                 </td>

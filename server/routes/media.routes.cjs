@@ -131,4 +131,38 @@ router.post('/api/media/replace', requireAdminAuth, upload.single('file'), async
   }
 });
 
+// High-performance image proxy for CDN / Amazon images
+router.get('/api/media/proxy', async (req, res) => {
+  try {
+    const rawUrl = req.query.url;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return sendSvgFallback(res);
+    }
+    const targetUrl = decodeURIComponent(rawUrl).trim();
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      return sendSvgFallback(res);
+    }
+
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      }
+    });
+
+    if (!response.ok) {
+      return sendSvgFallback(res);
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+
+    const arrayBuffer = await response.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    return sendSvgFallback(res);
+  }
+});
+
 module.exports = router;

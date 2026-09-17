@@ -23,7 +23,14 @@ import PromoBannerSlider from './PromoBannerSlider';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
 
-const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80') => {
+const DEFAULT_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230f172a'/><path d='M50 25 C36 25 25 36 25 50 C25 64 36 75 50 75 C64 75 75 64 75 50 C75 36 64 25 50 25 Z' fill='%23134e4a' opacity='0.4'/><path d='M50 32 C40 32 32 40 32 50 C32 60 40 68 50 68 C60 68 68 60 68 50 C68 40 60 32 50 32 Z' fill='%23047857' opacity='0.7'/><path d='M50 38 C43 38 38 43 38 50 C38 57 43 62 50 62 C57 62 62 57 62 50 C62 43 57 38 50 38 Z' fill='%2310b981'/><text x='50' y='86' text-anchor='middle' fill='%2310b981' font-size='11' font-family='sans-serif' font-weight='800' letter-spacing='1'>VALUELIFE</text></svg>";
+
+const getProxyImgUrl = (url) => {
+  if (!url || typeof url !== 'string') return DEFAULT_FALLBACK_SVG;
+  return getApiUrl(`/api/media/proxy?url=${encodeURIComponent(url.trim())}`);
+};
+
+const resolveImgUrl = (url, fallback = DEFAULT_FALLBACK_SVG) => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;
   let clean = url.trim();
 
@@ -2458,7 +2465,18 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                             src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} 
                             alt={p.title}
                             className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" 
-                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }}
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => { 
+                              const raw = p.thumbnail || p.image_url || p.images?.[0];
+                              if (raw && !e.target.dataset.triedProxy) {
+                                e.target.dataset.triedProxy = 'true';
+                                e.target.src = getProxyImgUrl(raw);
+                                return;
+                              }
+                              e.target.onerror = null;
+                              e.target.src = DEFAULT_FALLBACK_SVG; 
+                            }}
                           />
                         </td>
                         <td className="p-3">

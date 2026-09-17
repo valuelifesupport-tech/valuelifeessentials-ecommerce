@@ -29,7 +29,14 @@ export const API_BASE = (typeof window !== 'undefined')
     : (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.trim().replace(/\/$/, '') : (window.location.hostname.includes('hostingersite.com') ? 'https://aliceblue-loris-851812.hostingersite.com' : 'https://backend.valuelifeessentials.com'))
   : 'https://backend.valuelifeessentials.com';
 
-export const resolveImgUrl = (url, fallback = 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=300&q=80') => {
+export const DEFAULT_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230f172a'/><path d='M50 25 C36 25 25 36 25 50 C25 64 36 75 50 75 C64 75 75 64 75 50 C75 36 64 25 50 25 Z' fill='%23134e4a' opacity='0.4'/><path d='M50 32 C40 32 32 40 32 50 C32 60 40 68 50 68 C60 68 68 60 68 50 C68 40 60 32 50 32 Z' fill='%23047857' opacity='0.7'/><path d='M50 38 C43 38 38 43 38 50 C38 57 43 62 50 62 C57 62 62 57 62 50 C62 43 57 38 50 38 Z' fill='%2310b981'/><text x='50' y='86' text-anchor='middle' fill='%2310b981' font-size='11' font-family='sans-serif' font-weight='800' letter-spacing='1'>VALUELIFE</text></svg>";
+
+export const getProxyImgUrl = (url) => {
+  if (!url || typeof url !== 'string') return DEFAULT_FALLBACK_SVG;
+  return getApiUrl(`/api/media/proxy?url=${encodeURIComponent(url.trim())}`);
+};
+
+export const resolveImgUrl = (url, fallback = DEFAULT_FALLBACK_SVG) => {
   if (!url || typeof url !== 'string' || !url.trim()) return fallback;
   let clean = url.trim();
 
