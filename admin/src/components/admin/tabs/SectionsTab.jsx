@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { ToggleRight, ToggleLeft, Trash2 } from 'lucide-react';
 import { resolveImgUrl } from '../../../utils/resolveImgUrl';
@@ -628,7 +629,7 @@ export default function SectionsTab({
                     <div className="grid grid-cols-2 gap-2">
                       {products.slice(0, 2).map(p => (
                         <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
-                          <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-full h-16 object-contain rounded bg-white" />
+                          <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_SVG; }} className="w-full h-16 object-contain rounded bg-white" />
                           <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
                           <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
                         </div>
@@ -648,7 +649,7 @@ export default function SectionsTab({
                     <div className="grid grid-cols-2 gap-2">
                       {products.slice(2, 4).map(p => (
                         <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
-                          <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-full h-16 object-contain rounded bg-white" />
+                          <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_SVG; }} className="w-full h-16 object-contain rounded bg-white" />
                           <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
                           <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
                         </div>

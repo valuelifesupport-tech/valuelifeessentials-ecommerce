@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { XCircle, MessageSquare, Truck, RefreshCw, Printer, Send } from 'lucide-react';
 import { resolveImgUrl } from '../../../utils/resolveImgUrl';
@@ -296,7 +297,7 @@ export default function OrderDetailsModal({
             {selectedOrderDetails.items?.map((item, idx) => (
               <div key={idx} className="p-3 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3">
-                  <img src={resolveImgUrl(item.thumbnail || item.image_url)} alt={item.product_title} onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} className="w-10 h-10 object-cover rounded-lg border border-slate-700" />
+                  <img src={resolveImgUrl(item.thumbnail || item.image_url)} alt={item.product_title} onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_SVG; }} className="w-10 h-10 object-cover rounded-lg border border-slate-700" />
                   <div>
                     <div className="font-bold text-white text-sm">{item.product_title}</div>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">

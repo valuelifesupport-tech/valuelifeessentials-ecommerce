@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "basic-ftp": "^6.2.1",
     "chart.js": "^4.5.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

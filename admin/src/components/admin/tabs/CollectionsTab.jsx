@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { resolveImgUrl } from '../../../utils/resolveImgUrl';
@@ -49,7 +50,7 @@ export default function CollectionsTab({
                     alt={col.name}
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80';
+                      e.target.src = DEFAULT_FALLBACK_SVG;
                     }}
                     className="w-full h-full object-cover" 
                   />

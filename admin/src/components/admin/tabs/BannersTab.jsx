@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { resolveImgUrl } from '../../../utils/resolveImgUrl';
@@ -49,7 +50,7 @@ export default function BannersTab({
                   <img 
                     src={resolveImgUrl(b.image_url)} 
                     alt={b.title} 
-                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'; }} 
+                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_SVG; }} 
                     className="w-full h-36 object-cover rounded-xl border border-slate-700 bg-slate-900" 
                   />
                   <div className="flex justify-between items-start gap-2">

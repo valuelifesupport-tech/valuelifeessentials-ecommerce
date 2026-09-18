@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { 
   CheckCircle, 
@@ -268,7 +269,7 @@ export default function ProductModal({
                               src={resolveImgUrl(imgUrl)} 
                               alt={`Product Image ${idx + 1}`}
                               className="w-full h-full object-cover select-none pointer-events-none" 
-                              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=200&q=80'; }}
+                              onError={(e) => { e.target.src = DEFAULT_FALLBACK_SVG; }}
                             />
 
                             {/* DRAG HANDLE BADGE */}

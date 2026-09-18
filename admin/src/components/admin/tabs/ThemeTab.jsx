@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { Sparkles, Eye, Heart, ShoppingBag, CheckCircle } from 'lucide-react';
 
@@ -288,7 +289,7 @@ export default function ThemeTab({
 
                 <div className="bg-[#f8f7f2] p-3 rounded-2xl border border-gray-300 space-y-2.5 shadow-md max-w-sm mx-auto">
                   <div className="w-full h-28 bg-white rounded-xl relative flex items-center justify-center p-2 border border-gray-200">
-                    <img src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80" alt="Preview" className="h-full object-contain" />
+                    <img src={DEFAULT_FALLBACK_SVG} alt="Preview" className="h-full object-contain" />
                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#f87171] text-white flex items-center justify-center shadow">
                       <Heart size={12} fill="white" color="white" />
                     </div>
@@ -411,7 +412,7 @@ export default function ThemeTab({
               >
                 <div className="w-full h-32 bg-white rounded-xl overflow-hidden relative flex items-center justify-center p-2">
                   <img 
-                    src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80" 
+                    src={DEFAULT_FALLBACK_SVG} 
                     alt="Mock" 
                     className="w-full h-full object-contain rounded-lg" 
                   />

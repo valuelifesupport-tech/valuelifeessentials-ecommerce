@@ -1,3 +1,4 @@
+import { DEFAULT_FALLBACK_SVG, getProxyImgUrl } from '../../../utils/resolveImgUrl';
 import React from 'react';
 import { Search, Trash2 } from 'lucide-react';
 import { resolveImgUrl } from '../../../utils/resolveImgUrl';
@@ -286,7 +287,7 @@ export default function ReviewsTab({
                         key={idx} 
                         src={resolveImgUrl(imgUrl)} 
                         alt="Review attachment" 
-                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=100&q=80'; }} 
+                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_SVG; }} 
                         className="w-12 h-12 object-cover rounded-lg border border-slate-700 bg-white" 
                       />
                     ))}
