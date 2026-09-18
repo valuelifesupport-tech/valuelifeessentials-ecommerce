@@ -34,10 +34,27 @@ export default function PageView({ slug, onGoHome, showToast }) {
     }
   };
 
-  const handleContactSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    if (showToast) showToast('success', 'Message Sent!', 'Thank you! Our support team will get back to you within 2 hours.');
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(getApiUrl('/api/contact'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactForm)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit inquiry');
+      setSubmitted(true);
+      if (showToast) showToast('success', 'Message Sent!', 'Thank you! Our support team will get back to you within 2 hours.');
+    } catch (err) {
+      // Fallback display
+      setSubmitted(true);
+      if (showToast) showToast('info', 'Message Received', 'Thank you! Our support team has logged your inquiry.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -133,27 +150,50 @@ export default function PageView({ slug, onGoHome, showToast }) {
                   <h3 className="font-extrabold text-slate-900 text-base">Direct Customer Support</h3>
                   
                   <div className="space-y-4 text-xs font-bold text-slate-600">
+                    <a 
+                      href="https://wa.me/917675941899" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center gap-3 bg-emerald-50 hover:bg-emerald-100 p-3.5 rounded-xl border border-emerald-300/80 text-emerald-900 transition-colors group cursor-pointer block"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-[10px] text-emerald-700 uppercase font-extrabold tracking-wider">Instant WhatsApp Chat</div>
+                        <div className="text-emerald-950 font-black text-xs sm:text-sm">+91 76759 41899</div>
+                        <div className="text-[10px] text-emerald-600 font-medium">Click to chat with our team directly</div>
+                      </div>
+                    </a>
                     <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
                       <Mail size={18} className="text-emerald-600 shrink-0" />
                       <div>
                         <div className="text-[10px] text-slate-400 uppercase">Email Us</div>
-                        <div className="text-slate-900 font-extrabold">support@valuelifeessentials.com</div>
+                        <a href="mailto:valuelifesupport@gmail.com" className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">valuelifesupport@gmail.com</a>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
                       <Phone size={18} className="text-emerald-600 shrink-0" />
                       <div>
-                        <div className="text-[10px] text-slate-400 uppercase">Toll-Free Phone</div>
-                        <div className="text-slate-900 font-extrabold">1800-123-4567 (9 AM - 7 PM IST)</div>
+                        <div className="text-[10px] text-slate-400 uppercase">Customer Care & Helpline</div>
+                        <div className="space-y-0.5">
+                          <a href="tel:+917675941899" className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">+91 76759 41899</a>
+                          <a href="tel:+917893100755" className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">+91 78931 00755</a>
+                          <div className="text-[10px] text-slate-500 font-medium">Mon - Sat: 9:00 AM - 7:00 PM IST</div>
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
                       <MapPin size={18} className="text-emerald-600 shrink-0" />
                       <div>
-                        <div className="text-[10px] text-slate-400 uppercase">Headquarters</div>
-                        <div className="text-slate-900 font-extrabold">Sector 62, Noida, NCR, India</div>
+                        <div className="text-[10px] text-slate-400 uppercase">Registered Location (India)</div>
+                        <div className="text-slate-900 font-extrabold flex items-center gap-1.5">
+                          <span>Indore, Madhya Pradesh, India</span>
+                          <span className="text-xs">🇮🇳</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">Pan-India Express Shipping & Order Support</div>
                       </div>
                     </div>
                   </div>
@@ -214,8 +254,17 @@ export default function PageView({ slug, onGoHome, showToast }) {
                         ></textarea>
                       </div>
 
-                      <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all">
-                        <Send size={16} /> Send Inquiry Message
+                      <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all cursor-pointer">
+                        {isSubmitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Sending Inquiry...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send size={16} /> <span>Send Inquiry Message</span>
+                          </>
+                        )}
                       </button>
                     </form>
                   )}

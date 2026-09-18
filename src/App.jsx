@@ -51,9 +51,19 @@ export default function App() {
       const slug = path.replace('/blog/', '');
       return { view: 'blog_detail', slug, category: null, collection: null };
     }
+    if (path === '/contact' || path === '/contact-us') return { view: 'page', slug: 'contact-us', category: null, collection: null };
+    if (path === '/about' || path === '/about-us') return { view: 'page', slug: 'about-us', category: null, collection: null };
+    if (path === '/faq') return { view: 'page', slug: 'faq', category: null, collection: null };
+    if (path === '/shipping-policy') return { view: 'page', slug: 'shipping-policy', category: null, collection: null };
+    if (path === '/returns-refund' || path === '/refund-policy') return { view: 'page', slug: 'refund-policy', category: null, collection: null };
+    if (path === '/privacy-policy') return { view: 'page', slug: 'privacy-policy', category: null, collection: null };
+    if (path === '/terms-of-service' || path === '/terms') return { view: 'page', slug: 'terms-of-service', category: null, collection: null };
     if (path.startsWith('/pages/')) {
-      const slug = path.replace('/pages/', '');
+      let slug = path.replace('/pages/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
       if (slug === 'blog') return { view: 'blog', slug: null, category: null, collection: null };
+      if (slug === 'contact') slug = 'contact-us';
+      if (slug === 'about') slug = 'about-us';
+      if (slug === 'returns-refund') slug = 'refund-policy';
       return { view: 'page', slug, category: null, collection: null };
     }
     if (path.startsWith('/category/')) {
