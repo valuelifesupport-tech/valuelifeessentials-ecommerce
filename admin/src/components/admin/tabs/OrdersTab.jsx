@@ -291,6 +291,11 @@ export default function OrdersTab({
                         🚚 {o.courier_name} {o.tracking_number ? `#${o.tracking_number}` : ''}
                       </div>
                     )}
+                    {o.shiprocket_awb && (
+                      <div className="mt-1 text-[10px] text-indigo-300 font-mono bg-indigo-950/80 px-1.5 py-0.5 rounded border border-indigo-800/80 truncate max-w-[150px] flex items-center gap-1 font-bold" title={`Shiprocket AWB: ${o.shiprocket_awb}`}>
+                        <span>🚀 AWB: {o.shiprocket_awb}</span>
+                      </div>
+                    )}
                   </td>
                   <td className="p-3">
                     <button 

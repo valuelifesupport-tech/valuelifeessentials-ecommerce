@@ -1,5 +1,6 @@
-import React from 'react';
-import { Star, Heart, ShoppingBag } from 'lucide-react';
+import React, { useState } from 'react';
+import { Star, Heart, ShoppingBag, MapPin, Truck, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { getApiUrl } from '../../api/config';
 
 export default function ProductPricingBox({
   productData,
@@ -19,6 +20,62 @@ export default function ProductPricingBox({
   showToast
 }) {
   const activeVariant = selectedVariant || (variantsList && variantsList.length > 0 ? variantsList[0] : null);
+
+  const [pincode, setPincode] = useState(() => {
+    try { return localStorage.getItem('user_delivery_pincode') || ''; } catch (e) { return ''; }
+  });
+  const [checkingPincode, setCheckingPincode] = useState(false);
+  const [deliveryResult, setDeliveryResult] = useState(null);
+
+  const handleCheckPincode = async (e) => {
+    if (e) e.preventDefault();
+    const cleanPin = pincode.trim();
+    if (!cleanPin || cleanPin.length !== 6 || !/^\d{6}$/.test(cleanPin)) {
+      if (showToast) showToast('warning', 'Invalid Pincode', 'Please enter a valid 6-digit Indian pincode.');
+      return;
+    }
+
+    setCheckingPincode(true);
+    setDeliveryResult(null);
+    try {
+      const res = await fetch(getApiUrl('/api/shipping/shiprocket/check-serviceability'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          delivery_pincode: cleanPin,
+          weight: 0.5,
+          cod: 1
+        })
+      });
+      const data = await res.json();
+      if (data.serviceable && data.couriers && data.couriers.length > 0) {
+        const fastest = data.couriers[0];
+        setDeliveryResult({
+          success: true,
+          pincode: cleanPin,
+          courierName: fastest.name || 'Express Courier',
+          days: fastest.estimated_delivery_days || 3,
+          etd: fastest.etd || null,
+          codAvailable: data.couriers.some(c => c.cod_available)
+        });
+        try { localStorage.setItem('user_delivery_pincode', cleanPin); } catch (e) {}
+      } else {
+        setDeliveryResult({
+          success: false,
+          pincode: cleanPin,
+          message: data.message || 'Delivery currently unavailable for this pincode.'
+        });
+      }
+    } catch (err) {
+      setDeliveryResult({
+        success: false,
+        pincode: cleanPin,
+        message: 'Could not verify delivery right now. Please try again later.'
+      });
+    } finally {
+      setCheckingPincode(false);
+    }
+  };
 
   return (
     <div className="space-y-6" data-reticle-target="pdp-pricing-box">
@@ -184,6 +241,73 @@ export default function ProductPricingBox({
         >
           Share
         </button>
+      </div>
+
+      {/* SHIPROCKET LIVE PINCODE CHECKER WIDGET */}
+      <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 space-y-2.5" data-reticle-target="pdp-pincode-checker">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-extrabold text-gray-900 flex items-center gap-1.5 font-['Outfit']">
+            <Truck size={16} className="text-emerald-700" /> Delivery Availability & Speed
+          </span>
+          <span className="text-[10px] text-emerald-800 font-extrabold bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300/60">
+            ⚡ Express Courier
+          </span>
+        </div>
+
+        <form onSubmit={handleCheckPincode} className="flex gap-2">
+          <div className="relative flex-1">
+            <MapPin size={14} className="absolute left-3 top-2.5 text-gray-400" />
+            <input
+              type="text"
+              maxLength={6}
+              placeholder="Enter 6-digit Pincode"
+              value={pincode}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                setPincode(val);
+                if (deliveryResult) setDeliveryResult(null);
+              }}
+              className="w-full pl-8 pr-3 py-2 text-xs bg-white border border-gray-300 rounded-xl focus:outline-none focus:border-emerald-600 font-mono"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={checkingPincode || pincode.trim().length !== 6}
+            className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer shrink-0 flex items-center gap-1"
+          >
+            {checkingPincode ? <RefreshCw size={13} className="animate-spin" /> : 'Check'}
+          </button>
+        </form>
+
+        {deliveryResult && (
+          <div className={`p-3 rounded-xl text-xs space-y-1 ${
+            deliveryResult.success
+              ? 'bg-white border border-emerald-300 text-emerald-950 shadow-xs'
+              : 'bg-rose-50 border border-rose-200 text-rose-800'
+          }`}>
+            {deliveryResult.success ? (
+              <>
+                <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                  <span>Deliverable to <b>{deliveryResult.pincode}</b></span>
+                </div>
+                <div className="text-[11px] text-gray-600 pl-5 space-y-0.5">
+                  <p>
+                    Estimated delivery in <b>{deliveryResult.days} business days</b> {deliveryResult.etd ? `(${deliveryResult.etd})` : ''} via <b>{deliveryResult.courierName}</b>.
+                  </p>
+                  <p className="text-emerald-700 font-medium">
+                    ✓ {deliveryResult.codAvailable ? 'Cash on Delivery (COD) & Online Payment available' : 'Online Payment available'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 text-[11px] text-rose-700">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>{deliveryResult.message}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* TRUST BADGES */}
