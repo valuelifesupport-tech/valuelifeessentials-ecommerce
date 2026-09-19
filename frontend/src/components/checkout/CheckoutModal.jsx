@@ -113,38 +113,15 @@ export default function CheckoutModal({
                 </div>
               )}
 
-              {/* PAYMENT GATEWAY SELECTION FOR ONLINE PAYMENTS */}
+              {/* PAYMENT GATEWAY DISPLAY FOR ONLINE PAYMENTS (RAZORPAY ONLY) */}
               {checkoutData.paymentMode !== 'COD' && (
-                <div className="pt-2 border-t border-emerald-300/80 space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-extrabold text-emerald-900 flex items-center gap-1">
-                      <span>⚡</span> Gateway Provider:
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-bold uppercase">
-                      {selectedPaymentGateway} (Test Mode)
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: 'razorpay', label: 'Razorpay', badge: 'Active' },
-                      { id: 'phonepe', label: 'PhonePe', badge: 'Ready' },
-                      { id: 'paytm', label: 'Paytm', badge: 'Ready' }
-                    ].map(gw => (
-                      <button
-                        key={gw.id}
-                        type="button"
-                        onClick={() => setSelectedPaymentGateway(gw.id)}
-                        className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
-                          selectedPaymentGateway === gw.id
-                            ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm ring-1 ring-emerald-600'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50'
-                        }`}
-                        data-reticle-target={`checkout-gw-${gw.id}`}
-                      >
-                        <div className="font-extrabold text-[11px] leading-tight">{gw.label}</div>
-                        <div className={`text-[8px] font-bold ${selectedPaymentGateway === gw.id ? 'text-emerald-200' : 'text-gray-400'}`}>{gw.badge}</div>
-                      </button>
-                    ))}
+                <div className="pt-2 border-t border-emerald-300/80 flex items-center justify-between text-[11px]">
+                  <span className="font-extrabold text-emerald-900 flex items-center gap-1.5">
+                    <span className="text-emerald-600 text-sm">🔒</span> Secure Payment Partner:
+                  </span>
+                  <div className="flex items-center gap-2 bg-white border border-emerald-300 px-3 py-1.5 rounded-lg shadow-xs">
+                    <span className="font-black text-emerald-950 text-xs tracking-tight">Razorpay</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">UPI / Cards / NetBanking</span>
                   </div>
                 </div>
               )}

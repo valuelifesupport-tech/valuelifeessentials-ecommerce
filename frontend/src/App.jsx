@@ -151,7 +151,7 @@ export default function App() {
   });
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [selectedPaymentGateway, setSelectedPaymentGateway] = useState('razorpay');
-  const [availableGateways, setAvailableGateways] = useState(['razorpay', 'phonepe', 'cod']);
+  const [availableGateways, setAvailableGateways] = useState(['razorpay']);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingPaymentOrder, setPendingPaymentOrder] = useState(null);
   const [paymentPayableAmount, setPaymentPayableAmount] = useState(0);

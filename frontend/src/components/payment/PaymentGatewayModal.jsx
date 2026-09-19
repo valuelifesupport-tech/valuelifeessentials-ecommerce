@@ -254,27 +254,6 @@ export default function PaymentGatewayModal({
           onClose={onClose}
         />
 
-        {/* EXTENSIBLE GATEWAY SWITCHER */}
-        {availableGateways && availableGateways.length > 1 && (
-          <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center gap-2 overflow-x-auto text-xs">
-            <span className="text-[10px] font-extrabold uppercase text-gray-500 shrink-0">Gateway:</span>
-            {availableGateways.map(gw => (
-              <button
-                key={gw.id}
-                type="button"
-                onClick={() => setSelectedGateway(gw.id)}
-                className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
-                  selectedGateway === gw.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
-                }`}
-                data-reticle-target={`gateway-btn-${gw.id}`}
-              >
-                {gw.name}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* PAYMENT METHODS TAB BAR */}
         <div className="grid grid-cols-4 border-b border-gray-200 text-xs font-bold text-gray-600 bg-gray-50/50">

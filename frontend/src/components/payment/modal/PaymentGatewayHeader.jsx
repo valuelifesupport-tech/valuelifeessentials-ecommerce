@@ -27,10 +27,7 @@ export default function PaymentGatewayHeader({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-extrabold text-base tracking-tight font-['Outfit']">
-              {selectedGateway === 'razorpay' ? 'Razorpay Secure Checkout' :
-               selectedGateway === 'phonepe' ? 'PhonePe Payment Gateway' :
-               selectedGateway === 'cashfree' ? 'Cashfree Payments' :
-               selectedGateway === 'paytm' ? 'Paytm Gateway' : 'ValueLife Secure Payment'}
+              Razorpay Secure Checkout
             </h3>
             <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
               TEST / SANDBOX
