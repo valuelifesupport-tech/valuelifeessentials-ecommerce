@@ -86,7 +86,7 @@ export default function SelectVariantModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn"
       onClick={onClose}
       data-reticle-target="select-variant-modal-backdrop"
     >

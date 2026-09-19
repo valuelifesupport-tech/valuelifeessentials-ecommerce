@@ -17,7 +17,8 @@ export default function CartDrawer({
   onProceedToCheckout,
   settings,
   onAddToCart,
-  allProducts = []
+  allProducts = [],
+  onOpenVariantModal
 }) {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -132,6 +133,7 @@ export default function CartDrawer({
             currency={currency}
             currencySymbol={currencySymbol}
             onAddToCart={onAddToCart}
+            onOpenVariantModal={onOpenVariantModal}
           />
         </div>
 

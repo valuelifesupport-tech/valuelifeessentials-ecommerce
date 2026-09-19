@@ -715,6 +715,7 @@ export default function App() {
         settings={settings}
         onAddToCart={handleAddToCart}
         allProducts={products}
+        onOpenVariantModal={(prod) => setVariantModalProduct(prod)}
       />
 
       <WishlistDrawer 
