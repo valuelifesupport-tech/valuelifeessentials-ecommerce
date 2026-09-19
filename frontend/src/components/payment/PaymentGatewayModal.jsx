@@ -83,9 +83,9 @@ export default function PaymentGatewayModal({
         })
       });
 
-      const rzpOrder = await createRes.json();
-      if (!createRes.ok || !rzpOrder.id) {
-        throw new Error(rzpOrder.error || 'Failed to initialize payment gateway');
+      const rzpOrder = await createRes.json().catch(() => ({}));
+      if (!createRes.ok || !rzpOrder?.id) {
+        throw new Error(rzpOrder?.error || `Failed to initialize payment gateway (Status ${createRes.status})`);
       }
 
       const keyId = rzpOrder.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TcG0EYPMH8tl5L';
@@ -120,9 +120,9 @@ export default function PaymentGatewayModal({
                 order_id: orderData?.orderId || orderData?.order_id || orderData?.id
               })
             });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok || !verifyData.verified) {
-              throw new Error(verifyData.message || 'Payment signature verification failed');
+            const verifyData = await verifyRes.json().catch(() => ({}));
+            if (!verifyRes.ok || !verifyData?.verified) {
+              throw new Error(verifyData?.message || verifyData?.error || 'Payment signature verification failed');
             }
 
             setIsProcessing(false);

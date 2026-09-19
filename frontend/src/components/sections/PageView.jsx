@@ -44,7 +44,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contactForm)
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to submit inquiry');
       setSubmitted(true);
       if (showToast) showToast('success', 'Message Sent!', 'Thank you! Our support team will get back to you within 2 hours.');

@@ -20,7 +20,7 @@ export default function EditorialPromoBanner({ navigateTo, sectionsConfig }) {
   useEffect(() => {
     let isMounted = true;
     fetch(getApiUrl('/api/editorial-promo'))
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (isMounted && data && (data.title_part1 || data.heading)) {
           setPromo(prev => ({ ...prev, ...data }));

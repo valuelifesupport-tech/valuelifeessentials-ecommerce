@@ -19,7 +19,7 @@ export default function BrandStorySection({ navigateTo, sectionsConfig }) {
   useEffect(() => {
     let isMounted = true;
     fetch(getApiUrl('/api/brand-story'))
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (isMounted && data && data.heading) {
           setStory(prev => ({ ...prev, ...data }));

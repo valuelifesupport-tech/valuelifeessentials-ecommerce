@@ -20,8 +20,6 @@ import BlogDetailView from './components/blog/BlogDetailView';
 import CustomerProfilePage from './components/auth/CustomerProfilePage';
 import MaintenancePage from './components/sections/MaintenancePage';
 
-const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
-
 // Modals & Drawers
 import CartDrawer from './components/cart/CartDrawer';
 import WishlistDrawer from './components/cart/WishlistDrawer';
@@ -33,7 +31,13 @@ import SelectVariantModal from './components/product/SelectVariantModal';
 export default function App() {
   const getInitialRouteState = () => {
     const path = window.location.pathname;
-    if (path.startsWith('/admin')) return { view: 'admin', slug: null, category: null, collection: null };
+    if (path.startsWith('/admin')) {
+      const adminUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:5174'
+        : 'https://admin.valuelifeessentials.com';
+      window.location.replace(adminUrl);
+      return { view: 'store', slug: null, category: null, collection: null };
+    }
     if (path.startsWith('/account') || path.startsWith('/profile')) return { view: 'account', slug: null, category: null, collection: null };
     if (path.startsWith('/products/')) {
       const slug = path.replace('/products/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
@@ -195,14 +199,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch(getApiUrl('/api/settings')).then(r => r.json()).then(d => d && setSettings(d)).catch(() => {});
-    fetch(getApiUrl('/api/filter-groups')).then(r => r.json()).then(d => d && setFilterGroups(d)).catch(() => {});
-    fetch(getApiUrl('/api/hero-config')).then(r => r.json()).then(d => d && setHeroConfig(d)).catch(() => {});
-    fetch(getApiUrl('/api/theme-config')).then(r => r.json()).then(d => d && setThemeConfig(d)).catch(() => {});
-    fetch(getApiUrl('/api/sections-config')).then(r => r.json()).then(d => d && setSectionsConfig(d)).catch(() => {});
+    fetch(getApiUrl('/api/settings')).then(r => r.ok ? r.json() : null).then(d => d && setSettings(d)).catch(() => {});
+    fetch(getApiUrl('/api/filter-groups')).then(r => r.ok ? r.json() : null).then(d => d && setFilterGroups(d)).catch(() => {});
+    fetch(getApiUrl('/api/hero-config')).then(r => r.ok ? r.json() : null).then(d => d && setHeroConfig(d)).catch(() => {});
+    fetch(getApiUrl('/api/theme-config')).then(r => r.ok ? r.json() : null).then(d => d && setThemeConfig(d)).catch(() => {});
+    fetch(getApiUrl('/api/sections-config')).then(r => r.ok ? r.json() : null).then(d => d && setSectionsConfig(d)).catch(() => {});
     fetch(getApiUrl('/api/maintenance/status'))
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(d => {
+        if (!d) return;
         const active = Boolean(d?.maintenance_mode || d?.mode);
         setIsMaintenanceActive(active);
         if (active && sessionStorage.getItem('maintenance_unlocked') !== 'true') {
@@ -211,7 +216,7 @@ export default function App() {
         }
       })
       .catch(() => {});
-    fetch(getApiUrl('/api/currency/detect')).then(r => r.json()).then(d => { if (d.currency) { setCurrency(d.currency); setCurrencySymbol(d.symbol); } }).catch(() => {});
+    fetch(getApiUrl('/api/currency/detect')).then(r => r.ok ? r.json() : null).then(d => { if (d?.currency) { setCurrency(d.currency); setCurrencySymbol(d.symbol); } }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -219,12 +224,10 @@ export default function App() {
   }, [currency]);
 
   useEffect(() => {
-    if (route.view !== 'admin') {
-      fetch(getApiUrl('/api/banners')).then(r => r.json()).then(d => setBanners(d || [])).catch(() => {});
-      fetch(getApiUrl('/api/categories')).then(r => r.json()).then(d => setCategories(d || [])).catch(() => {});
-      fetch(getApiUrl('/api/collections')).then(r => r.json()).then(d => setCollections(d || [])).catch(() => {});
-      fetchProducts();
-    }
+    fetch(getApiUrl('/api/banners')).then(r => r.json()).then(d => setBanners(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/categories')).then(r => r.json()).then(d => setCategories(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/collections')).then(r => r.json()).then(d => setCollections(d || [])).catch(() => {});
+    fetchProducts();
   }, [route, searchQuery]);
 
   useEffect(() => {
@@ -256,6 +259,7 @@ export default function App() {
       if (searchQuery) params.append('search', searchQuery);
       const url = getApiUrl('/api/products') + (params.toString() ? `?${params.toString()}` : '');
       const res = await fetch(url);
+      if (!res.ok) return;
       const rawData = await res.json();
       let data = Array.isArray(rawData) ? rawData : (rawData?.products || []);
 
@@ -430,8 +434,8 @@ export default function App() {
         })
       });
 
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order');
+      const orderData = await orderRes.json().catch(() => ({}));
+      if (!orderRes.ok) throw new Error(orderData.error || `Failed to create order (Server returned status ${orderRes.status})`);
 
       // Save shipping address for future checkouts and update user profile
       if (customerForm.address) {
@@ -565,22 +569,7 @@ export default function App() {
 
   if (isAppLoading) return <BrandLoader text="Loading ValueLife Essentials..." fullScreen={true} />;
 
-  if (route.view === 'admin') {
-    return (
-      <React.Suspense fallback={<BrandLoader text="Loading Admin Control Center..." fullScreen={true} />}>
-        <AdminDashboard 
-          onExitAdmin={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-          showToast={showToast}
-          sectionsConfig={sectionsConfig}
-          onUpdateSectionsConfig={setSectionsConfig}
-          settings={settings}
-          onUpdateSettings={setSettings}
-        />
-      </React.Suspense>
-    );
-  }
-
-  if (isMaintenanceActive && !isMaintenanceUnlocked && route.view !== 'admin') {
+  if (isMaintenanceActive && !isMaintenanceUnlocked) {
     return <MaintenancePage onUnlock={() => { setIsMaintenanceUnlocked(true); sessionStorage.setItem('maintenance_unlocked', 'true'); }} />;
   }
 

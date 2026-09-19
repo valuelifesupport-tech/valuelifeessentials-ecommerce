@@ -69,13 +69,21 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const adminFetch = (url, options = {}) => {
-    const token = localStorage.getItem('admin_session_token') || 'valuelife_admin_sec_2026_x890';
+    const token = localStorage.getItem('admin_session_token') || '';
     const targetUrl = typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://')) ? url : getApiUrl(url);
     const headers = {
       'x-admin-token': token,
       ...(options.headers || {})
     };
-    return window.fetch(targetUrl, { cache: 'no-store', ...options, headers });
+    return window.fetch(targetUrl, { cache: 'no-store', ...options, headers }).then(res => {
+      if (res.status === 401 && token) {
+        localStorage.removeItem('admin_session_token');
+        setAdminToken('');
+        setIsAuthLocked(true);
+        if (showToast) showToast('error', 'Session Expired', 'Please login again.');
+      }
+      return res;
+    });
   };
 
     const handleAdminLogin = async (e) => {
@@ -83,23 +91,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     setLoginError('');
     setIsAuthenticating(true);
     const pass = (loginForm.password || '').trim();
-    const validPins = ['admin123', '123456', 'valuelife2026', 'admin', 'admin@123'];
 
-    // 1. Instant Client PIN Validation
-    if (validPins.includes(pass.toLowerCase())) {
-      const fallbackToken = 'valuelife_admin_sec_2026_x890';
-      localStorage.setItem('admin_session_token', fallbackToken);
-      setAdminToken(fallbackToken);
-      setIsAuthLocked(false);
+    if (!pass) {
+      setLoginError('Password is required');
       setIsAuthenticating(false);
-      if (showToast) showToast('success', 'Admin Session Authenticated 🔐', 'Welcome back, Master Admin!');
-      setTimeout(() => {
-        try { fetchAdminData(); fetchAnalytics(); } catch (err) {}
-      }, 100);
       return;
     }
 
-    // 2. Server API Authentication Attempt
+    // Server-only authentication — no client-side bypass
     try {
       const res = await window.fetch(getApiUrl('/api/admin/login'), {
         method: 'POST',
@@ -870,12 +869,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const handleDownloadUsersCSV = () => {
-    window.open(getApiUrl('/api/admin/users/export'), '_blank');
+    const token = localStorage.getItem('admin_session_token') || '';
+    window.open(getApiUrl(`/api/admin/users/export?admin_token=${encodeURIComponent(token)}`), '_blank');
     if (showToast) showToast('info', 'Downloading CSV', 'Exporting user details CSV file...');
   };
 
   const handleDownloadGstCSV = (monthKey = selectedGstMonth, type = 'ALL') => {
-    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey}&type=${type}`), '_blank');
+    const token = localStorage.getItem('admin_session_token') || '';
+    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey}&type=${type}&admin_token=${encodeURIComponent(token)}`), '_blank');
     if (showToast) showToast('info', 'Downloading Monthly GST Tax Register', `Exporting GST ${type === 'returns' ? 'Returns & Credit Notes' : 'Sales Report'} CSV for ${monthKey === 'ALL' ? 'All Months' : monthKey}...`);
   };
 

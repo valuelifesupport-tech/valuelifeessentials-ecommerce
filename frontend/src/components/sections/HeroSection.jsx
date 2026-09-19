@@ -37,7 +37,7 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
   useEffect(() => {
     let isMounted = true;
     fetch(getApiUrl('/api/hero-slides'))
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : [])
       .then(data => {
         if (isMounted && Array.isArray(data) && data.length > 0) {
           const activeOnly = data.filter(s => s.is_active === undefined || Number(s.is_active) === 1);

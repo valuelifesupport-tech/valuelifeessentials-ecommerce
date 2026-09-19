@@ -60,7 +60,7 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
       formData.append('file', file);
       formData.append('image', file);
 
-      const token = localStorage.getItem('admin_session_token') || 'valuelife_admin_sec_2026_x890';
+      const token = localStorage.getItem('admin_session_token') || '';
       const headers = {
         'x-admin-token': token,
         'Authorization': `Bearer ${token}`

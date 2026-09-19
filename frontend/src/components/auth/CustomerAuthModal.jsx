@@ -94,7 +94,7 @@ export default function CustomerAuthModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginVal, phone: loginVal, password })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.requireOtp) {
         setPendingEmail(data.email || loginVal);
@@ -135,7 +135,7 @@ export default function CustomerAuthModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name ? name.trim() : '', email: email.trim(), phone: phone ? phone.trim() : '', password })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.requireOtp) {
         setPendingEmail(data.email || email.trim());
@@ -174,7 +174,7 @@ export default function CustomerAuthModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: pendingEmail || email.trim(), otp: regOtp.trim() })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Email Verified Successfully! Account Activated.');
         onLoginSuccess(data.user);
@@ -205,7 +205,7 @@ export default function CustomerAuthModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setSuccessMsg(data.message || 'Fresh verification code sent to your email! (Valid for 10 mins).');
         setRegOtp('');
@@ -239,7 +239,7 @@ export default function CustomerAuthModal({
           phone: forgotInput.trim()
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset OTP sent to your email.');
         if (data.email) setPendingEmail(data.email);
@@ -281,7 +281,7 @@ export default function CustomerAuthModal({
           new_password: forgotNewPassword
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset successfully!');
         if (data.user) {

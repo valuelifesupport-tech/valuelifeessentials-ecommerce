@@ -47,7 +47,7 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
   useEffect(() => {
     let isMounted = true;
     fetch(getApiUrl('/api/instagram-posts'))
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : [])
       .then(data => {
         if (isMounted && Array.isArray(data) && data.length > 0) {
           const activeOnly = data.filter(p => p.is_active === undefined || Number(p.is_active) === 1);

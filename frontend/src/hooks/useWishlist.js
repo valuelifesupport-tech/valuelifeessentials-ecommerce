@@ -28,7 +28,7 @@ export const useWishlist = () => {
         fetch(getApiUrl(`/api/wishlist?user_id=${customerUser.id}`), {
           headers: { 'x-user-id': String(customerUser.id) }
         })
-          .then(res => res.json())
+          .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data && Array.isArray(data.items) && data.items.length > 0) {
               setWishlist(data.items);

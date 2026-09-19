@@ -75,7 +75,7 @@ export default function CartDrawer({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: couponCode, order_amount: rawSubtotal, cart_items: cartItems })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setAppliedCoupon(data);
         setCouponError('');
