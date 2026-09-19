@@ -27,11 +27,11 @@ export default function ProductPricingBox({
   const [checkingPincode, setCheckingPincode] = useState(false);
   const [deliveryResult, setDeliveryResult] = useState(null);
 
-  const handleCheckPincode = async (e) => {
+  const handleCheckPincode = async (e, pinOverride) => {
     if (e) e.preventDefault();
-    const cleanPin = pincode.trim();
+    const cleanPin = String(pinOverride || pincode || '').trim();
     if (!cleanPin || cleanPin.length !== 6 || !/^\d{6}$/.test(cleanPin)) {
-      if (showToast) showToast('warning', 'Invalid Pincode', 'Please enter a valid 6-digit Indian pincode.');
+      if (e && showToast) showToast('warning', 'Invalid Pincode', 'Please enter a valid 6-digit Indian pincode.');
       return;
     }
 
@@ -76,6 +76,15 @@ export default function ProductPricingBox({
       setCheckingPincode(false);
     }
   };
+
+  React.useEffect(() => {
+    const savedPin = (() => {
+      try { return localStorage.getItem('user_delivery_pincode') || ''; } catch (e) { return ''; }
+    })();
+    if (savedPin && savedPin.length === 6 && !deliveryResult) {
+      handleCheckPincode(null, savedPin);
+    }
+  }, []);
 
   return (
     <div className="space-y-6" data-reticle-target="pdp-pricing-box">
@@ -280,29 +289,42 @@ export default function ProductPricingBox({
         </form>
 
         {deliveryResult && (
-          <div className={`p-3 rounded-xl text-xs space-y-1 ${
+          <div className={`p-3.5 rounded-xl text-xs space-y-2 border transition-all ${
             deliveryResult.success
-              ? 'bg-white border border-emerald-300 text-emerald-950 shadow-xs'
-              : 'bg-rose-50 border border-rose-200 text-rose-800'
+              ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 shadow-xs'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}>
             {deliveryResult.success ? (
               <>
-                <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                  <span>Deliverable to <b>{deliveryResult.pincode}</b></span>
+                <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
+                  <div className="flex items-center gap-1.5 font-extrabold text-emerald-900 text-xs">
+                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                    <span>Deliverable to <b>{deliveryResult.pincode}</b></span>
+                  </div>
+                  <span className="bg-emerald-200 text-emerald-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Verified Pincode
+                  </span>
                 </div>
-                <div className="text-[11px] text-gray-600 pl-5 space-y-0.5">
-                  <p>
-                    Estimated delivery in <b>{deliveryResult.days} business days</b> {deliveryResult.etd ? `(${deliveryResult.etd})` : ''} via <b>{deliveryResult.courierName}</b>.
-                  </p>
-                  <p className="text-emerald-700 font-medium">
-                    ✓ {deliveryResult.codAvailable ? 'Cash on Delivery (COD) & Online Payment available' : 'Online Payment available'}
-                  </p>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 text-xs font-semibold">📅 Expected Delivery:</span>
+                    <span className="font-extrabold text-emerald-800 text-sm bg-white px-2.5 py-0.5 rounded-lg border border-emerald-200 shadow-xs">
+                      {deliveryResult.etd ? deliveryResult.etd : `Within ${deliveryResult.days} business days`}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-gray-600 pt-0.5 flex flex-wrap items-center gap-2">
+                    <span>⚡ Courier: <b className="text-gray-800">{deliveryResult.courierName}</b></span>
+                    <span>•</span>
+                    <span className="text-emerald-700 font-bold">
+                      ✓ {deliveryResult.codAvailable ? 'Cash on Delivery (COD) & Online Payment' : 'Online Payment'}
+                    </span>
+                  </div>
                 </div>
               </>
             ) : (
-              <div className="flex items-center gap-1.5 text-[11px] text-rose-700">
-                <AlertCircle size={15} className="shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs text-rose-700 font-semibold">
+                <AlertCircle size={15} className="shrink-0 text-rose-600" />
                 <span>{deliveryResult.message}</span>
               </div>
             )}
