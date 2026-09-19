@@ -203,14 +203,19 @@ export default function CheckoutModal({
                 <button 
                   type="submit"
                   disabled={isSubmittingOrder}
-                  className="flex-1 bg-[#2d6a4f] hover:bg-[#1b4332] disabled:opacity-50 text-white font-extrabold py-3 rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="flex-1 bg-[#2d6a4f] hover:bg-[#1b4332] disabled:opacity-50 text-white font-extrabold py-3.5 rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
                   data-reticle-target="checkout-submit-btn"
                 >
                   {isSubmittingOrder ? (
-                    <span>Placing Order...</span>
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                      <span>{checkoutData.paymentMode === 'COD' ? 'Placing Order...' : 'Connecting to Razorpay...'}</span>
+                    </span>
                   ) : (
                     <>
-                      <span>Confirm & Place Order ({currencySymbol}{checkoutData.paymentMode === 'PARTIAL' ? checkoutData.depositAmount : checkoutData.finalTotal})</span>
+                      <span>
+                        {checkoutData.paymentMode === 'COD' ? 'Confirm & Place COD Order' : 'Proceed to Pay with Razorpay'} ({currencySymbol}{checkoutData.paymentMode === 'PARTIAL' ? checkoutData.depositAmount : checkoutData.finalTotal})
+                      </span>
                       <span>→</span>
                     </>
                   )}

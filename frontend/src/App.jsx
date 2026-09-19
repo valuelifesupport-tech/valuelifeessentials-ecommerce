@@ -391,6 +391,18 @@ export default function App() {
     setShowCheckoutModal(true);
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
     if (isSubmittingOrder) return;
@@ -409,33 +421,43 @@ export default function App() {
 
     setIsSubmittingOrder(true);
     try {
-      const isOnlinePay = checkoutData?.paymentMode === 'PREPAID' || checkoutData?.paymentMode === 'PARTIAL';
-      const payableAmount = checkoutData?.paymentMode === 'PARTIAL' ? checkoutData?.depositAmount : checkoutData?.finalTotal;
+      const mode = checkoutData?.paymentMode || 'FULL';
+      const isCOD = mode === 'COD';
+      const isPartial = mode === 'PARTIAL';
+      const totalAmount = Number(checkoutData?.finalTotal || 0);
+      const depositAmount = isPartial 
+        ? Number(checkoutData?.depositAmount || Math.round(totalAmount * 0.2)) 
+        : totalAmount;
+      const payableAmount = isCOD ? 0 : depositAmount;
 
+      // 1. Create order on backend (strictly validated)
       const orderRes = await fetch(getApiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: currentUser.id,
-          customer_name: currentUser.name || customerForm.name || 'Customer',
-          customer_email: currentUser.email || customerForm.email,
+          customer_name: customerForm.name || currentUser.name || 'Customer',
+          customer_email: customerForm.email || currentUser.email,
           customer_phone: finalPhone,
           shipping_address: customerForm.address,
           order_notes: customerForm.remark || '',
           country: currency === 'INR' ? 'India' : 'International',
           currency,
-          total_amount: checkoutData?.finalTotal || 0,
-          paid_amount: isOnlinePay ? payableAmount : 0,
-          remaining_amount: isOnlinePay ? Math.max(0, (checkoutData?.finalTotal || 0) - payableAmount) : (checkoutData?.finalTotal || 0),
-          payment_mode: checkoutData?.paymentMode || 'COD',
-          payment_gateway: selectedPaymentGateway,
+          total_amount: totalAmount,
+          paid_amount: 0,
+          remaining_amount: totalAmount,
+          payable_amount: payableAmount,
+          payment_mode: mode,
+          payment_gateway: 'razorpay',
           coupon_code: checkoutData?.appliedCoupon?.code || null,
           items: cart.map(i => ({ product_id: i.id, variant_id: i.variant_id, quantity: i.quantity, price: i.price }))
         })
       });
 
       const orderData = await orderRes.json().catch(() => ({}));
-      if (!orderRes.ok) throw new Error(orderData.error || `Failed to create order (Server returned status ${orderRes.status})`);
+      if (!orderRes.ok || !orderData?.order_id) {
+        throw new Error(orderData.error || `Failed to create order (Server returned status ${orderRes.status})`);
+      }
 
       // Save shipping address for future checkouts and update user profile
       if (customerForm.address) {
@@ -452,20 +474,139 @@ export default function App() {
         try { localStorage.setItem('customerUser', JSON.stringify(updatedUser)); } catch (e) {}
       }
 
-      if (!isOnlinePay || currency !== 'INR') {
+      // 2. CASH ON DELIVERY (COD): Order confirmed immediately
+      if (isCOD) {
         setShowCheckoutModal(false);
         setOrderSuccess(orderData);
         setCart([]);
-        showToast('success', 'Order Confirmed!', `Order #${orderData.orderNumber || orderData.order_number} confirmed!`);
-      } else {
-        setShowCheckoutModal(false);
-        setPendingPaymentOrder(orderData);
-        setPaymentPayableAmount(payableAmount);
-        setShowPaymentModal(true);
+        showToast('success', 'Order Confirmed!', `COD Order #${orderData.order_number || orderData.orderNumber} placed successfully!`);
+        setIsSubmittingOrder(false);
+        return;
       }
+
+      // 3. ONLINE PAYMENT (FULL OR PARTIAL DEPOSIT): DIRECT RAZORPAY CHECKOUT INVOCATION
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || typeof window.Razorpay !== 'function') {
+        throw new Error('Razorpay checkout SDK failed to load. Please check your internet connection.');
+      }
+
+      // Create Razorpay Order on server
+      const rzpRes = await fetch(getApiUrl('/api/payment/razorpay/create-order'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: payableAmount,
+          currency,
+          order_id: orderData.order_id,
+          receipt: `rcpt_${orderData.order_number || orderData.orderNumber}`
+        })
+      });
+
+      const rzpOrder = await rzpRes.json().catch(() => ({}));
+      if (!rzpRes.ok || !rzpOrder?.id) {
+        throw new Error(rzpOrder?.error || 'Failed to initialize payment gateway.');
+      }
+
+      const keyId = rzpOrder.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TcG0EYPMH8tl5L';
+
+      const options = {
+        key: keyId,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency || 'INR',
+        name: 'ValueLife Essentials',
+        description: `Order #${orderData.order_number || orderData.orderNumber} (${isPartial ? 'Partial 20% Deposit' : 'Prepaid Full'})`,
+        order_id: rzpOrder.id,
+        prefill: {
+          name: customerForm.name || currentUser.name || '',
+          email: customerForm.email || currentUser.email || '',
+          contact: finalPhone
+        },
+        theme: {
+          color: '#164e3f'
+        },
+        handler: async function (response) {
+          // PAYMENT WAS SUCCESSFUL ON RAZORPAY
+          try {
+            setIsSubmittingOrder(true);
+            const verifyRes = await fetch(getApiUrl('/api/payment/razorpay/verify'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                transaction_id: rzpOrder.transaction_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                order_id: orderData.order_id,
+                email: customerForm.email || currentUser.email
+              })
+            });
+
+            const verifyData = await verifyRes.json().catch(() => ({}));
+            if (!verifyRes.ok || !verifyData?.verified) {
+              throw new Error(verifyData?.message || 'Payment signature verification failed.');
+            }
+
+            // ORDER PLACED SUCCESSFULLY - DISPLAYED STRICTLY AFTER VERIFIED PAYMENT
+            setShowCheckoutModal(false);
+            setOrderSuccess(verifyData.order || orderData);
+            setCart([]);
+            showToast('success', 'Payment Successful!', `Order #${orderData.order_number || orderData.orderNumber} confirmed! Confirmation email dispatched.`);
+          } catch (verErr) {
+            showToast('error', 'Payment Verification Error', verErr.message);
+          } finally {
+            setIsSubmittingOrder(false);
+          }
+        },
+        modal: {
+          ondismiss: async function () {
+            // USER DISMISSED OR CANCELLED RAZORPAY CHECKOUT WINDOW
+            setIsSubmittingOrder(false);
+            try {
+              await fetch(getApiUrl('/api/payment/razorpay/failure'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  transaction_id: rzpOrder.transaction_id,
+                  gateway_order_id: rzpOrder.id,
+                  error_code: 'MODAL_DISMISSED',
+                  error_description: 'Payment checkout window closed before completion',
+                  order_id: orderData.order_id
+                })
+              });
+            } catch (e) {}
+
+            showToast('info', 'Payment Cancelled', 'Payment window was closed. Your order was not placed and no amount was charged. Cancellation email dispatched.');
+            // CART IS RETAINED, CHECKOUT MODAL REMAINS OPEN, SUCCESS MODAL IS NOT SHOWN
+          }
+        }
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.on('payment.failed', async function (response) {
+        setIsSubmittingOrder(false);
+        try {
+          await fetch(getApiUrl('/api/payment/razorpay/failure'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transaction_id: rzpOrder.transaction_id,
+              gateway_order_id: rzpOrder.id,
+              gateway_payment_id: response.error?.metadata?.payment_id,
+              error_code: response.error?.code || 'PAYMENT_FAILED',
+              error_description: response.error?.description || 'Payment declined by bank',
+              order_id: orderData.order_id
+            })
+          });
+        } catch (e) {}
+
+        showToast('error', 'Payment Failed', response.error?.description || 'Payment was declined by your bank.');
+      });
+
+      // DIRECT CALL: Launch Razorpay popup right over the screen!
+      rzpInstance.open();
+
     } catch (err) {
-      showToast('error', 'Order Error', err.message);
-    } finally {
+      showToast('error', 'Checkout Error', err.message);
       setIsSubmittingOrder(false);
     }
   };
