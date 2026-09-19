@@ -39,15 +39,24 @@ export default function ProfileDetailsTab({
         </div>
 
         <div>
-          <label className="block text-gray-700 font-extrabold mb-1">Phone Number *</label>
-          <input 
-            type="text" required
-            placeholder="+91 98765 43210"
-            value={profileForm.phone}
-            onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
-            data-reticle-target="user-profile-phone-input"
-          />
+          <label className="block text-gray-700 font-extrabold mb-1">Mobile Phone Number * (10 Digits)</label>
+          <div className="flex items-center">
+            <span className="px-3 py-3 bg-gray-100 border border-r-0 border-gray-200 rounded-l-xl text-gray-600 text-xs font-mono font-bold">
+              +91
+            </span>
+            <input 
+              type="tel" required
+              maxLength={10}
+              placeholder="9876543210"
+              value={profileForm.phone}
+              onChange={(e) => {
+                const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setProfileForm({ ...profileForm, phone: clean });
+              }}
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-r-xl font-mono font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
+              data-reticle-target="user-profile-phone-input"
+            />
+          </div>
         </div>
 
         <div className="sm:col-span-2">
@@ -85,12 +94,12 @@ export default function ProfileDetailsTab({
         </div>
 
         <div>
-          <label className="block text-gray-700 font-extrabold mb-1">Pincode *</label>
+          <label className="block text-gray-700 font-extrabold mb-1">Pincode * (6 Digits)</label>
           <input 
             type="text" required maxLength={6}
             placeholder="6-digit Pincode"
             value={profileForm.pincode}
-            onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
+            onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-mono font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
             data-reticle-target="user-profile-pincode-input"
           />

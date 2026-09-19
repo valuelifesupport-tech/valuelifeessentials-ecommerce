@@ -204,10 +204,16 @@ export default function OrdersTab({
                   <td className="p-3 font-bold text-white font-mono">{o.order_number}</td>
                   <td className="p-3">
                     <div className="font-bold text-white">{o.customer_name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{o.customer_phone}</div>
-                    {o.shipping_address && (
-                      <div className="text-[10px] text-slate-400 font-medium mt-0.5 truncate max-w-[180px]" title={o.shipping_address}>
-                        📍 {o.shipping_address}
+                    <div className="text-[11px] text-emerald-400 font-mono font-bold">
+                      {(() => {
+                        const raw = String(o.customer_phone || '').replace(/\D/g, '');
+                        const clean = raw.length > 10 ? raw.slice(-10) : raw;
+                        return clean ? `+91 ${clean}` : 'No phone';
+                      })()}
+                    </div>
+                    {(o.shipping_address || o.shipping_city || o.state_name) && (
+                      <div className="text-[10px] text-slate-400 font-medium mt-0.5 truncate max-w-[200px]" title={`${o.shipping_address || ''}, ${o.shipping_city || ''}, ${o.shipping_state || o.state_name || ''}`}>
+                        📍 {[o.shipping_address, o.shipping_city, o.shipping_state || o.state_name].filter(Boolean).join(', ')}
                       </div>
                     )}
                     {o.order_notes && (

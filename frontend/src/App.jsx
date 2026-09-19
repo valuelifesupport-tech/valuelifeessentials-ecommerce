@@ -138,15 +138,21 @@ export default function App() {
     try {
       const u = JSON.parse(localStorage.getItem('customerUser'));
       const savedAddr = localStorage.getItem('user_last_shipping_address') || '';
+      const rawPhone = u?.phone || '';
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
       return {
         name: u?.name || '',
-        phone: u?.phone || '',
+        phone: cleanPhone,
         email: u?.email || '',
+        street: u?.address || savedAddr || '',
         address: u?.address || savedAddr || '',
+        city: u?.city || '',
+        state: u?.state || 'Maharashtra',
+        pincode: u?.pincode || '',
         remark: ''
       };
     } catch (e) {
-      return { name: '', phone: '', email: '', address: '', remark: '' };
+      return { name: '', phone: '', email: '', street: '', address: '', city: '', state: 'Maharashtra', pincode: '', remark: '' };
     }
   });
   const [orderSuccess, setOrderSuccess] = useState(null);
@@ -162,24 +168,46 @@ export default function App() {
   // Keep customerForm automatically synced with logged in user
   useEffect(() => {
     if (currentUser) {
+      const rawPhone = customerForm?.phone || currentUser.phone || '';
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
       setCustomerForm(prev => ({
         name: currentUser.name || prev.name || '',
-        phone: currentUser.phone || prev.phone || '',
+        phone: cleanPhone || prev.phone || '',
         email: currentUser.email || prev.email || '',
-        address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev.address || '',
+        street: prev.street || currentUser.address || localStorage.getItem('user_last_shipping_address') || prev.address || '',
+        address: prev.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+        city: prev.city || currentUser.city || '',
+        state: prev.state || currentUser.state || 'Maharashtra',
+        pincode: prev.pincode || currentUser.pincode || '',
         remark: prev.remark || ''
       }));
 
       // If address is missing, fetch user profile & last order address
-      if (!currentUser.address && currentUser.email) {
+      if ((!currentUser.address || !currentUser.city || !currentUser.pincode) && currentUser.email) {
         fetch(getApiUrl(`/api/users/${encodeURIComponent(currentUser.email)}/profile`))
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
-            if (profile?.address) {
-              const updated = { ...currentUser, address: profile.address };
+            if (profile) {
+              const pPhone = (profile.phone || '').replace(/\D/g, '').slice(-10);
+              const updated = { 
+                ...currentUser, 
+                address: profile.address || currentUser.address,
+                city: profile.city || currentUser.city,
+                state: profile.state || currentUser.state || 'Maharashtra',
+                pincode: profile.pincode || currentUser.pincode,
+                phone: pPhone || currentUser.phone
+              };
               setCurrentUser(updated);
               try { localStorage.setItem('customerUser', JSON.stringify(updated)); } catch (e) {}
-              setCustomerForm(prev => ({ ...prev, address: profile.address }));
+              setCustomerForm(prev => ({ 
+                ...prev, 
+                street: profile.address || prev.street,
+                address: profile.address || prev.address,
+                city: profile.city || prev.city,
+                state: profile.state || prev.state || 'Maharashtra',
+                pincode: profile.pincode || prev.pincode,
+                phone: pPhone || prev.phone
+              }));
             }
           })
           .catch(() => {});
@@ -413,11 +441,31 @@ export default function App() {
       return;
     }
 
-    const finalPhone = currentUser?.phone || customerForm.phone;
-    if (!finalPhone || !customerForm.address) {
-      showToast('error', 'Required Fields', 'Phone number and shipping address are required.');
+    const rawPhone = customerForm.phone || currentUser?.phone || '';
+    const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
+    const streetAddr = (customerForm.street || customerForm.address || '').trim();
+    const city = (customerForm.city || currentUser?.city || '').trim();
+    const state = (customerForm.state || currentUser?.state || 'Maharashtra').trim();
+    const pincode = String(customerForm.pincode || currentUser?.pincode || '').replace(/\D/g, '').slice(0, 6);
+
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showToast('error', '10-Digit Mobile Required', 'Please enter a valid 10-digit Indian mobile number.');
       return;
     }
+    if (!streetAddr) {
+      showToast('error', 'Address Required', 'Please enter your street / flat address.');
+      return;
+    }
+    if (!city) {
+      showToast('error', 'City Required', 'Please enter your delivery city.');
+      return;
+    }
+    if (!pincode || pincode.length !== 6) {
+      showToast('error', '6-Digit Pincode Required', 'Please enter a valid 6-digit delivery pincode.');
+      return;
+    }
+
+    const formattedFullAddress = `${streetAddr}, ${city}, ${state} - ${pincode}`;
 
     setIsSubmittingOrder(true);
     try {
@@ -436,10 +484,14 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: currentUser.id,
-          customer_name: customerForm.name || currentUser.name || 'Customer',
+          customer_name: (customerForm.name || currentUser.name || 'Customer').trim(),
           customer_email: customerForm.email || currentUser.email,
-          customer_phone: finalPhone,
-          shipping_address: customerForm.address,
+          customer_phone: cleanPhone,
+          shipping_address: formattedFullAddress,
+          shipping_city: city,
+          shipping_state: state,
+          shipping_pincode: pincode,
+          state_name: state,
           order_notes: customerForm.remark || '',
           country: currency === 'INR' ? 'India' : 'International',
           currency,
@@ -460,15 +512,16 @@ export default function App() {
       }
 
       // Save shipping address for future checkouts and update user profile
-      if (customerForm.address) {
-        try { localStorage.setItem('user_last_shipping_address', customerForm.address); } catch (e) {}
-      }
-      if (currentUser && customerForm.address) {
+      try { localStorage.setItem('user_last_shipping_address', streetAddr); } catch (e) {}
+      if (currentUser) {
         const updatedUser = {
           ...currentUser,
-          name: customerForm.name || currentUser.name,
-          phone: finalPhone,
-          address: customerForm.address
+          name: (customerForm.name || currentUser.name || '').trim(),
+          phone: cleanPhone,
+          address: streetAddr,
+          city,
+          state,
+          pincode
         };
         setCurrentUser(updatedUser);
         try { localStorage.setItem('customerUser', JSON.stringify(updatedUser)); } catch (e) {}
@@ -519,7 +572,7 @@ export default function App() {
         prefill: {
           name: customerForm.name || currentUser.name || '',
           email: customerForm.email || currentUser.email || '',
-          contact: finalPhone
+          contact: cleanPhone ? `+91${cleanPhone}` : ''
         },
         theme: {
           color: '#164e3f'

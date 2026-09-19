@@ -1,6 +1,27 @@
 import React from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
+const INDIAN_STATES = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
+  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", 
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", 
+  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", 
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", 
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", 
+  "Uttarakhand", "West Bengal"
+];
+
+const clean10Phone = (p) => {
+  if (!p) return '';
+  const digits = String(p).replace(/\D/g, '');
+  if (digits.length === 10) return digits;
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  const m = digits.match(/[6-9]\d{9}/);
+  if (m) return m[0];
+  return digits.length > 10 ? digits.slice(-10) : digits;
+};
+
 export default function CheckoutModal({
   isOpen,
   onClose,
@@ -20,14 +41,19 @@ export default function CheckoutModal({
 }) {
   if (!isOpen && !orderSuccess) return null;
 
-  // Auto-fill logged-in user credentials and address when checkout opens
+  // Auto-fill logged-in user credentials and structured address when checkout opens
   React.useEffect(() => {
     if (isOpen && currentUser) {
+      const uPhone = clean10Phone(customerForm?.phone || currentUser.phone);
       setCustomerForm(prev => ({
         name: prev?.name || currentUser.name || '',
-        phone: prev?.phone || currentUser.phone || '',
+        phone: uPhone || prev?.phone || '',
         email: prev?.email || currentUser.email || '',
+        street: prev?.street || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
         address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+        city: prev?.city || currentUser.city || '',
+        state: prev?.state || currentUser.state || 'Maharashtra',
+        pincode: prev?.pincode || currentUser.pincode || '',
         remark: prev?.remark || ''
       }));
     }
@@ -139,16 +165,27 @@ export default function CheckoutModal({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-gray-700 mb-1">Mobile Phone Number * (Mandatory)</label>
-                  <input 
-                    type="tel" required placeholder="e.g. +91 98123 45678"
-                    value={customerForm?.phone || ''}
-                    onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
-                    data-reticle-target="checkout-input-phone"
-                  />
+                  <label className="block font-bold text-gray-700 mb-1">Mobile Phone Number * (10 Digits)</label>
+                  <div className="flex items-center">
+                    <span className="px-3 py-2.5 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-gray-600 text-xs font-mono font-bold">
+                      +91
+                    </span>
+                    <input 
+                      type="tel" 
+                      required 
+                      maxLength={10}
+                      placeholder="9812345678"
+                      value={customerForm?.phone || ''}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setCustomerForm({ ...customerForm, phone: val });
+                      }}
+                      className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-r-lg text-gray-900 font-mono font-bold focus:border-emerald-600 focus:outline-none text-xs"
+                      data-reticle-target="checkout-input-phone"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">Email Address (Optional)</label>
@@ -156,21 +193,77 @@ export default function CheckoutModal({
                     type="email" placeholder="e.g. rajesh@gmail.com (Optional)"
                     value={customerForm?.email || ''}
                     onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                     data-reticle-target="checkout-input-email"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 mb-1">Shipping Home Address *</label>
-                <textarea 
-                  rows={2} required placeholder="Flat No., Street, Area, City, Pincode"
-                  value={customerForm?.address || ''}
-                  onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
+                <label className="block font-bold text-gray-700 mb-1">House / Flat No., Building, Street Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. Flat 302, Palm Heights, Main Link Road"
+                  value={customerForm?.street || customerForm?.address || ''}
+                  onChange={(e) => {
+                    const stVal = e.target.value;
+                    setCustomerForm({ 
+                      ...customerForm, 
+                      street: stVal,
+                      address: stVal 
+                    });
+                  }}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-address"
-                ></textarea>
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">City / Town *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="e.g. Mumbai"
+                    value={customerForm?.city || ''}
+                    onChange={(e) => setCustomerForm({ ...customerForm, city: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
+                    data-reticle-target="checkout-input-city"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">State *</label>
+                  <select
+                    required
+                    value={customerForm?.state || 'Maharashtra'}
+                    onChange={(e) => setCustomerForm({ ...customerForm, state: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs cursor-pointer"
+                    data-reticle-target="checkout-select-state"
+                  >
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Pincode * (6 Digits)</label>
+                  <input 
+                    type="text" 
+                    required 
+                    maxLength={6}
+                    placeholder="e.g. 400001"
+                    value={customerForm?.pincode || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setCustomerForm({ ...customerForm, pincode: val });
+                    }}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-mono font-bold focus:border-emerald-600 focus:outline-none text-xs text-center"
+                    data-reticle-target="checkout-input-pincode"
+                  />
+                </div>
               </div>
 
               <div>
