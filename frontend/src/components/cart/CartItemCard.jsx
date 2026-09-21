@@ -38,8 +38,15 @@ export default function CartItemCard({
           </div>
         )}
 
-        <div className="text-xs text-[#2d6a4f] font-black mt-1">
-          {currencySymbol}{price} <span className="text-gray-400 font-medium text-[11px]">/ unit</span>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="text-xs text-[#2d6a4f] font-black">
+            {currencySymbol}{price} <span className="text-gray-400 font-medium text-[11px]">/ unit</span>
+          </span>
+          {((item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '') || (item.gst_rate !== undefined && item.gst_rate !== null && item.gst_rate !== '')) ? (
+            <span className="bg-emerald-50 text-[#2d6a4f] border border-emerald-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
+              {item.gst_percent ?? item.gst_rate}% GST
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between mt-3">

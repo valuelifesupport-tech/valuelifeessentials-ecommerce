@@ -228,7 +228,12 @@ export default function InventoryTab({
                         </div>
                       </td>
 
-                      <td className="p-3.5 font-mono text-emerald-400 font-bold">{p.sku || `OB-${p.id}`}</td>
+                      <td className="p-3.5 font-mono text-emerald-400 font-bold">
+                        <div>{p.sku || `OB-${p.id}`}</div>
+                        <span className="bg-amber-950/80 text-amber-300 border border-amber-800/80 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded inline-block mt-0.5">
+                          GST: {(p.gst_percent !== undefined && p.gst_percent !== null && p.gst_percent !== '') ? `${p.gst_percent}%` : (p.gst_rate ? `${p.gst_rate}%` : 'Default')}
+                        </span>
+                      </td>
 
                       <td className="p-3.5 font-extrabold text-slate-200">
                         ₹{p.discount_inr || p.price_inr}
@@ -313,7 +318,12 @@ export default function InventoryTab({
                               stock: Number(v.stock !== undefined ? v.stock : 50),
                               image_url: typeof v.image_url === 'object' ? v.image_url?.image_url : (v.image_url || pImages[0] || null)
                             }));
-                            setProductForm({ ...p, images: pImages, variants: pVariants });
+                            setProductForm({
+                              ...p,
+                              images: pImages,
+                              variants: pVariants,
+                              gst_percent: (p.gst_percent !== undefined && p.gst_percent !== null && p.gst_percent !== '') ? p.gst_percent : (p.gst_rate !== undefined && p.gst_rate !== null && p.gst_rate !== '' ? p.gst_rate : '')
+                            });
                             setShowProductModal(true);
                           }}
                           className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-lg border border-slate-700 text-xs shadow-sm cursor-pointer"

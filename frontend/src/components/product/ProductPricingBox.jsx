@@ -126,7 +126,7 @@ export default function ProductPricingBox({
           )}
         </div>
         <p className="text-xs text-gray-500 font-medium">
-          Taxes included. <span className="underline cursor-pointer hover:text-gray-700">Shipping</span> calculated at checkout.
+          Taxes included {(productData?.gst_percent !== undefined && productData?.gst_percent !== null && productData?.gst_percent !== '') || productData?.gst_rate ? `(Includes ${productData.gst_percent ?? productData.gst_rate}% GST)` : ''}. <span className="underline cursor-pointer hover:text-gray-700">Shipping</span> calculated at checkout.
         </p>
       </div>
 

@@ -156,6 +156,9 @@ export default function ProductsTab({
                     <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-[10px] font-bold px-2 py-0.5 rounded">
                       SKU: {p.sku || `OB-${p.id}`}
                     </span>
+                    <span className="bg-amber-950/80 text-amber-300 border border-amber-800/80 font-mono text-[10px] font-bold px-2 py-0.5 rounded">
+                      GST: {(p.gst_percent !== undefined && p.gst_percent !== null && p.gst_percent !== '') ? `${p.gst_percent}%` : (p.gst_rate ? `${p.gst_rate}%` : 'Default')}
+                    </span>
                   </div>
                   <div className="text-[11px] text-slate-400 font-mono">
                     {p.category_name} {p.subcategory_name ? `➔ ${p.subcategory_name}` : ''} | Vendor: {p.vendor || 'VALUELIFE ESSENTIALS'}
@@ -218,7 +221,7 @@ export default function ProductsTab({
                           ? p.images 
                           : (p.image_url ? [p.image_url] : (p.thumbnail ? [p.thumbnail] : [])),
                         specs_json: p.specs_json || '{"material":"100% Pure Bio Compost"}',
-                        gst_percent: p.gst_percent ?? '',
+                        gst_percent: (p.gst_percent !== undefined && p.gst_percent !== null && p.gst_percent !== '') ? p.gst_percent : (p.gst_rate !== undefined && p.gst_rate !== null && p.gst_rate !== '' ? p.gst_rate : ''),
                         variants: (p.variants && Array.isArray(p.variants)) ? p.variants.map(v => ({ ...v })) : []
                       });
                       setShowProductModal(true);

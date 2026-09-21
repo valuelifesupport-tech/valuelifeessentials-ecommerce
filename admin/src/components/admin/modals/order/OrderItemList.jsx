@@ -25,6 +25,11 @@ export default function OrderItemList({ selectedOrderDetails }) {
                   <span className="text-[11px] text-slate-400 font-mono">
                     SKU: <strong className="text-slate-200">{item.variant_sku || item.product_sku || item.sku || (item.variant_id ? `VL-VAR-${item.variant_id}` : (item.product_id ? `VL-${item.product_id}` : 'N/A'))}</strong>
                   </span>
+                  {((item.gst_percent !== undefined && item.gst_percent !== null) || (item.gst_rate !== undefined && item.gst_rate !== null)) ? (
+                    <span className="bg-amber-950/80 text-amber-300 border border-amber-800/80 font-mono text-[10px] font-bold px-2 py-0.5 rounded">
+                      GST: {item.gst_percent ?? item.gst_rate}% {item.gst_amount ? `(₹${item.gst_amount})` : ''}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>

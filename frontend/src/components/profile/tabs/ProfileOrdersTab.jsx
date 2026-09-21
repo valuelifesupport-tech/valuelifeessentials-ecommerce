@@ -174,7 +174,7 @@ export default function ProfileOrdersTab({
                               {isCancelled ? (
                                 <>↩️ Includes ₹{taxAmt.toFixed(2)} GST (Refunded / Reversed)</>
                               ) : (
-                                <>🏛️ Includes ₹{taxAmt.toFixed(2)} GST (5%)</>
+                                <>🏛️ Includes ₹{taxAmt.toFixed(2)} GST</>
                               )}
                             </span>
 

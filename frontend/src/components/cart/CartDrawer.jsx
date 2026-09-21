@@ -30,9 +30,13 @@ export default function CartDrawer({
   const depositPercent = settings?.partial_deposit_percent || 20;
   const isTaxInclusive = Number(settings?.all_prices_include_tax ?? 1) === 1;
 
-  // Calculate Subtotal & GST Tax Amount based on item GST % or store tax rate
+  // Calculate Subtotal & GST Tax Amount based on dynamic item GST % or store tax rate
   let rawSubtotal = 0;
   let calculatedGstTax = 0;
+
+  const defaultGstRate = (settings?.default_gst_percent !== undefined && settings?.default_gst_percent !== null && settings?.default_gst_percent !== '')
+    ? Number(settings.default_gst_percent)
+    : (settings?.federal_tax_rate && Number(settings.federal_tax_rate) > 0 ? Number(settings.federal_tax_rate) : 5);
 
   cartItems.forEach(item => {
     const itemPrice = item.price !== undefined && item.price !== null 
@@ -43,13 +47,15 @@ export default function CartDrawer({
 
     const itemGstRate = (item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '')
       ? Number(item.gst_percent)
-      : (settings?.federal_tax_rate && Number(settings.federal_tax_rate) > 0 ? Number(settings.federal_tax_rate) : 5);
+      : ((item.gst_rate !== undefined && item.gst_rate !== null && item.gst_rate !== '')
+          ? Number(item.gst_rate)
+          : defaultGstRate);
 
     if (isTaxInclusive) {
-      const incGst = itemTotal * (itemGstRate / (100 + itemGstRate));
+      const incGst = itemGstRate > 0 ? (itemTotal * (itemGstRate / (100 + itemGstRate))) : 0;
       calculatedGstTax += incGst;
     } else {
-      const addGst = itemTotal * (itemGstRate / 100);
+      const addGst = itemGstRate > 0 ? ((itemTotal * itemGstRate) / 100) : 0;
       calculatedGstTax += addGst;
     }
   });
@@ -57,7 +63,9 @@ export default function CartDrawer({
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const afterDiscountSubtotal = Math.max(0, rawSubtotal - discountAmount);
 
-  const finalTaxAmount = Math.round(calculatedGstTax * 100) / 100;
+  // Proportional discount ratio for tax
+  const discountRatio = rawSubtotal > 0 ? Math.max(0, 1 - (discountAmount / rawSubtotal)) : 1;
+  const finalTaxAmount = Math.round(calculatedGstTax * discountRatio * 100) / 100;
   const finalTotal = isTaxInclusive 
     ? afterDiscountSubtotal 
     : Math.round((afterDiscountSubtotal + finalTaxAmount) * 100) / 100;

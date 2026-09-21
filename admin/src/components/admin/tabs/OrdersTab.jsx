@@ -242,7 +242,7 @@ export default function OrdersTab({
                               ₹{taxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                             <span className="text-[10px] text-slate-400 font-normal">
-                              (5% GST)
+                              GST
                             </span>
                           </div>
 

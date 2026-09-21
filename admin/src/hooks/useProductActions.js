@@ -7,7 +7,7 @@ const defaultProductForm = {
   price_inr: '', price_usd: '', discount_inr: '', discount_usd: '',
   compare_price_inr: '', compare_price_usd: '',
   cost_per_item_inr: '', cost_per_item_usd: '',
-  gst_percent: '18',
+  gst_percent: '',
   stock: 100, status: 'Active', product_type: '', vendor: '',
   images: [], tags: '', collection_ids: [], variants: [],
   seo_title: '', seo_description: '', url_handle: '',
