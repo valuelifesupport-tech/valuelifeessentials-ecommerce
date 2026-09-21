@@ -141,10 +141,10 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               <li>
                 <button
                   type="button"
-                  onClick={() => handleNav('/pages/returns-refund', 'page', 'returns-refund')}
+                  onClick={() => handleNav('/pages/cancellation-policy', 'page', 'refund-policy')}
                   className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  Return & Refund
+                  Cancellation & Refund Policy
                 </button>
               </li>
               <li>

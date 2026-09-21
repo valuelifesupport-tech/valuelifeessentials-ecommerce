@@ -41,13 +41,15 @@ export default function CheckoutModal({
 }) {
   if (!isOpen && !orderSuccess) return null;
 
-  // Auto-fill logged-in user credentials and structured address when checkout opens
+  // Auto-fill logged-in user credentials and structured address when checkout opens (once per open)
+  const wasOpenRef = React.useRef(false);
   React.useEffect(() => {
-    if (isOpen && currentUser) {
+    if (isOpen && !wasOpenRef.current && currentUser) {
       const uPhone = clean10Phone(customerForm?.phone || currentUser.phone);
       setCustomerForm(prev => ({
+        ...prev,
         name: prev?.name || currentUser.name || '',
-        phone: uPhone || prev?.phone || '',
+        phone: prev?.phone || uPhone || '',
         email: prev?.email || currentUser.email || '',
         street: prev?.street || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
         address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
@@ -57,7 +59,8 @@ export default function CheckoutModal({
         remark: prev?.remark || ''
       }));
     }
-  }, [isOpen, currentUser]);
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
 
   return (
     <>
@@ -180,7 +183,7 @@ export default function CheckoutModal({
                       value={customerForm?.phone || ''}
                       onChange={(e) => {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setCustomerForm({ ...customerForm, phone: val });
+                        setCustomerForm(prev => ({ ...prev, phone: val }));
                       }}
                       className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-r-lg text-gray-900 font-mono font-bold focus:border-emerald-600 focus:outline-none text-xs"
                       data-reticle-target="checkout-input-phone"
@@ -192,7 +195,7 @@ export default function CheckoutModal({
                   <input 
                     type="email" placeholder="e.g. rajesh@gmail.com (Optional)"
                     value={customerForm?.email || ''}
-                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                    onChange={(e) => setCustomerForm(prev => ({ ...prev, email: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                     data-reticle-target="checkout-input-email"
                   />
@@ -208,11 +211,11 @@ export default function CheckoutModal({
                   value={customerForm?.street || customerForm?.address || ''}
                   onChange={(e) => {
                     const stVal = e.target.value;
-                    setCustomerForm({ 
-                      ...customerForm, 
+                    setCustomerForm(prev => ({ 
+                      ...prev, 
                       street: stVal,
                       address: stVal 
-                    });
+                    }));
                   }}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-address"
@@ -227,7 +230,7 @@ export default function CheckoutModal({
                     required 
                     placeholder="e.g. Mumbai"
                     value={customerForm?.city || ''}
-                    onChange={(e) => setCustomerForm({ ...customerForm, city: e.target.value })}
+                    onChange={(e) => setCustomerForm(prev => ({ ...prev, city: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                     data-reticle-target="checkout-input-city"
                   />
@@ -238,7 +241,7 @@ export default function CheckoutModal({
                   <select
                     required
                     value={customerForm?.state || 'Maharashtra'}
-                    onChange={(e) => setCustomerForm({ ...customerForm, state: e.target.value })}
+                    onChange={(e) => setCustomerForm(prev => ({ ...prev, state: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs cursor-pointer"
                     data-reticle-target="checkout-select-state"
                   >
@@ -258,7 +261,7 @@ export default function CheckoutModal({
                     value={customerForm?.pincode || ''}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                      setCustomerForm({ ...customerForm, pincode: val });
+                      setCustomerForm(prev => ({ ...prev, pincode: val }));
                     }}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-mono font-bold focus:border-emerald-600 focus:outline-none text-xs text-center"
                     data-reticle-target="checkout-input-pincode"
@@ -273,8 +276,8 @@ export default function CheckoutModal({
                 <textarea 
                   rows={2}
                   placeholder="e.g. Please call before delivery, leave with security guard, pack in eco-friendly box..."
-                  value={customerForm.remark || ''}
-                  onChange={(e) => setCustomerForm({ ...customerForm, remark: e.target.value })}
+                  value={customerForm?.remark || ''}
+                  onChange={(e) => setCustomerForm(prev => ({ ...prev, remark: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-remark"
                 ></textarea>

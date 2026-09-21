@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getApiUrl } from '../api/config';
 
 export function useAuth(showToast) {
@@ -28,23 +28,28 @@ export function useAuth(showToast) {
     }
   });
 
-  useEffect(() => {
-    if (currentUser) {
-      const rawPhone = customerForm?.phone || currentUser.phone || '';
-      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
-      setCustomerForm(prev => ({
-        name: currentUser.name || prev.name || '',
-        phone: cleanPhone || prev.phone || '',
-        email: currentUser.email || prev.email || '',
-        street: prev.street || currentUser.address || localStorage.getItem('user_last_shipping_address') || prev.address || '',
-        address: prev.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
-        city: prev.city || currentUser.city || '',
-        state: prev.state || currentUser.state || 'Maharashtra',
-        pincode: prev.pincode || currentUser.pincode || '',
-        remark: prev.remark || ''
-      }));
+  const fetchedProfileEmailRef = useRef(null);
 
-      if ((!currentUser.address || !currentUser.city || !currentUser.pincode) && currentUser.email) {
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const rawPhone = customerForm?.phone || currentUser.phone || '';
+    const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
+    setCustomerForm(prev => ({
+      name: currentUser.name || prev.name || '',
+      phone: cleanPhone || prev.phone || '',
+      email: currentUser.email || prev.email || '',
+      street: prev.street || currentUser.address || localStorage.getItem('user_last_shipping_address') || prev.address || '',
+      address: prev.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+      city: prev.city || currentUser.city || '',
+      state: prev.state || currentUser.state || 'Maharashtra',
+      pincode: prev.pincode || currentUser.pincode || '',
+      remark: prev.remark || ''
+    }));
+
+    if (currentUser.email && fetchedProfileEmailRef.current !== currentUser.email) {
+      if (!currentUser.address || !currentUser.city || !currentUser.pincode || !currentUser.state) {
+        fetchedProfileEmailRef.current = currentUser.email;
         fetch(getApiUrl(`/api/users/${encodeURIComponent(currentUser.email)}/profile`))
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
@@ -62,19 +67,19 @@ export function useAuth(showToast) {
               try { localStorage.setItem('customerUser', JSON.stringify(updated)); } catch (e) {}
               setCustomerForm(prev => ({ 
                 ...prev, 
-                street: profile.address || prev.street,
-                address: profile.address || prev.address,
-                city: profile.city || prev.city,
-                state: profile.state || prev.state || 'Maharashtra',
-                pincode: profile.pincode || prev.pincode,
-                phone: pPhone || prev.phone
+                street: prev.street || profile.address || '',
+                address: prev.address || profile.address || '',
+                city: prev.city || profile.city || '',
+                state: prev.state || profile.state || 'Maharashtra',
+                pincode: prev.pincode || profile.pincode || '',
+                phone: prev.phone || pPhone || ''
               }));
             }
           })
           .catch(() => {});
       }
     }
-  }, [currentUser]);
+  }, [currentUser?.email, currentUser?.phone]);
 
   return {
     currentUser,

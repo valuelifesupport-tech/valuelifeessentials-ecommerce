@@ -31,7 +31,7 @@ export function useRouter() {
     if (path === '/about' || path === '/about-us') return { view: 'page', slug: 'about-us', category: null, collection: null };
     if (path === '/faq') return { view: 'page', slug: 'faq', category: null, collection: null };
     if (path === '/shipping-policy') return { view: 'page', slug: 'shipping-policy', category: null, collection: null };
-    if (path === '/returns-refund' || path === '/refund-policy') return { view: 'page', slug: 'refund-policy', category: null, collection: null };
+    if (path === '/returns-refund' || path === '/refund-policy' || path === '/cancellation-policy' || path === '/cancellation-and-refund' || path === '/cancellation-and-refund-policy') return { view: 'page', slug: 'refund-policy', category: null, collection: null };
     if (path === '/privacy-policy') return { view: 'page', slug: 'privacy-policy', category: null, collection: null };
     if (path === '/terms-of-service' || path === '/terms') return { view: 'page', slug: 'terms-of-service', category: null, collection: null };
     if (path.startsWith('/pages/')) {
@@ -39,7 +39,7 @@ export function useRouter() {
       if (slug === 'blog') return { view: 'blog', slug: null, category: null, collection: null };
       if (slug === 'contact') slug = 'contact-us';
       if (slug === 'about') slug = 'about-us';
-      if (slug === 'returns-refund') slug = 'refund-policy';
+      if (slug === 'returns-refund' || slug === 'cancellation-policy' || slug === 'cancellation-and-refund' || slug === 'cancellation-and-refund-policy') slug = 'refund-policy';
       return { view: 'page', slug, category: null, collection: null };
     }
     if (path.startsWith('/category/')) {

@@ -19,10 +19,15 @@ export function useCheckout({ currentUser, setCurrentUser, customerForm, setCust
       return;
     }
     setCustomerForm(prev => ({
+      ...prev,
       name: currentUser.name || prev?.name || '',
       phone: currentUser.phone || prev?.phone || '',
       email: currentUser.email || prev?.email || '',
-      address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+      street: prev?.street || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+      address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+      city: prev?.city || currentUser.city || '',
+      state: prev?.state || currentUser.state || 'Maharashtra',
+      pincode: prev?.pincode || currentUser.pincode || '',
       remark: prev?.remark || ''
     }));
     setCheckoutData(data);

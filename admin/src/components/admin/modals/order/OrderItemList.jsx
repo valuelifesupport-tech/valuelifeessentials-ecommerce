@@ -23,7 +23,7 @@ export default function OrderItemList({ selectedOrderDetails }) {
                     </span>
                   )}
                   <span className="text-[11px] text-slate-400 font-mono">
-                    SKU: <strong className="text-slate-200">{item.variant_sku || item.product_sku}</strong>
+                    SKU: <strong className="text-slate-200">{item.variant_sku || item.product_sku || item.sku || (item.variant_id ? `VL-VAR-${item.variant_id}` : (item.product_id ? `VL-${item.product_id}` : 'N/A'))}</strong>
                   </span>
                 </div>
               </div>
