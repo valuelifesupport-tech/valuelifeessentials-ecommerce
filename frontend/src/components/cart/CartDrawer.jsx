@@ -63,15 +63,26 @@ export default function CartDrawer({
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const afterDiscountSubtotal = Math.max(0, rawSubtotal - discountAmount);
 
+  // Dynamic Shipping Settings from Store Settings
+  const shippingFee = Number(settings?.shipping_fee ?? 50);
+  const freeShippingThreshold = Number(settings?.free_shipping_threshold ?? 499);
+  const enableFreeShipping = settings?.enable_free_shipping !== undefined ? (Number(settings?.enable_free_shipping) === 1) : true;
+
+  const isFreeShipping = Boolean(
+    (appliedCoupon && (appliedCoupon.free_shipping || appliedCoupon.is_free_shipping)) ||
+    (enableFreeShipping && cartItems.length > 0 && afterDiscountSubtotal >= freeShippingThreshold)
+  );
+  const shippingAmount = (cartItems.length === 0 || isFreeShipping) ? 0 : shippingFee;
+
   // Proportional discount ratio for tax
   const discountRatio = rawSubtotal > 0 ? Math.max(0, 1 - (discountAmount / rawSubtotal)) : 1;
   const finalTaxAmount = Math.round(calculatedGstTax * discountRatio * 100) / 100;
   const finalTotal = isTaxInclusive 
-    ? afterDiscountSubtotal 
-    : Math.round((afterDiscountSubtotal + finalTaxAmount) * 100) / 100;
+    ? Math.round((afterDiscountSubtotal + shippingAmount) * 100) / 100 
+    : Math.round((afterDiscountSubtotal + finalTaxAmount + shippingAmount) * 100) / 100;
 
   const depositAmount = Math.round(finalTotal * (depositPercent / 100));
-  const remainingAmount = finalTotal - depositAmount;
+  const remainingAmount = Math.max(0, finalTotal - depositAmount);
 
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
@@ -172,6 +183,12 @@ export default function CartDrawer({
               currencySymbol={currencySymbol}
               rawSubtotal={rawSubtotal}
               discountAmount={discountAmount}
+              afterDiscountSubtotal={afterDiscountSubtotal}
+              shippingFee={shippingFee}
+              freeShippingThreshold={freeShippingThreshold}
+              enableFreeShipping={enableFreeShipping}
+              shippingAmount={shippingAmount}
+              isFreeShipping={isFreeShipping}
               isTaxInclusive={isTaxInclusive}
               finalTaxAmount={finalTaxAmount}
               finalTotal={finalTotal}

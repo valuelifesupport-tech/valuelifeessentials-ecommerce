@@ -11,6 +11,12 @@ export default function CartSummary({
   currencySymbol,
   rawSubtotal,
   discountAmount,
+  afterDiscountSubtotal = 0,
+  shippingFee = 50,
+  freeShippingThreshold = 499,
+  enableFreeShipping = true,
+  shippingAmount = 0,
+  isFreeShipping = false,
   isTaxInclusive,
   finalTaxAmount,
   finalTotal,
@@ -19,8 +25,35 @@ export default function CartSummary({
   depositAmount,
   remainingAmount
 }) {
+  const effectiveSubtotal = afterDiscountSubtotal || Math.max(0, rawSubtotal - discountAmount);
+  const remainingForFreeShipping = Math.max(0, Math.ceil(freeShippingThreshold - effectiveSubtotal));
+  const progressPercent = freeShippingThreshold > 0 ? Math.min(100, Math.round((effectiveSubtotal / freeShippingThreshold) * 100)) : 100;
+
   return (
     <div className="shrink-0 p-4 border-t border-gray-200 bg-white space-y-3 shadow-2xl overflow-y-auto max-h-[60vh] sm:max-h-none z-10" data-reticle-target="cart-summary-section">
+      {/* Free Shipping Incentive Progress Bar */}
+      {enableFreeShipping && freeShippingThreshold > 0 && (
+        isFreeShipping ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs text-emerald-800 flex items-center gap-2 font-bold shadow-sm">
+            <span className="text-base">🎉</span>
+            <span>Woohoo! You have unlocked <strong>FREE Delivery</strong> on this order!</span>
+          </div>
+        ) : (
+          <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-900 space-y-1.5 shadow-sm">
+            <div className="flex justify-between items-center text-[11px] font-bold">
+              <span>Add <strong className="text-emerald-700 font-extrabold">{currencySymbol}{remainingForFreeShipping}</strong> more for <strong>FREE Delivery!</strong> 🚚</span>
+              <span className="text-[10px] text-gray-500 font-semibold">{progressPercent}%</span>
+            </div>
+            <div className="w-full bg-amber-200/60 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className="bg-emerald-600 h-full rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )
+      )}
+
       {/* Coupon Code Selector */}
       <form onSubmit={onApplyCoupon} className="flex gap-2" data-reticle-target="cart-coupon-form">
         <div className="relative flex-1">
@@ -65,12 +98,17 @@ export default function CartSummary({
           </div>
         )}
 
-        {appliedCoupon?.free_shipping && (
-          <div className="flex justify-between text-emerald-600 font-bold">
-            <span>Delivery / Shipping</span>
-            <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-extrabold">FREE 🚚</span>
-          </div>
-        )}
+        {/* Dynamic Delivery / Shipping Line */}
+        <div className="flex justify-between items-center text-xs">
+          <span>Delivery / Shipping Fee</span>
+          {isFreeShipping || shippingAmount === 0 ? (
+            <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-extrabold flex items-center gap-1">
+              FREE 🚚
+            </span>
+          ) : (
+            <span className="font-bold text-gray-900">+{currencySymbol}{shippingAmount}</span>
+          )}
+        </div>
 
         {!isTaxInclusive ? (
           <div className="flex justify-between text-amber-800 font-bold">
@@ -96,6 +134,11 @@ export default function CartSummary({
           paymentMode, 
           rawSubtotal,
           discountAmount,
+          afterDiscountSubtotal: effectiveSubtotal,
+          shippingFee,
+          freeShippingThreshold,
+          shippingAmount,
+          isFreeShipping,
           taxAmount: finalTaxAmount,
           isTaxInclusive,
           finalTotal, 

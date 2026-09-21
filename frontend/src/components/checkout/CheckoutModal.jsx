@@ -103,6 +103,22 @@ export default function CheckoutModal({
                 <span>{currencySymbol}{checkoutData.rawSubtotal || checkoutData.finalTotal}</span>
               </div>
 
+              {checkoutData.discountAmount > 0 && (
+                <div className="flex justify-between font-bold text-emerald-700">
+                  <span>Coupon Discount:</span>
+                  <span>-{currencySymbol}{checkoutData.discountAmount}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between font-bold text-gray-700">
+                <span>Delivery / Shipping:</span>
+                {checkoutData.isFreeShipping || checkoutData.shippingAmount === 0 ? (
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-black">FREE 🚚</span>
+                ) : (
+                  <span className="text-gray-900">+{currencySymbol}{checkoutData.shippingAmount}</span>
+                )}
+              </div>
+
               {!checkoutData.isTaxInclusive ? (
                 <div className="flex justify-between font-bold text-amber-800">
                   <span>GST Tax (Added at Checkout):</span>

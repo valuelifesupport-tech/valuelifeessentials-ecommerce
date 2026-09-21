@@ -18,14 +18,21 @@ export default function useAdminConfig({
     announcement_text: '', announcement_code: '',
     support_phone: '', support_email: '', support_whatsapp: '',
     partial_deposit_percent: 30,
-    enable_multi_currency: 0
+    enable_multi_currency: 0,
+    shipping_fee: 50,
+    free_shipping_threshold: 499,
+    enable_free_shipping: 1
   });
 
   useEffect(() => {
     if (propSettings && typeof propSettings === 'object') {
       const normalized = {
+        shipping_fee: 50,
+        free_shipping_threshold: 499,
+        enable_free_shipping: 1,
         ...propSettings,
-        enable_multi_currency: Number(propSettings.enable_multi_currency) === 1 ? 1 : 0
+        enable_multi_currency: Number(propSettings.enable_multi_currency) === 1 ? 1 : 0,
+        enable_free_shipping: propSettings.enable_free_shipping !== undefined ? (Number(propSettings.enable_free_shipping) === 1 ? 1 : 0) : 1
       };
       setSettings(normalized);
       setSettingsForm(normalized);

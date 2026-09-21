@@ -1,5 +1,5 @@
 import React from 'react';
-import { ToggleRight, ToggleLeft } from 'lucide-react';
+import { ToggleRight, ToggleLeft, Truck } from 'lucide-react';
 
 export default function SettingsTab({
   adminProfileForm = {},
@@ -173,6 +173,145 @@ export default function SettingsTab({
           className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs tracking-wider shadow-lg uppercase cursor-pointer"
         >
           Save Admin Profile & Security Credentials
+        </button>
+      </div>
+
+      {/* 2. STORE DELIVERY & SHIPPING CHARGES CONFIGURATION CARD */}
+      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-md space-y-6" data-reticle-target="admin-shipping-settings-card">
+        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <Truck size={22} />
+            </div>
+            <div>
+              <span className="font-extrabold text-sm text-white block">🚚 Store Delivery & Shipping Charges Configuration</span>
+              <p className="text-slate-400 text-xs">Set flat standard shipping fee, free delivery limitation threshold, and toggle free shipping rules.</p>
+            </div>
+          </div>
+          <span className="bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+            SHIPPING ENGINE
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+          <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-2">
+            <label className="block font-bold text-slate-200">
+              📦 Standard Delivery / Shipping Fee (₹)
+            </label>
+            <p className="text-[11px] text-slate-400">
+              Flat shipping fee applied when cart subtotal does not qualify for free shipping.
+            </p>
+            <div className="relative mt-1">
+              <span className="absolute left-3.5 top-2.5 text-slate-400 font-black text-sm">₹</span>
+              <input 
+                type="number"
+                min="0"
+                step="1"
+                placeholder="50"
+                value={settingsForm.shipping_fee !== undefined ? settingsForm.shipping_fee : 50}
+                onChange={(e) => setSettingsForm({ ...settingsForm, shipping_fee: e.target.value })}
+                className="w-full pl-8 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-black text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-2">
+            <label className="block font-bold text-slate-200">
+              🎁 Free Delivery Minimum Order Limit / Threshold (₹)
+            </label>
+            <p className="text-[11px] text-slate-400">
+              Minimum cart subtotal required to automatically qualify for 100% Free Shipping.
+            </p>
+            <div className="relative mt-1">
+              <span className="absolute left-3.5 top-2.5 text-slate-400 font-black text-sm">₹</span>
+              <input 
+                type="number"
+                min="0"
+                step="1"
+                placeholder="499"
+                value={settingsForm.free_shipping_threshold !== undefined ? settingsForm.free_shipping_threshold : 499}
+                onChange={(e) => setSettingsForm({ ...settingsForm, free_shipping_threshold: e.target.value })}
+                className="w-full pl-8 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-black text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* FREE SHIPPING TOGGLE */}
+        <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <div>
+            <span className="font-extrabold text-sm text-white block">✨ Enable Free Shipping on Qualifying Orders</span>
+            <p className="text-slate-400 text-xs">
+              When ON, orders with subtotal equal or above ₹{settingsForm.free_shipping_threshold || 499} automatically get ₹0 delivery fee.
+            </p>
+          </div>
+
+          <button 
+            type="button"
+            onClick={() => {
+              const currentVal = settingsForm.enable_free_shipping !== undefined ? Number(settingsForm.enable_free_shipping) : 1;
+              const newVal = currentVal === 1 ? 0 : 1;
+              if (typeof updateAndSaveSettingToggle === 'function') {
+                updateAndSaveSettingToggle('enable_free_shipping', newVal);
+              } else {
+                setSettingsForm({ ...settingsForm, enable_free_shipping: newVal });
+              }
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
+              (settingsForm.enable_free_shipping === undefined || Number(settingsForm.enable_free_shipping) === 1)
+                ? 'bg-blue-600 text-white shadow-lg' 
+                : 'bg-slate-800 text-slate-400 border border-slate-700'
+            }`}
+          >
+            {(settingsForm.enable_free_shipping === undefined || Number(settingsForm.enable_free_shipping) === 1) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+            <span>{(settingsForm.enable_free_shipping === undefined || Number(settingsForm.enable_free_shipping) === 1) ? 'FREE SHIPPING ACTIVE' : 'FREE SHIPPING OFF'}</span>
+          </button>
+        </div>
+
+        {/* LIVE PREVIEW HELPER BANNER */}
+        <div className="p-3.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-xs flex items-center justify-between text-blue-200">
+          <div className="flex items-center gap-2">
+            <span className="text-base">💡</span>
+            <span>
+              <strong>Customer Delivery Rule:</strong> Orders under <strong>₹{settingsForm.free_shipping_threshold || 499}</strong> pay <strong>₹{settingsForm.shipping_fee || 50}</strong> delivery. Orders <strong>₹{settingsForm.free_shipping_threshold || 499}+</strong> get <strong>100% Free Shipping</strong>.
+            </span>
+          </div>
+        </div>
+
+        <button 
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await adminFetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...settingsForm,
+                  shipping_fee: Number(settingsForm.shipping_fee) || 0,
+                  free_shipping_threshold: Number(settingsForm.free_shipping_threshold) || 0,
+                  enable_free_shipping: (settingsForm.enable_free_shipping === undefined || Number(settingsForm.enable_free_shipping) === 1) ? 1 : 0
+                })
+              });
+              if (res.ok) {
+                const savedData = await res.json();
+                const finalSettings = {
+                  ...settingsForm,
+                  ...(savedData && typeof savedData === 'object' ? savedData : {})
+                };
+                if (typeof setSettings === 'function') setSettings(finalSettings);
+                if (typeof setSettingsForm === 'function') setSettingsForm(finalSettings);
+                if (typeof onUpdateSettings === 'function') onUpdateSettings(finalSettings);
+                if (showToast) showToast('success', 'Shipping Settings Saved!', 'Standard delivery fee & limitation threshold updated live on storefront.');
+              } else {
+                if (showToast) showToast('error', 'Update Failed', 'Could not save shipping configuration.');
+              }
+            } catch (err) {
+              if (showToast) showToast('error', 'Save Error', err.message || 'Failed to save shipping settings');
+            }
+          }}
+          className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl text-xs tracking-wider shadow-lg uppercase cursor-pointer"
+        >
+          Save Delivery & Shipping Settings
         </button>
       </div>
     </div>
