@@ -43,7 +43,7 @@ export default function CartDrawer({
 
     const itemGstRate = (item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '')
       ? Number(item.gst_percent)
-      : (settings?.federal_tax_rate ? Number(settings.federal_tax_rate) : 18);
+      : (settings?.federal_tax_rate && Number(settings.federal_tax_rate) > 0 ? Number(settings.federal_tax_rate) : 5);
 
     if (isTaxInclusive) {
       const incGst = itemTotal * (itemGstRate / (100 + itemGstRate));
