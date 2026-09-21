@@ -32,7 +32,6 @@ import UsersTab from './tabs/UsersTab';
 import PagesTab from './tabs/PagesTab';
 import AnnouncementTab from './tabs/AnnouncementTab';
 import HeroTab from './tabs/HeroTab';
-import ThemeTab from './tabs/ThemeTab';
 import FiltersTab from './tabs/FiltersTab';
 import InventoryTab from './tabs/InventoryTab';
 import SectionsTab from './tabs/SectionsTab';
@@ -102,7 +101,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   // Tab navigation
   const [activeTab, setActiveTab] = React.useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('tab') || 'analytics';
+    const tab = params.get('tab') || 'analytics';
+    return tab === 'theme' ? 'analytics' : tab;
   });
 
   // Tab lazy-loading
@@ -470,14 +470,6 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               sectionsConfig={config.sectionsConfig}
               setSectionsConfig={config.setSectionsConfig}
               handleHeroSubmit={config.handleHeroSubmit}
-            />
-          )}
-
-          {activeTab === 'theme' && (
-            <ThemeTab
-              themeConfig={config.themeConfig}
-              setThemeConfig={config.setThemeConfig}
-              handleThemeSubmit={config.handleThemeSubmit}
             />
           )}
 

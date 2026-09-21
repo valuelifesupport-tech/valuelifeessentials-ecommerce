@@ -333,19 +333,6 @@ export default function AdminNavLinks({
                 {pages}
               </span>
             </button>
-
-            <button 
-              onClick={() => handleNavSelect('theme')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeTab === 'theme' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-              data-reticle-target="admin-nav-theme"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Sparkles size={16} className="text-amber-400 flex-shrink-0" /> 
-                <span className="truncate whitespace-nowrap text-xs font-bold">Theme & Styling Studio</span>
-              </div>
-            </button>
           </div>
         )}
       </div>
