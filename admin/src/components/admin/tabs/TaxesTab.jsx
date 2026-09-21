@@ -30,7 +30,8 @@ export default function TaxesTab({
   orders = [],
   handleFetchOrderDetails,
   adminFetch,
-  showToast
+  showToast,
+  setSettings
 }) {
   const [ledgerOrders, setLedgerOrders] = useState([]);
   const [ledgerSummary, setLedgerSummary] = useState(null);
@@ -115,6 +116,9 @@ export default function TaxesTab({
         onUpdateSettings={onUpdateSettings}
         handleDownloadGstCSV={handleDownloadGstCSV}
         selectedGstMonth={selectedGstMonth}
+        adminFetch={adminFetch}
+        showToast={showToast}
+        setSettings={setSettings}
       />
 
       <MonthlyReconciliationKpis 

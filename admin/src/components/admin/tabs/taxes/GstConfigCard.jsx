@@ -1,5 +1,5 @@
-import React from 'react';
-import { ToggleRight, ToggleLeft, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { ToggleRight, ToggleLeft, Download, Loader2 } from 'lucide-react';
 
 export default function GstConfigCard({
   settingsForm = {},
@@ -7,10 +7,67 @@ export default function GstConfigCard({
   updateAndSaveSettingToggle,
   onUpdateSettings,
   handleDownloadGstCSV,
-  selectedGstMonth
+  selectedGstMonth,
+  adminFetch,
+  showToast,
+  setSettings
 }) {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveGst = async () => {
+    setIsSaving(true);
+    try {
+      const parsedGstPercent = (settingsForm.default_gst_percent !== undefined && settingsForm.default_gst_percent !== null && settingsForm.default_gst_percent !== '')
+        ? Number(settingsForm.default_gst_percent)
+        : 0;
+
+      const payload = {
+        ...settingsForm,
+        enable_gst: Number(settingsForm.enable_gst ?? 1) === 1 ? 1 : 0,
+        gstin_number: (settingsForm.gstin_number || '').trim(),
+        legal_business_name: (settingsForm.legal_business_name || '').trim(),
+        store_state: settingsForm.store_state || 'Madhya Pradesh',
+        default_gst_percent: parsedGstPercent,
+        federal_tax_rate: parsedGstPercent
+      };
+
+      const fetcher = adminFetch || fetch;
+      const res = await fetcher('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const savedData = await res.json().catch(() => ({}));
+        const finalSettings = {
+          ...settingsForm,
+          ...payload,
+          ...(savedData && typeof savedData === 'object' ? savedData : {})
+        };
+        if (typeof setSettings === 'function') setSettings(finalSettings);
+        if (typeof setSettingsForm === 'function') setSettingsForm(finalSettings);
+        if (typeof onUpdateSettings === 'function') onUpdateSettings(finalSettings);
+        if (showToast) {
+          showToast('success', 'GST Tax Settings Saved!', `Store GSTIN (${payload.gstin_number || 'Updated'}) and default tax rate (${parsedGstPercent}%) saved successfully live in database.`);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) {
+          showToast('error', 'Save Failed', errData.error || 'Failed to update GST settings on server.');
+        }
+      }
+    } catch (err) {
+      if (showToast) {
+        showToast('error', 'Network Error', err.message || 'Error communicating with server.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="p-5 bg-slate-850 rounded-2xl border border-slate-800 space-y-4 shadow-md">
+    <div className="p-5 bg-slate-850 rounded-2xl border border-slate-800 space-y-4 shadow-md" data-reticle-target="admin-gst-config-card">
       <div className="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
           <span className="font-extrabold text-sm text-white block flex items-center gap-2">
@@ -25,6 +82,8 @@ export default function GstConfigCard({
             const newVal = Number(settingsForm.enable_gst ?? 1) === 1 ? 0 : 1;
             if (typeof updateAndSaveSettingToggle === 'function') {
               updateAndSaveSettingToggle('enable_gst', newVal);
+            } else {
+              setSettingsForm({ ...settingsForm, enable_gst: newVal });
             }
           }}
           className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
@@ -44,7 +103,7 @@ export default function GstConfigCard({
           <input 
             type="text" 
             placeholder="e.g. 27AAAAA0000A1Z5"
-            value={settingsForm.gstin_number || '27AAAAA0000A1Z5'}
+            value={settingsForm.gstin_number !== undefined && settingsForm.gstin_number !== null ? settingsForm.gstin_number : ''}
             onChange={(e) => setSettingsForm({ ...settingsForm, gstin_number: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-400 font-mono font-bold"
           />
@@ -55,7 +114,7 @@ export default function GstConfigCard({
           <input 
             type="text" 
             placeholder="e.g. VALUELIFE ESSENTIALS Retail Pvt Ltd"
-            value={settingsForm.legal_business_name || 'ValueLife Essentials Private Limited'}
+            value={settingsForm.legal_business_name !== undefined && settingsForm.legal_business_name !== null ? settingsForm.legal_business_name : ''}
             onChange={(e) => setSettingsForm({ ...settingsForm, legal_business_name: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold"
           />
@@ -64,7 +123,7 @@ export default function GstConfigCard({
         <div>
           <label className="block text-slate-300 font-bold mb-1">Store Base State (for CGST/SGST vs IGST) *</label>
           <select 
-            value={settingsForm.store_state || 'Maharashtra'}
+            value={settingsForm.store_state || 'Madhya Pradesh'}
             onChange={(e) => setSettingsForm({ ...settingsForm, store_state: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold cursor-pointer"
           >
@@ -85,7 +144,7 @@ export default function GstConfigCard({
         <div>
           <label className="block text-slate-300 font-bold mb-1">Default GST Rate (%) *</label>
           <select 
-            value={settingsForm.default_gst_percent ?? 5.0}
+            value={settingsForm.default_gst_percent !== undefined && settingsForm.default_gst_percent !== null ? Number(settingsForm.default_gst_percent) : 0}
             onChange={(e) => setSettingsForm({ ...settingsForm, default_gst_percent: Number(e.target.value) })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-400 font-extrabold cursor-pointer"
           >
@@ -109,10 +168,18 @@ export default function GstConfigCard({
 
         <button 
           type="button"
-          onClick={() => onUpdateSettings && onUpdateSettings(settingsForm)}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-5 py-2 rounded-xl shadow-md cursor-pointer"
+          disabled={isSaving}
+          onClick={handleSaveGst}
+          className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-md cursor-pointer flex items-center gap-2"
         >
-          Save GST Tax Settings
+          {isSaving ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <span>Save GST Tax Settings</span>
+          )}
         </button>
       </div>
     </div>

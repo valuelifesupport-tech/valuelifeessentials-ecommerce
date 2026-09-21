@@ -551,6 +551,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               updateAndSaveSettingToggle={config.updateAndSaveSettingToggle}
               handleDownloadGstCSV={config.handleDownloadGstCSV}
               onUpdateSettings={onUpdateSettings}
+              setSettings={data.setSettings}
               selectedGstMonth={config.selectedGstMonth}
               setSelectedGstMonth={config.setSelectedGstMonth}
               gstSummaryData={config.gstSummaryData}

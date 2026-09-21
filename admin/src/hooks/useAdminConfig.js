@@ -21,7 +21,12 @@ export default function useAdminConfig({
     enable_multi_currency: 0,
     shipping_fee: 50,
     free_shipping_threshold: 499,
-    enable_free_shipping: 1
+    enable_free_shipping: 1,
+    enable_gst: 1,
+    gstin_number: '27AAAAA0000A1Z5',
+    store_state: 'Madhya Pradesh',
+    default_gst_percent: 5.0,
+    legal_business_name: 'ValueLife Essentials Private Limited'
   });
 
   useEffect(() => {
@@ -30,9 +35,16 @@ export default function useAdminConfig({
         shipping_fee: 50,
         free_shipping_threshold: 499,
         enable_free_shipping: 1,
+        enable_gst: 1,
+        gstin_number: '27AAAAA0000A1Z5',
+        store_state: 'Madhya Pradesh',
+        default_gst_percent: 5.0,
+        legal_business_name: 'ValueLife Essentials Private Limited',
         ...propSettings,
         enable_multi_currency: Number(propSettings.enable_multi_currency) === 1 ? 1 : 0,
-        enable_free_shipping: propSettings.enable_free_shipping !== undefined ? (Number(propSettings.enable_free_shipping) === 1 ? 1 : 0) : 1
+        enable_free_shipping: propSettings.enable_free_shipping !== undefined ? (Number(propSettings.enable_free_shipping) === 1 ? 1 : 0) : 1,
+        enable_gst: propSettings.enable_gst !== undefined ? (Number(propSettings.enable_gst) === 1 ? 1 : 0) : 1,
+        default_gst_percent: (propSettings.default_gst_percent !== undefined && propSettings.default_gst_percent !== null && propSettings.default_gst_percent !== '') ? Number(propSettings.default_gst_percent) : 0
       };
       setSettings(normalized);
       setSettingsForm(normalized);
