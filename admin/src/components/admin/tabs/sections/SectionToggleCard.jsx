@@ -2,7 +2,7 @@ import React from 'react';
 import { ToggleRight, ToggleLeft } from 'lucide-react';
 
 export default function SectionToggleCard({ icon, title, description, configKey, value, onToggle, extraActions, children, isTicker = false }) {
-  const isOn = value !== 0;
+  const isOn = (value !== 0 && value !== '0' && value !== false && value !== null && value !== undefined);
 
   return (
     <div className={`p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-md ${children ? 'space-y-4' : 'space-y-3'}`}>

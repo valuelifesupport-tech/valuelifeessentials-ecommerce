@@ -8,8 +8,24 @@ export default function HeroTab({
   setHeroConfig,
   sectionsConfig,
   setSectionsConfig,
-  handleHeroSubmit
+  handleHeroSubmit,
+  updateAndSaveHeroToggle,
+  showToast
 }) {
+  const isHeroEnabled = Number(heroConfig?.hero_enabled) === 1 || heroConfig?.hero_enabled === true;
+
+  const handleToggle = () => {
+    const nextVal = isHeroEnabled ? 0 : 1;
+    if (typeof updateAndSaveHeroToggle === 'function') {
+      updateAndSaveHeroToggle(nextVal);
+    } else {
+      setHeroConfig(prev => ({ ...prev, hero_enabled: nextVal }));
+      if (setSectionsConfig) {
+        setSectionsConfig(prev => ({ ...prev, show_hero: nextVal }));
+      }
+    }
+  };
+
   return (
     <div className="space-y-6" data-reticle-target="admin-hero-tab">
       {/* TOP HEADER BAR */}
@@ -24,20 +40,16 @@ export default function HeroTab({
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => {
-              const updated = heroConfig.hero_enabled === 1 ? 0 : 1;
-              setHeroConfig({ ...heroConfig, hero_enabled: updated });
-              setSectionsConfig({ ...sectionsConfig, show_hero: updated });
-            }}
-            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-              heroConfig.hero_enabled === 1 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'bg-rose-950 text-rose-300 border border-rose-800'
+            onClick={handleToggle}
+            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md ${
+              isHeroEnabled 
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40' 
+                : 'bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 shadow-rose-950/40'
             }`}
             data-reticle-target="admin-toggle-hero-enabled"
           >
-            {heroConfig.hero_enabled === 1 ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-            <span>{heroConfig.hero_enabled === 1 ? 'HERO SECTION ON' : 'HERO SECTION OFF'}</span>
+            {isHeroEnabled ? <ToggleRight size={20} className="text-emerald-300" /> : <ToggleLeft size={20} className="text-rose-400" />}
+            <span>{isHeroEnabled ? 'HERO SECTION ON' : 'HERO SECTION OFF'}</span>
           </button>
         </div>
       </div>
@@ -222,7 +234,30 @@ export default function HeroTab({
 
               {/* RENDERED HERO SECTION */}
               <div className="max-h-[580px] overflow-y-auto bg-slate-950 scrollbar-thin">
-                <HeroSection heroConfig={heroConfig} navigateTo={() => {}} />
+                {isHeroEnabled ? (
+                  <HeroSection heroConfig={heroConfig} sectionsConfig={sectionsConfig} navigateTo={() => {}} />
+                ) : (
+                  <div className="py-16 px-6 text-center space-y-4 bg-slate-900/60">
+                    <div className="w-14 h-14 rounded-2xl bg-rose-950/80 border border-rose-800 text-rose-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                      🚫
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-white font-extrabold text-sm uppercase tracking-wider">
+                        Hero Section is Currently Turned OFF
+                      </h4>
+                      <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                        This section is currently hidden from your storefront visitors. Turn it ON anytime using the button above or below.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggle}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all cursor-pointer inline-flex items-center gap-2"
+                    >
+                      <Sparkles size={14} /> Turn Hero Section ON
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

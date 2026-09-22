@@ -50,7 +50,7 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
             )}
 
             {/* SECTION 2: HERO SECTION */}
-            {sectionsConfig.show_hero === 1 ? (
+            {(Number(sectionsConfig.show_hero) === 1 || sectionsConfig.show_hero === true) ? (
               <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/60 p-1">
                 <HeroSection heroConfig={heroConfig} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
               </div>

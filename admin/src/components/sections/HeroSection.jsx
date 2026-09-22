@@ -3,7 +3,7 @@ import React from 'react';
 import { ShoppingBag, Sparkles, ArrowRight, ShieldCheck, Truck, Award, CheckCircle2 } from 'lucide-react';
 
 export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) {
-  if (sectionsConfig && Number(sectionsConfig.show_hero) === 0) return null;
+  if (sectionsConfig && (Number(sectionsConfig.show_hero) === 0 || sectionsConfig.show_hero === false)) return null;
 
   const config = heroConfig || {
     hero_enabled: 1,
@@ -25,7 +25,7 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
     card_2_img: 'https://images.unsplash.com/photo-1592417817098-8f3d6ef23a2a?auto=format&fit=crop&w=600&q=80'
   };
 
-  if (config.hero_enabled === 0 || config.hero_enabled === '0') return null;
+  if (config.hero_enabled === 0 || config.hero_enabled === '0' || config.hero_enabled === false) return null;
 
   const {
     active_style = 'SPLIT',

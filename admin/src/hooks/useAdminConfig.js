@@ -133,23 +133,85 @@ export default function useAdminConfig({
 
   // ------ Sections Config ------
   const [sectionsConfig, setSectionsConfig] = useState({
-    show_hero: true, show_promo_banners: true, show_categories_slider: true,
-    show_featured_products: true, show_bestsellers: true, show_new_arrivals: true,
-    show_trust_badges: true, show_reviews: true, show_newsletter: true,
-    show_sale_ticker: false,
+    show_hero: 1, show_announcement: 1, show_promo_banners: 1, show_categories_slider: 1,
+    show_featured_products: 1, show_bestsellers: 1, show_new_arrivals: 1,
+    show_trust_badges: 1, show_reviews: 1, show_newsletter: 1,
+    show_sale_ticker: 0,
     categories_title: 'Shop by Category',
     bestsellers_title: 'Best Sellers',
     sale_ticker_items: '[]'
   });
 
+  // ------ Hero Config ------
+  const [heroConfig, setHeroConfig] = useState({
+    hero_enabled: 1,
+    active_style: 'SPLIT',
+    badge_text: '100% Certified Organic Superfoods',
+    title: 'Better Choices Better Life.',
+    subtitle: 'Discover natural, healthy and premium products for a smarter, happier everyday life.',
+    primary_btn_text: 'Shop Now',
+    primary_btn_link: '/products',
+    secondary_btn_text: 'Explore Offers',
+    secondary_btn_link: '/offers',
+    image_url: '',
+    bg_image_url: ''
+  });
+
+  // Fetch initial hero and sections configuration directly from database
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHeroAndSections = async () => {
+      try {
+        const [heroData, secData] = await Promise.all([
+          sf('/api/hero-config'),
+          sf('/api/sections-config')
+        ]);
+        if (!isMounted) return;
+        if (heroData && typeof heroData === 'object') {
+          const isHeroOn = heroData.hero_enabled !== undefined && heroData.hero_enabled !== null
+            ? (Number(heroData.hero_enabled) === 1 || heroData.hero_enabled === true ? 1 : 0)
+            : 1;
+          setHeroConfig(prev => ({
+            ...prev,
+            ...heroData,
+            hero_enabled: isHeroOn
+          }));
+        }
+        if (secData && typeof secData === 'object') {
+          const isHeroOn = secData.show_hero !== undefined && secData.show_hero !== null
+            ? (Number(secData.show_hero) === 1 || secData.show_hero === true ? 1 : 0)
+            : 1;
+          const normalized = {
+            ...secData,
+            show_hero: isHeroOn
+          };
+          setSectionsConfig(prev => ({ ...prev, ...normalized }));
+          if (typeof onUpdateSectionsConfig === 'function') {
+            onUpdateSectionsConfig(normalized);
+          }
+        }
+      } catch (err) {
+        console.warn('Hero and sections config fetch note:', err.message);
+      }
+    };
+    fetchHeroAndSections();
+    return () => { isMounted = false; };
+  }, []);
+
   useEffect(() => {
     if (propSectionsConfig && typeof propSectionsConfig === 'object') {
-      setSectionsConfig(prev => ({ ...prev, ...propSectionsConfig }));
+      setSectionsConfig(prev => ({
+        ...prev,
+        ...propSectionsConfig,
+        show_hero: propSectionsConfig.show_hero !== undefined
+          ? (Number(propSectionsConfig.show_hero) === 1 || propSectionsConfig.show_hero === true ? 1 : 0)
+          : prev.show_hero
+      }));
     }
   }, [propSectionsConfig]);
 
   const handleSectionsConfigSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     try {
       const res = await adminFetch('/api/admin/sections-config', {
         method: 'PUT',
@@ -164,7 +226,11 @@ export default function useAdminConfig({
   };
 
   const updateAndSaveSectionToggle = async (key, newValue) => {
-    const updated = { ...sectionsConfig, [key]: newValue };
+    const numVal = (newValue === 1 || newValue === true || newValue === '1') ? 1 : 0;
+    const updated = { ...sectionsConfig, [key]: numVal };
+    if (key === 'show_hero') {
+      setHeroConfig(prev => ({ ...prev, hero_enabled: numVal }));
+    }
     setSectionsConfig(updated);
     if (typeof onUpdateSectionsConfig === 'function') onUpdateSectionsConfig(updated);
     try {
@@ -173,33 +239,87 @@ export default function useAdminConfig({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
-    } catch (err) {}
+      if (key === 'show_hero') {
+        await adminFetch('/api/admin/hero-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hero_enabled: numVal })
+        });
+      }
+      if (showToast) {
+        showToast('success', 'Section Updated', `${key.replace(/_/g, ' ')} updated to ${numVal === 1 ? 'ON' : 'OFF'}`);
+      }
+    } catch (err) {
+      console.error('Failed to auto-save section toggle:', err);
+    }
   };
 
-  // ------ Hero ------
-  const [heroConfig, setHeroConfig] = useState({
-    hero_enabled: true, hero_title: 'Pure Ayurvedic Wellness',
-    hero_subtitle: 'Transform your health naturally',
-    hero_cta_text: 'Shop Now', hero_cta_link: '/products',
-    hero_secondary_cta_text: 'Learn More', hero_secondary_cta_link: '/about',
-    hero_cards: '[]'
-  });
+  const updateAndSaveHeroToggle = async (newValue) => {
+    const numVal = (newValue === 1 || newValue === true || newValue === '1') ? 1 : 0;
+    const updatedHero = { ...heroConfig, hero_enabled: numVal };
+    const updatedSections = { ...sectionsConfig, show_hero: numVal };
+
+    setHeroConfig(updatedHero);
+    setSectionsConfig(updatedSections);
+    if (typeof onUpdateSectionsConfig === 'function') onUpdateSectionsConfig(updatedSections);
+
+    try {
+      const [heroRes, secRes] = await Promise.all([
+        adminFetch('/api/admin/hero-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedHero)
+        }),
+        adminFetch('/api/admin/sections-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedSections)
+        })
+      ]);
+
+      if (heroRes.ok || secRes.ok) {
+        if (showToast) {
+          showToast(
+            'success',
+            numVal === 1 ? 'Hero Section Enabled' : 'Hero Section Disabled',
+            numVal === 1
+              ? 'Hero section is now ON and visible on your live storefront.'
+              : 'Hero section is now OFF and hidden from your live storefront.'
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Failed to auto-save hero toggle:', err);
+      if (showToast) showToast('error', 'Hero Toggle Error', err.message);
+    }
+  };
 
   const handleHeroSubmit = async (e) => {
-    e.preventDefault();
-    const res = await adminFetch('/api/admin/hero-config', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(heroConfig)
-    });
-    if (res.ok) {
-      await adminFetch('/api/admin/sections-config', {
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      const isHeroOn = Number(heroConfig.hero_enabled) === 1 || heroConfig.hero_enabled === true ? 1 : 0;
+      const heroPayload = { ...heroConfig, hero_enabled: isHeroOn };
+      const secPayload = { ...sectionsConfig, show_hero: isHeroOn };
+
+      const res = await adminFetch('/api/admin/hero-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...sectionsConfig, show_hero: heroConfig.hero_enabled })
+        body: JSON.stringify(heroPayload)
       });
-      fetchAdminData();
-      if (showToast) showToast('success', 'Hero Config Saved Live!', 'Hero section configuration & layout updated live!');
+      if (res.ok) {
+        await adminFetch('/api/admin/sections-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(secPayload)
+        });
+        setHeroConfig(heroPayload);
+        setSectionsConfig(secPayload);
+        if (typeof onUpdateSectionsConfig === 'function') onUpdateSectionsConfig(secPayload);
+        fetchAdminData();
+        if (showToast) showToast('success', 'Hero Config Saved Live!', 'Hero section configuration & layout updated live!');
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Hero Save Error', err.message);
     }
   };
 
@@ -316,6 +436,7 @@ export default function useAdminConfig({
     // Hero
     heroConfig, setHeroConfig,
     handleHeroSubmit,
+    updateAndSaveHeroToggle,
     // Taxes
     stateTaxRates, setStateTaxRates,
     taxOverrides,

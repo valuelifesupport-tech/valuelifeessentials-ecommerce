@@ -470,6 +470,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               sectionsConfig={config.sectionsConfig}
               setSectionsConfig={config.setSectionsConfig}
               handleHeroSubmit={config.handleHeroSubmit}
+              updateAndSaveHeroToggle={config.updateAndSaveHeroToggle}
+              showToast={showToast}
             />
           )}
 

@@ -61,7 +61,8 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
     return () => clearInterval(interval);
   }, [isPaused, slides.length]);
 
-  if (sectionsConfig && Number(sectionsConfig.show_hero) === 0) return null;
+  const isHeroDisabled = (sectionsConfig && (Number(sectionsConfig.show_hero) === 0 || sectionsConfig.show_hero === false)) || (heroConfig && (Number(heroConfig.hero_enabled) === 0 || heroConfig.hero_enabled === false || heroConfig.hero_enabled === '0'));
+  if (isHeroDisabled) return null;
 
   const currentSlide = slides[activeSlide] || slides[0] || {};
 

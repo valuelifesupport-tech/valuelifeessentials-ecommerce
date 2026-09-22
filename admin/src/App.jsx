@@ -18,7 +18,7 @@ export default function App() {
     const initData = async () => {
       try {
         const [secRes, setRes] = await Promise.all([
-          fetch(getApiUrl('/api/theme-config')).catch(() => null),
+          fetch(getApiUrl('/api/sections-config')).catch(() => null),
           fetch(getApiUrl('/api/settings')).catch(() => null)
         ]);
         if (secRes && secRes.ok) {
