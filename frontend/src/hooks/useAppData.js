@@ -89,9 +89,9 @@ export function useAppData(route, searchQuery) {
   };
 
   useEffect(() => {
-    fetch(getApiUrl('/api/banners')).then(r => r.json()).then(d => setBanners(d || [])).catch(() => {});
-    fetch(getApiUrl('/api/categories')).then(r => r.json()).then(d => setCategories(d || [])).catch(() => {});
-    fetch(getApiUrl('/api/collections')).then(r => r.json()).then(d => setCollections(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/banners')).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(d => setBanners(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/categories')).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(d => setCategories(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/collections')).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(d => setCollections(d || [])).catch(() => {});
     fetchProducts();
   }, [route, searchQuery]);
 

@@ -111,7 +111,12 @@ export default function CategorySlider({ categories = [], navigateTo, sectionTit
             >
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#f4efe8] flex items-center justify-center mb-3 overflow-hidden group-hover:scale-105 transition-transform duration-300">
                 {cat.image_url ? (
-                  <img src={resolveImgUrl(cat.image_url)} alt={cat.name} className="w-full h-full object-cover" />
+                  <img
+                    src={resolveImgUrl(cat.image_url)}
+                    alt={cat.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = `<span class="text-3xl">${cat.icon || '🌿'}</span>`; }}
+                  />
                 ) : (
                   <span className="text-3xl">{cat.icon || '🌿'}</span>
                 )}

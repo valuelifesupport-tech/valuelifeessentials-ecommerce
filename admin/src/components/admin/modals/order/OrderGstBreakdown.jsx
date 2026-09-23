@@ -18,7 +18,7 @@ export default function OrderGstBreakdown({ selectedOrderDetails, settingsForm =
     }`}>
       <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-2">
         <span className="font-extrabold text-xs text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-          🏛️ GST Tax Invoice Breakdown (Store GSTIN: {settingsForm.gstin_number || '27AAAAA0000A1Z5'})
+          🏛️ GST Tax Invoice Breakdown (Store GSTIN: {settingsForm.gstin_number || '36AAPFV4767N1Z4'})
         </span>
         <div className="flex items-center gap-2">
           <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono text-[10px] border border-slate-700">

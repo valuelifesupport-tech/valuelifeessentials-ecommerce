@@ -50,7 +50,7 @@ export default function CouponModal({
           <button onClick={() => setShowCouponModal(false)} className="text-slate-400 hover:text-white font-bold cursor-pointer self-end sm:self-auto">✕</button>
         </div>
 
-        <form onSubmit={handleCouponSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
+        <form onSubmit={(e) => handleCouponSubmit(e, { selectedDiscountType, browseTargetType, discountSelections, limitTotalUses, limitTotalUsesVal, limitOnePerCustomer })} className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
           {/* LEFT COLUMN (2 COLS WIDE) */}
           <div className="lg:col-span-2 space-y-4">
             

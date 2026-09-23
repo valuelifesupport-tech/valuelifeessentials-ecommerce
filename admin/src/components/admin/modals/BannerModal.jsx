@@ -7,7 +7,8 @@ export default function BannerModal({
   setShowBannerModal,
   bannerForm = {},
   setBannerForm,
-  handleBannerSubmit
+  handleBannerSubmit,
+  editingBanner = null
 }) {
   if (!showBannerModal) return null;
 
@@ -15,7 +16,7 @@ export default function BannerModal({
     <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50" data-reticle-target="admin-banner-modal">
       <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 className="font-extrabold text-base text-white">Create Hero Banner</h3>
+          <h3 className="font-extrabold text-base text-white">{editingBanner ? 'Edit Hero Banner' : 'Create Hero Banner'}</h3>
           <button 
             type="button"
             onClick={() => setShowBannerModal(false)} 
@@ -25,7 +26,7 @@ export default function BannerModal({
           </button>
         </div>
 
-        <form onSubmit={handleBannerSubmit} className="space-y-3 text-xs">
+        <form onSubmit={(e) => handleBannerSubmit(e, editingBanner)} className="space-y-3 text-xs">
           <div>
             <label className="block font-bold text-slate-300 mb-1">Banner Title *</label>
             <input 
@@ -54,7 +55,7 @@ export default function BannerModal({
           />
 
           <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg cursor-pointer">
-            Create Hero Banner
+            {editingBanner ? 'Update Hero Banner' : 'Create Hero Banner'}
           </button>
         </form>
       </div>

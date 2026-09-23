@@ -37,15 +37,7 @@ export default function MaintenancePage({ onUnlock }) {
         }
       }
     } catch (err) {
-      console.warn('Backend maintenance endpoint offline, using client fallback check');
-    }
-
-    // 2. Client-side Fallback check if offline
-    if (password.trim() === 'valuelife2026' || password.trim() === 'admin123') {
-      localStorage.setItem('maintenance_unlocked', 'true');
-      setIsSubmitting(false);
-      onUnlock();
-      return;
+      console.warn('Backend maintenance verification error:', err);
     }
 
     setIsSubmitting(false);
@@ -72,7 +64,7 @@ export default function MaintenancePage({ onUnlock }) {
               VALUELIFE <span className="text-emerald-400">ESSENTIALS</span>
             </span>
             <span className="text-[10px] text-emerald-300/80 font-mono tracking-wider block mt-0.5">
-              valuelifeessentials.com
+              {import.meta.env.VITE_APP_DOMAIN || 'valuelifeessentials.com'}
             </span>
           </div>
         </div>
@@ -146,7 +138,7 @@ export default function MaintenancePage({ onUnlock }) {
 
       {/* FOOTER */}
       <footer className="max-w-7xl mx-auto w-full px-6 py-6 text-center text-xs text-slate-500 relative z-10 border-t border-slate-900">
-        © 2026 ValueLife Essentials (valuelifeessentials.com). Maintenance Mode Active.
+        © 2026 ValueLife Essentials ({import.meta.env.VITE_APP_DOMAIN || 'valuelifeessentials.com'}). Maintenance Mode Active.
       </footer>
 
       {/* SECRET / ADMIN PASSWORD LOGIN MODAL */}

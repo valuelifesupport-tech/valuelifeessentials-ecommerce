@@ -4,9 +4,11 @@ export function useRouter() {
   const getInitialRouteState = () => {
     const path = window.location.pathname;
     if (path.startsWith('/admin')) {
-      const adminUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:5174'
-        : 'https://admin.valuelifeessentials.com';
+      const adminUrl = import.meta.env.VITE_ADMIN_URL || (
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:5174'
+          : `https://admin.${window.location.hostname}`
+      );
       window.location.replace(adminUrl);
       return { view: 'store', slug: null, category: null, collection: null };
     }

@@ -24,7 +24,7 @@ export default function ProductSeoSection({ productForm, setProductForm }) {
 
       <div className="p-3 bg-white rounded-xl space-y-1 font-sans shadow-sm">
         <div className="text-[11px] text-gray-500 truncate">
-          VALUELIFE ESSENTIALS › https://valuelifeessentials.com › products/{productForm.url_handle || (productForm.title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+          VALUELIFE ESSENTIALS › {import.meta.env.VITE_STOREFRONT_URL || 'https://valuelifeessentials.com'} › products/{productForm.url_handle || (productForm.title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-')}
         </div>
         <div className="text-sm font-bold text-blue-800 truncate hover:underline cursor-pointer">
           {pageTitle}

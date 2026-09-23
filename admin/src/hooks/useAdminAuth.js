@@ -8,7 +8,7 @@ import { createAdminFetch } from '../utils/adminApi';
 export default function useAdminAuth({ showToast }) {
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('admin_session_token') || '');
   const [isAuthLocked, setIsAuthLocked] = useState(!localStorage.getItem('admin_session_token'));
-  const [loginForm, setLoginForm] = useState({ username: 'admin@valuelifeessentials.com', password: '' });
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 

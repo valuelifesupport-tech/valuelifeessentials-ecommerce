@@ -33,7 +33,7 @@ export default function ProfileGstinTab({
           <label className="block text-gray-700 font-extrabold mb-1">GSTIN Identification Number</label>
           <input 
             type="text"
-            placeholder="e.g. 27AAAAA0000A1Z5"
+            placeholder="e.g. 36AAPFV4767N1Z4"
             value={profileForm.gstin_number}
             onChange={(e) => setProfileForm({ ...profileForm, gstin_number: e.target.value.toUpperCase() })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-mono font-bold text-[#3b6e14] focus:bg-white focus:border-[#3b6e14]"

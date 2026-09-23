@@ -5,13 +5,31 @@ export default function NewsletterBanner({ sectionsConfig }) {
 
   const [email, setEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !email.includes('@')) return;
-    setIsSubscribed(true);
-    setEmail('');
-    setTimeout(() => setIsSubscribed(false), 5000);
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Subscription failed');
+      setIsSubscribed(true);
+      setEmail('');
+      setTimeout(() => setIsSubscribed(false), 5000);
+    } catch (err) {
+      setError(err.message || 'Something went wrong');
+      setTimeout(() => setError(''), 4000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sectionsConfig && Number(sectionsConfig.show_newsletter) === 0) return null;
@@ -43,6 +61,7 @@ export default function NewsletterBanner({ sectionsConfig }) {
                 <span>Thank you for subscribing! Welcome to the ValueLife family. 🌿</span>
               </div>
             ) : (
+              <>
               <form onSubmit={handleSubmit} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm p-1.5 rounded-full border border-white/20 shadow-lg">
                 <div className="pl-3 text-emerald-300">
                   <Mail size={16} />
@@ -53,16 +72,20 @@ export default function NewsletterBanner({ sectionsConfig }) {
                   placeholder="Enter your email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                   className="w-full bg-transparent border-none text-xs text-white placeholder-emerald-200/70 focus:outline-none px-2 font-medium"
                 />
                 <button
                   type="submit"
-                  className="bg-[#164e3f] hover:bg-[#124734] border border-emerald-400/30 text-white text-xs font-bold px-6 py-2.5 rounded-full transition-all flex items-center gap-1.5 shrink-0 shadow cursor-pointer active:scale-95"
+                  disabled={loading}
+                  className="bg-[#164e3f] hover:bg-[#124734] border border-emerald-400/30 text-white text-xs font-bold px-6 py-2.5 rounded-full transition-all flex items-center gap-1.5 shrink-0 shadow cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  <span>Subscribe</span>
-                  <ArrowRight size={13} />
+                  <span>{loading ? 'Subscribing...' : 'Subscribe'}</span>
+                  {!loading && <ArrowRight size={13} />}
                 </button>
               </form>
+              {error && <p className="text-red-300 text-xs mt-2 text-center">{error}</p>}
+              </>
             )}
           </div>
 

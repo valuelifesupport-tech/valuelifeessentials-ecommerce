@@ -68,7 +68,8 @@ export default function PagesTab({
                         content: p.content, 
                         seo_title: p.seo_title || '', 
                         seo_description: p.seo_description || '', 
-                        status: p.status || 'PUBLISHED' 
+                        status: p.status || 'PUBLISHED',
+                        _editing: p
                       });
                       setShowPageModal(true);
                     }}

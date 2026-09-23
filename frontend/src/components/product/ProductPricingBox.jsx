@@ -47,6 +47,7 @@ export default function ProductPricingBox({
           cod: 1
         })
       });
+      if (!res.ok) throw new Error('Serviceability check failed');
       const data = await res.json();
       if (data.serviceable && data.couriers && data.couriers.length > 0) {
         const fastest = data.couriers[0];

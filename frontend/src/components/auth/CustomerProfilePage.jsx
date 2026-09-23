@@ -136,7 +136,7 @@ export default function CustomerProfilePage({
       }
 
       if (hasGstin && profileForm.gstin_number.trim().length < 15) {
-        if (showToast) showToast('error', 'Invalid GSTIN Format', 'GSTIN Identification Number must be 15 alphanumeric characters (e.g. 27AAAAA0000A1Z5).');
+        if (showToast) showToast('error', 'Invalid GSTIN Format', 'GSTIN Identification Number must be 15 alphanumeric characters (e.g. 36AAPFV4767N1Z4).');
         return;
       }
     }

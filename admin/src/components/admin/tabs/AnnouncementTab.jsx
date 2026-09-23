@@ -144,7 +144,7 @@ export default function AnnouncementTab({
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
                 </div>
                 <div className="bg-slate-950 px-4 py-0.5 rounded-md text-[10px] text-slate-400 font-mono border border-slate-800 truncate max-w-xs">
-                  http://localhost:5173 (Header Bar Preview)
+                  {import.meta.env.VITE_STOREFRONT_URL || 'http://localhost:5173'} (Header Bar Preview)
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono">Live Simulation</span>
               </div>

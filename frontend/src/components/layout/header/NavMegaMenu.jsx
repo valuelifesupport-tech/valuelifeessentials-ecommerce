@@ -329,7 +329,7 @@ export default function NavMegaMenu({
           {/* 9. CONTACT */}
           <button 
             type="button"
-            onClick={() => onOpenPage ? onOpenPage('contact-us') : (navigateTo ? navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' }) : alert("Contact ValueLife Essentials Support:\n📧 valuelifesupport@gmail.com\n📞 +91 76759 41899 / +91 78931 00755\n🌐 valuelifeessentials.com"))}
+            onClick={() => onOpenPage ? onOpenPage('contact-us') : (navigateTo ? navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us' }) : alert(`Contact ValueLife Essentials Support:\n📧 ${import.meta.env.VITE_SUPPORT_EMAIL || ''}\n📞 ${import.meta.env.VITE_SUPPORT_PHONE_1 || ''} / ${import.meta.env.VITE_SUPPORT_PHONE_2 || ''}\n🌐 ${import.meta.env.VITE_APP_DOMAIN || ''}`))}
             className="hover:text-emerald-300 text-slate-100 font-semibold transition-colors cursor-pointer text-xs"
             data-reticle-target="nav-contact-btn"
           >

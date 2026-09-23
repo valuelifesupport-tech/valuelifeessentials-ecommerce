@@ -49,9 +49,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
       setSubmitted(true);
       if (showToast) showToast('success', 'Message Sent!', 'Thank you! Our support team will get back to you within 2 hours.');
     } catch (err) {
-      // Fallback display
-      setSubmitted(true);
-      if (showToast) showToast('info', 'Message Received', 'Thank you! Our support team has logged your inquiry.');
+      if (showToast) showToast('error', 'Submission Failed', err.message || 'Could not submit your inquiry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +149,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                   
                   <div className="space-y-4 text-xs font-bold text-slate-600">
                     <a 
-                      href="https://wa.me/917675941899" 
+                      href={`https://wa.me/${(import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/[^\d]/g, '')}`} 
                       target="_blank" 
                       rel="noreferrer"
                       className="flex items-center gap-3 bg-emerald-50 hover:bg-emerald-100 p-3.5 rounded-xl border border-emerald-300/80 text-emerald-900 transition-colors group cursor-pointer block"
@@ -161,7 +159,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       </div>
                       <div className="flex-1">
                         <div className="text-[10px] text-emerald-700 uppercase font-extrabold tracking-wider">Instant WhatsApp Chat</div>
-                        <div className="text-emerald-950 font-black text-xs sm:text-sm">+91 76759 41899</div>
+                        <div className="text-emerald-950 font-black text-xs sm:text-sm">{import.meta.env.VITE_SUPPORT_PHONE_1 || ''}</div>
                         <div className="text-[10px] text-emerald-600 font-medium">Click to chat with our team directly</div>
                       </div>
                     </a>
@@ -169,7 +167,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       <Mail size={18} className="text-emerald-600 shrink-0" />
                       <div>
                         <div className="text-[10px] text-slate-400 uppercase">Email Us</div>
-                        <a href="mailto:valuelifesupport@gmail.com" className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">valuelifesupport@gmail.com</a>
+                        <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || ''}`} className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">{import.meta.env.VITE_SUPPORT_EMAIL || ''}</a>
                       </div>
                     </div>
 
@@ -178,8 +176,8 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       <div>
                         <div className="text-[10px] text-slate-400 uppercase">Customer Care & Helpline</div>
                         <div className="space-y-0.5">
-                          <a href="tel:+917675941899" className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">+91 76759 41899</a>
-                          <a href="tel:+917893100755" className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">+91 78931 00755</a>
+                          <a href={`tel:${import.meta.env.VITE_SUPPORT_PHONE_1 || ''}`} className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">{import.meta.env.VITE_SUPPORT_PHONE_1 || ''}</a>
+                          <a href={`tel:${import.meta.env.VITE_SUPPORT_PHONE_2 || ''}`} className="text-emerald-700 hover:text-emerald-800 font-extrabold block text-xs sm:text-sm">{import.meta.env.VITE_SUPPORT_PHONE_2 || ''}</a>
                           <div className="text-[10px] text-slate-500 font-medium">Mon - Sat: 9:00 AM - 7:00 PM IST</div>
                         </div>
                       </div>
@@ -190,7 +188,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       <div>
                         <div className="text-[10px] text-slate-400 uppercase">Registered Location (India)</div>
                         <div className="text-slate-900 font-extrabold flex items-center gap-1.5">
-                          <span>Indore, Madhya Pradesh, India</span>
+                          <span>{import.meta.env.VITE_STORE_ADDRESS || 'Hyderabad, Telangana, India'}</span>
                           <span className="text-xs">🇮🇳</span>
                         </div>
                         <div className="text-[10px] text-slate-500 font-medium">Pan-India Express Shipping & Order Support</div>

@@ -9,7 +9,7 @@ import { safeFetchJson } from '../utils/adminApi';
 export default function useCatalogActions({
   adminFetch, fetchAdminData, showToast, askConfirmation,
   // Entity setters
-  setProducts, setCollections, setBanners, setCoupons, setPages, setFilterGroups,
+  setProducts, setCategories, setCollections, setBanners, setCoupons, setPages, setFilterGroups,
   // Modal setters
   setShowCategoryModal, setShowCollectionModal, setShowSubcategoryModal, setShowBannerModal, setShowCouponModal, setShowPageModal,
   setEditingCategory, setEditingCollection, setEditingPage,
@@ -84,7 +84,8 @@ export default function useCatalogActions({
         setShowCategoryModal(false);
         setEditingCategory(null);
         setCategoryForm({ name: '', description: '', image_url: '', icon: '' });
-        await fetchAdminData();
+        const fresh = await sf('/api/categories');
+        if (fresh) setCategories(fresh);
         if (showToast) showToast('success', isEdit ? 'Category Updated' : 'Category Created', `Category "${formData.name}" saved successfully.`);
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -102,7 +103,8 @@ export default function useCatalogActions({
       const res = await adminFetch(`/api/categories/${deleteConfirmCategory.id}`, { method: 'DELETE' });
       if (res.ok) {
         if (showToast) showToast('success', 'Category Deleted 🗑️', `Category "${deleteConfirmCategory.name}" was deleted.`);
-        await fetchAdminData();
+        const fresh = await sf('/api/categories');
+        if (fresh) setCategories(fresh);
       } else {
         if (showToast) showToast('error', 'Delete Failed', 'Could not delete category.');
       }
@@ -146,7 +148,8 @@ export default function useCatalogActions({
             return [savedCol, ...prev];
           });
         }
-        await fetchAdminData();
+        const fresh = await sf('/api/collections');
+        if (fresh) setCollections(fresh);
         if (showToast) showToast('success', isEdit ? 'Collection Updated' : 'Collection Created', `Collection "${formData.name}" saved successfully.`);
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -158,30 +161,37 @@ export default function useCatalogActions({
   };
 
   // ------ Subcategory ------
-  const handleSubcategorySubmit = async (e, selectedCatForSubcat) => {
+  const handleSubcategorySubmit = async (e, selectedCatForSubcat, editingSubcategory = null) => {
     e.preventDefault();
-    if (!selectedCatForSubcat) return;
+    if (!selectedCatForSubcat && !editingSubcategory) return;
     try {
-      const res = await adminFetch('/api/subcategories', {
-        method: 'POST',
+      const url = editingSubcategory ? `/api/subcategories/${editingSubcategory.id}` : '/api/subcategories';
+      const method = editingSubcategory ? 'PUT' : 'POST';
+      const payload = editingSubcategory
+        ? { name: subcategoryName }
+        : { category_id: selectedCatForSubcat.id, name: subcategoryName };
+      const res = await adminFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: selectedCatForSubcat.id, name: subcategoryName })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setShowSubcategoryModal(false);
         setSubcategoryName('');
         fetchAdminData();
-        if (showToast) showToast('success', 'Subcategory Created', `Added subcategory to ${selectedCatForSubcat.name}`);
+        if (showToast) showToast('success', editingSubcategory ? 'Subcategory Updated' : 'Subcategory Created', editingSubcategory ? 'Subcategory updated successfully.' : `Added subcategory to ${selectedCatForSubcat.name}`);
       }
     } catch (err) {}
   };
 
   // ------ Banner ------
-  const handleBannerSubmit = async (e) => {
+  const handleBannerSubmit = async (e, editingBanner = null) => {
     e.preventDefault();
     try {
-      const res = await adminFetch('/api/banners', {
-        method: 'POST',
+      const url = editingBanner ? `/api/banners/${editingBanner.id}` : '/api/banners';
+      const method = editingBanner ? 'PUT' : 'POST';
+      const res = await adminFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bannerForm)
       });
@@ -190,7 +200,7 @@ export default function useCatalogActions({
         setBannerForm({ title: '', subtitle: '', image_url: '', link_url: '/products' });
         const fresh = await sf('/api/banners');
         if (fresh) setBanners(fresh);
-        if (showToast) showToast('success', 'Banner Saved', 'New banner created.');
+        if (showToast) showToast('success', 'Banner Saved', editingBanner ? 'Banner updated.' : 'New banner created.');
       }
     } catch (err) {}
   };

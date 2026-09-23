@@ -10,37 +10,37 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
       id: 1,
       title: 'Chia Smoothie Bowl',
       image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
-      post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en'
+      post_url: import.meta.env.VITE_INSTAGRAM_URL || '#'
     },
     {
       id: 2,
       title: 'Herbal Infusion Drink',
       image_url: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=400&q=80',
-      post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en'
+      post_url: import.meta.env.VITE_INSTAGRAM_URL || '#'
     },
     {
       id: 3,
       title: 'Farm Fresh Spices',
       image_url: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=400&q=80',
-      post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en'
+      post_url: import.meta.env.VITE_INSTAGRAM_URL || '#'
     },
     {
       id: 4,
       title: 'Edible Seeds Selection',
       image_url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=400&q=80',
-      post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en'
+      post_url: import.meta.env.VITE_INSTAGRAM_URL || '#'
     },
     {
       id: 5,
       title: 'Natural Wellness Essentials',
       image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80',
-      post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en'
+      post_url: import.meta.env.VITE_INSTAGRAM_URL || '#'
     },
     {
       id: 6,
       title: 'Raw Pure Honey',
       image_url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=400&q=80',
-      post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en'
+      post_url: import.meta.env.VITE_INSTAGRAM_URL || '#'
     }
   ]);
 
@@ -62,7 +62,7 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
     return () => { isMounted = false; };
   }, []);
 
-  const defaultInstagramUrl = settings?.instagram_url || 'https://www.instagram.com/valuelife_essentials/?hl=en';
+  const defaultInstagramUrl = settings?.instagram_url || import.meta.env.VITE_INSTAGRAM_URL || '#';
 
   if (sectionsConfig && Number(sectionsConfig.show_instagram_feed) === 0) return null;
 
@@ -77,7 +77,7 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
               Follow Us On Instagram
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Join our community @valuelife_essentials for healthy recipes, wellness tips and offers
+              Join our community {import.meta.env.VITE_INSTAGRAM_HANDLE || ''} for healthy recipes, wellness tips and offers
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#164e3f] hover:text-emerald-800 transition-colors"
           >
             <InstagramIcon size={15} />
-            <span>@valuelife_essentials</span>
+            <span>{import.meta.env.VITE_INSTAGRAM_HANDLE || ''}</span>
             <ExternalLink size={12} />
           </a>
         </div>

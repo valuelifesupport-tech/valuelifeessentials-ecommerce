@@ -153,7 +153,7 @@ export default function SettingsTab({
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    email: adminProfileForm.email || 'support@valuelifeessentials.com',
+                    email: adminProfileForm.email || import.meta.env.VITE_SUPPORT_EMAIL || '',
                     current_password: adminProfileForm.currentPass,
                     new_password: adminProfileForm.newPass
                   })

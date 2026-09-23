@@ -58,11 +58,11 @@ export default function Footer({ settings, categories = [], navigateTo }) {
                 <YoutubeIcon size={14} />
               </a>
               <a
-                href={`https://wa.me/${(settings?.whatsapp_number || '917675941899').replace(/[^\d]/g, '')}`}
+                href={`https://wa.me/${(settings?.whatsapp_number || '917893100755').replace(/[^\d]/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-emerald-400 hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
-                title="WhatsApp Support: 7675941899"
+                title="WhatsApp Support: 7893100755"
               >
                 <WhatsAppIcon size={14} />
               </a>
@@ -186,9 +186,6 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               <li className="flex items-start gap-2">
                 <Phone size={13} className="text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <a href="tel:+917675941899" className="hover:text-white transition-colors block font-semibold">
-                    +91 76759 41899
-                  </a>
                   <a href="tel:+917893100755" className="hover:text-white transition-colors block font-semibold">
                     +91 78931 00755
                   </a>
@@ -202,7 +199,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               </li>
               <li className="flex items-center gap-2">
                 <MapPin size={13} className="text-emerald-400 shrink-0" />
-                <span>Indore, Madhya Pradesh, India 🇮🇳</span>
+                <span>Hyderabad, Telangana, India 🇮🇳</span>
               </li>
             </ul>
           </div>

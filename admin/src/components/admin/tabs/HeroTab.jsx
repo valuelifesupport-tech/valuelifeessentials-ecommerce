@@ -227,7 +227,7 @@ export default function HeroTab({
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
                 </div>
                 <span className="bg-slate-900 px-3 py-0.5 rounded-md border border-slate-700 text-slate-300">
-                  http://localhost:5173 (Live Preview Canvas)
+                  {import.meta.env.VITE_STOREFRONT_URL || 'http://localhost:5173'} (Live Preview Canvas)
                 </span>
                 <div className="text-[10px] text-emerald-400 font-bold">100% Live Sync</div>
               </div>

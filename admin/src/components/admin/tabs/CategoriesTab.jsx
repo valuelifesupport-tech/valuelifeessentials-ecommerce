@@ -59,7 +59,8 @@ export default function CategoriesTab({
                       name: cat.name,
                       icon: cat.icon || '🌿',
                       description: cat.description || '',
-                      image_url: cat.image_url || ''
+                      image_url: cat.image_url || '',
+                      _editing: cat
                     });
                     setShowCategoryModal(true);
                   }} 

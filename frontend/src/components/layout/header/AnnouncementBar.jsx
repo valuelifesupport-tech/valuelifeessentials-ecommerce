@@ -38,13 +38,13 @@ export default function AnnouncementBar({
         {/* Right Info: Phone & Currency Switcher */}
         <div className="flex items-center gap-3 shrink-0 text-emerald-100 font-medium">
           <a
-            href={`tel:${(settings?.contact_phone || '7675941899').split('/')[0].split(',')[0].replace(/[^0-9+]/g, '')}`}
+            href={`tel:${(settings?.contact_phone || import.meta.env.VITE_SUPPORT_PHONE_1 || '').split('/')[0].split(',')[0].replace(/[^0-9+]/g, '')}`}
             className="flex items-center gap-1.5 hover:text-emerald-300 transition-colors shrink-0"
-            title={`Customer Support: ${settings?.contact_phone || '+91 76759 41899 / 78931 00755'}`}
+            title={`Customer Support: ${settings?.contact_phone || `${import.meta.env.VITE_SUPPORT_PHONE_1 || ''} / ${import.meta.env.VITE_SUPPORT_PHONE_2 || ''}`}`}
             data-reticle-target="topbar-phone-link"
           >
             <Phone size={12} className="text-emerald-400" />
-            <span className="font-semibold">{settings?.contact_phone || '+91 76759 41899 / 78931 00755'}</span>
+            <span className="font-semibold">{settings?.contact_phone || `${import.meta.env.VITE_SUPPORT_PHONE_1 || ''} / ${import.meta.env.VITE_SUPPORT_PHONE_2 || ''}`}</span>
           </a>
 
           {/* Currency Switcher */}

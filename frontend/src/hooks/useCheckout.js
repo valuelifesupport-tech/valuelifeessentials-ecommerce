@@ -171,7 +171,7 @@ export function useCheckout({ currentUser, setCurrentUser, customerForm, setCust
         throw new Error(rzpOrder?.error || 'Failed to initialize payment gateway.');
       }
 
-      const keyId = rzpOrder.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TcG0EYPMH8tl5L';
+      const keyId = rzpOrder.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
 
       const options = {
         key: keyId,

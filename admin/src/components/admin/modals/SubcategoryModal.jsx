@@ -7,15 +7,18 @@ export default function SubcategoryModal({
   selectedCatForSubcat,
   subcategoryName = '',
   setSubcategoryName,
-  handleSubcategorySubmit
+  handleSubcategorySubmit,
+  editingSubcategory = null
 }) {
-  if (!showSubcategoryModal || !selectedCatForSubcat) return null;
+  if (!showSubcategoryModal || (!selectedCatForSubcat && !editingSubcategory)) return null;
 
   return (
     <div className="drawer-overlay flex items-center justify-center p-3 sm:p-4 z-50" data-reticle-target="admin-subcategory-modal">
       <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 className="font-extrabold text-base text-white">Add Subcategory to {selectedCatForSubcat.name}</h3>
+          <h3 className="font-extrabold text-base text-white">
+            {editingSubcategory ? `Edit Subcategory` : `Add Subcategory to ${selectedCatForSubcat?.name}`}
+          </h3>
           <button 
             type="button"
             onClick={() => setShowSubcategoryModal(false)} 
@@ -25,7 +28,7 @@ export default function SubcategoryModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubcategorySubmit} className="space-y-3 text-xs">
+        <form onSubmit={(e) => handleSubcategorySubmit(e, selectedCatForSubcat, editingSubcategory)} className="space-y-3 text-xs">
           <div>
             <label className="block font-bold text-slate-300 mb-1">Subcategory Name *</label>
             <input 
@@ -37,7 +40,7 @@ export default function SubcategoryModal({
           </div>
 
           <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg cursor-pointer">
-            Add Subcategory
+            {editingSubcategory ? 'Update Subcategory' : 'Add Subcategory'}
           </button>
         </form>
       </div>

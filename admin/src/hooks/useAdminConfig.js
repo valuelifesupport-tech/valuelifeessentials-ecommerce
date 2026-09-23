@@ -23,8 +23,8 @@ export default function useAdminConfig({
     free_shipping_threshold: 499,
     enable_free_shipping: 1,
     enable_gst: 1,
-    gstin_number: '27AAAAA0000A1Z5',
-    store_state: 'Madhya Pradesh',
+    gstin_number: import.meta.env.VITE_STORE_GSTIN || '36AAPFV4767N1Z4',
+    store_state: import.meta.env.VITE_DEFAULT_STORE_STATE || 'Telangana',
     default_gst_percent: 5.0,
     legal_business_name: 'ValueLife Essentials Private Limited'
   });
@@ -36,8 +36,8 @@ export default function useAdminConfig({
         free_shipping_threshold: 499,
         enable_free_shipping: 1,
         enable_gst: 1,
-        gstin_number: '27AAAAA0000A1Z5',
-        store_state: 'Madhya Pradesh',
+        gstin_number: import.meta.env.VITE_DEFAULT_GSTIN || '36AAPFV4767N1Z4',
+        store_state: import.meta.env.VITE_DEFAULT_STORE_STATE || 'Telangana',
         default_gst_percent: 5.0,
         legal_business_name: 'ValueLife Essentials Private Limited',
         ...propSettings,

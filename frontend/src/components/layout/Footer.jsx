@@ -31,7 +31,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
             {/* Social Icons Bar */}
             <div className="pt-2 flex items-center gap-2.5">
               <a
-                href={settings?.facebook_url || "https://facebook.com/valuelifeessentials"}
+                href={settings?.facebook_url || import.meta.env.VITE_FACEBOOK_URL || "#"}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
@@ -40,7 +40,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
                 <FacebookIcon size={14} />
               </a>
               <a
-                href={settings?.instagram_url || "https://www.instagram.com/valuelife_essentials/?hl=en"}
+                href={settings?.instagram_url || import.meta.env.VITE_INSTAGRAM_URL || "#"}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
@@ -49,7 +49,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
                 <InstagramIcon size={14} />
               </a>
               <a
-                href={settings?.youtube_url || "https://youtube.com/@valuelifeessentials"}
+                href={settings?.youtube_url || import.meta.env.VITE_YOUTUBE_URL || "#"}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
@@ -58,11 +58,11 @@ export default function Footer({ settings, categories = [], navigateTo }) {
                 <YoutubeIcon size={14} />
               </a>
               <a
-                href={`https://wa.me/${(settings?.whatsapp_number || '917675941899').replace(/[^\d]/g, '')}`}
+                href={`https://wa.me/${(settings?.whatsapp_number || import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/[^\d]/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-8 h-8 rounded-full bg-emerald-900/90 border border-emerald-700/60 flex items-center justify-center text-emerald-200 hover:text-emerald-400 hover:bg-emerald-700 hover:scale-110 transition-all shadow-sm"
-                title="WhatsApp Support: 7675941899"
+                title={`WhatsApp Support: ${(import.meta.env.VITE_SUPPORT_PHONE_1 || '').replace(/\D/g, '').slice(-10)}`}
               >
                 <WhatsAppIcon size={14} />
               </a>
@@ -186,23 +186,23 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               <li className="flex items-start gap-2">
                 <Phone size={13} className="text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <a href="tel:+917675941899" className="hover:text-white transition-colors block font-semibold">
-                    +91 76759 41899
+                  <a href={`tel:${import.meta.env.VITE_SUPPORT_PHONE_1 || ''}`} className="hover:text-white transition-colors block font-semibold">
+                    {import.meta.env.VITE_SUPPORT_PHONE_1 || ''}
                   </a>
-                  <a href="tel:+917893100755" className="hover:text-white transition-colors block font-semibold">
-                    +91 78931 00755
+                  <a href={`tel:${import.meta.env.VITE_SUPPORT_PHONE_2 || ''}`} className="hover:text-white transition-colors block font-semibold">
+                    {import.meta.env.VITE_SUPPORT_PHONE_2 || ''}
                   </a>
                 </div>
               </li>
               <li className="flex items-center gap-2">
                 <Mail size={13} className="text-emerald-400 shrink-0" />
-                <a href="mailto:valuelifesupport@gmail.com" className="hover:text-white transition-colors">
-                  {settings?.contact_email || 'valuelifesupport@gmail.com'}
+                <a href={`mailto:${settings?.contact_email || import.meta.env.VITE_SUPPORT_EMAIL || ''}`} className="hover:text-white transition-colors">
+                  {settings?.contact_email || import.meta.env.VITE_SUPPORT_EMAIL || ''}
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin size={13} className="text-emerald-400 shrink-0" />
-                <span>Indore, Madhya Pradesh, India 🇮🇳</span>
+                <span>{import.meta.env.VITE_STORE_ADDRESS || 'Hyderabad, Telangana, India'} 🇮🇳</span>
               </li>
             </ul>
           </div>

@@ -31,7 +31,7 @@ export default function AdminSidebar({
                 VALUELIFE ESSENTIALS
               </h2>
               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block truncate">
-                valuelifeessentials.com
+                {import.meta.env.VITE_STORE_DOMAIN || 'store'}
               </span>
             </div>
           </div>

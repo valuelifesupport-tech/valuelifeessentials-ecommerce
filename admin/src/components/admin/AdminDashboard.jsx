@@ -187,7 +187,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 type="text" required
                 value={auth.loginForm.username}
                 onChange={(e) => auth.setLoginForm({ ...auth.loginForm, username: e.target.value })}
-                placeholder="admin@valuelifeessentials.com"
+                placeholder="admin@example.com"
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
               />
             </div>
@@ -197,24 +197,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Password / Master PIN
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    auth.setLoginForm({ username: 'admin@valuelifeessentials.com', password: 'admin123' });
-                  }}
-                  className="text-[11px] text-emerald-400 hover:text-emerald-300 underline font-semibold cursor-pointer"
-                >
-                  Auto-Fill (admin123)
-                </button>
               </div>
               <input
                 type="password" required
                 value={auth.loginForm.password}
                 onChange={(e) => auth.setLoginForm({ ...auth.loginForm, password: e.target.value })}
-                placeholder="admin123"
+                placeholder="••••••••"
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
               />
-              <span className="text-[10px] text-slate-400 block pt-1 font-mono">Accepted: admin123, 123456, valuelife2026</span>
             </div>
 
             <button

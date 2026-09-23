@@ -28,6 +28,7 @@ export default function ProfileOrdersTab({
     const trackingQuery = order.shiprocket_awb || order.tracking_number || order.order_number;
     try {
       const res = await fetch(getApiUrl(`/api/shipping/shiprocket/track/${encodeURIComponent(trackingQuery)}`));
+      if (!res.ok) throw new Error('Failed to fetch tracking info');
       const data = await res.json();
       if (data.success && data.tracking) {
         setTrackingData(data.tracking);

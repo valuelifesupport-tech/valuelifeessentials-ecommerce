@@ -393,7 +393,7 @@ export default function CheckoutModal({
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed font-medium">
-              Thank you for shopping with ValueLife Essentials (valuelifeessentials.com)! Your order confirmation has been registered and is being processed for express home delivery.
+              Thank you for shopping with ValueLife Essentials ({import.meta.env.VITE_APP_DOMAIN || 'valuelifeessentials.com'})! Your order confirmation has been registered and is being processed for express home delivery.
             </p>
 
             {/* DUAL ACTION BUTTONS */}

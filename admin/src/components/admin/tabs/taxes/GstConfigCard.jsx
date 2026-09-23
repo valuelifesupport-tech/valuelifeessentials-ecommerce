@@ -26,7 +26,7 @@ export default function GstConfigCard({
         enable_gst: Number(settingsForm.enable_gst ?? 1) === 1 ? 1 : 0,
         gstin_number: (settingsForm.gstin_number || '').trim(),
         legal_business_name: (settingsForm.legal_business_name || '').trim(),
-        store_state: settingsForm.store_state || 'Madhya Pradesh',
+        store_state: settingsForm.store_state || import.meta.env.VITE_DEFAULT_STORE_STATE || 'Telangana',
         default_gst_percent: parsedGstPercent,
         federal_tax_rate: parsedGstPercent
       };
@@ -102,7 +102,7 @@ export default function GstConfigCard({
           <label className="block text-slate-300 font-bold mb-1">Store GSTIN Identification Number *</label>
           <input 
             type="text" 
-            placeholder="e.g. 27AAAAA0000A1Z5"
+            placeholder="e.g. 36AAPFV4767N1Z4"
             value={settingsForm.gstin_number !== undefined && settingsForm.gstin_number !== null ? settingsForm.gstin_number : ''}
             onChange={(e) => setSettingsForm({ ...settingsForm, gstin_number: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-400 font-mono font-bold"
@@ -123,7 +123,7 @@ export default function GstConfigCard({
         <div>
           <label className="block text-slate-300 font-bold mb-1">Store Base State (for CGST/SGST vs IGST) *</label>
           <select 
-            value={settingsForm.store_state || 'Madhya Pradesh'}
+            value={settingsForm.store_state || import.meta.env.VITE_DEFAULT_STORE_STATE || 'Telangana'}
             onChange={(e) => setSettingsForm({ ...settingsForm, store_state: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold cursor-pointer"
           >

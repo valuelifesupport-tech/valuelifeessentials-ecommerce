@@ -120,7 +120,8 @@ export default function CollectionsTab({
                       image_url: col.image_url || '',
                       category_id: col.category_id || '',
                       show_in_navbar: col.show_in_navbar !== undefined ? col.show_in_navbar : 0,
-                      product_ids: col.product_ids || []
+                      product_ids: col.product_ids || [],
+                      _editing: col
                     });
                     setShowCollectionModal(true);
                   }}
