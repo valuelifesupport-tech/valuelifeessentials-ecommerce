@@ -141,18 +141,23 @@ export default function Header({
           <button 
             type="button"
             onClick={onOpenCart}
-            className="flex items-center gap-2 bg-[#164e3f] hover:bg-[#0f382c] text-white px-3.5 py-2 rounded-full transition-all shadow-sm font-semibold text-xs cursor-pointer group"
+            className="flex items-center gap-2 bg-[#164e3f] hover:bg-[#0f382c] text-white px-4 py-2 rounded-full transition-all shadow-md font-bold text-xs cursor-pointer group"
             data-reticle-target="header-cart-btn"
           >
             <div className="relative">
-              <ShoppingBag size={16} />
+              <ShoppingBag size={18} />
               {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-amber-400 text-gray-900 font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow">
+                <span className="absolute -top-2.5 -right-2.5 bg-amber-400 text-gray-950 font-black text-[11px] min-w-[20px] h-[20px] px-1 rounded-full flex items-center justify-center shadow-md ring-2 ring-[#164e3f] animate-pulse">
                   {cartCount}
                 </span>
               )}
             </div>
-            <span>Cart</span>
+            <span className="font-extrabold">Cart</span>
+            {cartCount > 0 && (
+              <span className="bg-emerald-800 text-amber-300 text-[11px] font-black px-1.5 py-0.5 rounded-full">
+                {cartCount}
+              </span>
+            )}
           </button>
         </div>
       </div>

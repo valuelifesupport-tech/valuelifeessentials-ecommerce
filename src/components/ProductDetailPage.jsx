@@ -186,9 +186,9 @@ export default function ProductDetailPage({
       if (Array.isArray(data.variants)) {
         const seenVar = new Set();
         data.variants = data.variants.filter(v => {
-          const vName = (v?.variant_name || v?.name || '').trim().toLowerCase();
-          if (!vName || seenVar.has(vName)) return false;
-          seenVar.add(vName);
+          const vKey = v?.id ? `id_${v.id}` : `${(v?.variant_name || v?.name || '').trim().toLowerCase()}_${v?.price_inr || v?.price || ''}_${v?.sku || ''}`;
+          if (seenVar.has(vKey)) return false;
+          seenVar.add(vKey);
           return true;
         });
       }
@@ -444,8 +444,16 @@ export default function ProductDetailPage({
                 </label>
 
                 <div className="flex flex-wrap gap-2.5">
-                  {productData.variants.map((v) => {
-                    const isSelected = (selectedVariant?.id === v.id) || (selectedVariant?.variant_name === v.variant_name);
+                  {productData.variants.map((v, vIdx) => {
+                    const isSelected = selectedVariant
+                      ? (v.id != null && selectedVariant.id != null
+                          ? String(v.id) === String(selectedVariant.id)
+                          : (v === selectedVariant || (
+                              (v.variant_name || v.name) === (selectedVariant.variant_name || selectedVariant.name) &&
+                              Number(v.price_inr || v.price) === Number(selectedVariant.price_inr || selectedVariant.price) &&
+                              (v.sku || '') === (selectedVariant.sku || '')
+                            )))
+                      : vIdx === 0;
 
                     return (
                       <button

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ToggleRight, ToggleLeft, Truck } from 'lucide-react';
 
 export default function SettingsTab({
@@ -12,6 +12,76 @@ export default function SettingsTab({
   onUpdateSettings,
   showToast
 }) {
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Fetch current Admin Profile (Name & Email) on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAdminProfile() {
+      try {
+        const fetcher = adminFetch || fetch;
+        const res = await fetcher('/api/admin/profile');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && isMounted && typeof setAdminProfileForm === 'function') {
+            setAdminProfileForm(prev => ({
+              ...prev,
+              name: data.name || prev?.name || 'Master Admin Owner',
+              email: data.email || prev?.email || 'admin@valuelifeessentials.com'
+            }));
+          }
+        }
+      } catch (e) {}
+    }
+    loadAdminProfile();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleUpdateAdminPassword = async () => {
+    if (!adminProfileForm.currentPass) {
+      if (showToast) showToast('error', 'Missing Current Password', 'Please enter your current admin password.');
+      return false;
+    }
+    if (!adminProfileForm.newPass) {
+      if (showToast) showToast('error', 'Missing New Password', 'Please enter a new password.');
+      return false;
+    }
+    if (adminProfileForm.newPass.length < 6) {
+      if (showToast) showToast('error', 'Password Too Short', 'New password must be at least 6 characters long.');
+      return false;
+    }
+    if (adminProfileForm.newPass !== adminProfileForm.confirmPass) {
+      if (showToast) showToast('error', 'Password Mismatch', 'New password and confirm password do not match.');
+      return false;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const passRes = await adminFetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: adminProfileForm.email || 'admin@valuelifeessentials.com',
+          current_password: adminProfileForm.currentPass,
+          new_password: adminProfileForm.newPass
+        })
+      });
+      const passData = await passRes.json();
+      if (passRes.ok && passData.success) {
+        if (showToast) showToast('success', 'Password Updated 🔐', passData.message || 'Master Admin password updated successfully!');
+        setAdminProfileForm({ ...adminProfileForm, currentPass: '', newPass: '', confirmPass: '' });
+        return true;
+      } else {
+        if (showToast) showToast('error', 'Password Error', passData.error || 'Failed to update password');
+        return false;
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Connection Error', err.message || 'Failed to connect to server');
+      return false;
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
   return (
     <div className="space-y-6 w-full max-w-5xl" data-reticle-target="admin-settings-tab">
       <div>
@@ -55,10 +125,15 @@ export default function SettingsTab({
         </div>
 
         {/* PASSWORD CHANGE FORM */}
-        <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 space-y-3">
-          <span className="font-extrabold text-xs text-amber-400 block uppercase tracking-wider">
-            🔒 Change Master Admin Password:
-          </span>
+        <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+            <span className="font-extrabold text-xs text-amber-400 block uppercase tracking-wider flex items-center gap-1.5">
+              🔒 Change Master Admin Password:
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Minimum 6 characters • Affects Master Admin login
+            </span>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div>
               <label className="block text-slate-400 mb-1 font-bold">Current Password</label>
@@ -67,7 +142,7 @@ export default function SettingsTab({
                 placeholder="••••••••"
                 value={adminProfileForm.currentPass || ''}
                 onChange={(e) => setAdminProfileForm({ ...adminProfileForm, currentPass: e.target.value })}
-                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
               />
             </div>
             <div>
@@ -77,7 +152,7 @@ export default function SettingsTab({
                 placeholder="••••••••"
                 value={adminProfileForm.newPass || ''}
                 onChange={(e) => setAdminProfileForm({ ...adminProfileForm, newPass: e.target.value })}
-                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
               />
             </div>
             <div>
@@ -87,9 +162,19 @@ export default function SettingsTab({
                 placeholder="••••••••"
                 value={adminProfileForm.confirmPass || ''}
                 onChange={(e) => setAdminProfileForm({ ...adminProfileForm, confirmPass: e.target.value })}
-                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
               />
             </div>
+          </div>
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              disabled={isUpdatingPassword}
+              onClick={handleUpdateAdminPassword}
+              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-md transition-all active:scale-95"
+            >
+              <span>{isUpdatingPassword ? '⏳ Updating Password...' : '🔐 Update Admin Password'}</span>
+            </button>
           </div>
         </div>
 
@@ -125,6 +210,21 @@ export default function SettingsTab({
           type="button"
           onClick={async () => {
             try {
+              // 1. Save Admin Profile Name and Email
+              try {
+                await adminFetch('/api/admin/profile', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: adminProfileForm.name,
+                    email: adminProfileForm.email
+                  })
+                });
+              } catch (e) {
+                console.error('Failed to update admin profile:', e);
+              }
+
+              // 2. Save Store Settings
               const res = await adminFetch('/api/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -143,29 +243,13 @@ export default function SettingsTab({
                   onUpdateSettings(finalSettings);
                 }
               }
-              // Password update if new password supplied
+
+              // 3. Password update if new password supplied
               if (adminProfileForm.newPass) {
-                if (adminProfileForm.newPass !== adminProfileForm.confirmPass) {
-                  if (showToast) showToast('error', 'Password Mismatch', 'New password and confirm password do not match');
-                  return;
-                }
-                const passRes = await adminFetch('/api/auth/change-password', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    email: adminProfileForm.email || import.meta.env.VITE_SUPPORT_EMAIL || '',
-                    current_password: adminProfileForm.currentPass,
-                    new_password: adminProfileForm.newPass
-                  })
-                });
-                const passData = await passRes.json();
-                if (!passRes.ok) {
-                  if (showToast) showToast('error', 'Password Error', passData.error || 'Failed to update password');
-                  return;
-                }
+                await handleUpdateAdminPassword();
+              } else {
+                if (showToast) showToast('success', 'Profile & Settings Saved', 'Master Admin credentials and store settings saved successfully!');
               }
-              if (showToast) showToast('success', 'Profile & Settings Saved', 'Master Admin credentials and store settings saved successfully!');
-              setAdminProfileForm({ ...adminProfileForm, currentPass: '', newPass: '', confirmPass: '' });
             } catch (err) {
               if (showToast) showToast('error', 'Save Failed', err.message || 'Failed to save settings');
             }

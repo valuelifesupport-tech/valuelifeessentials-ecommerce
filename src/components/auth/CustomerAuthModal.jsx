@@ -140,7 +140,8 @@ export default function CustomerAuthModal({
       if (res.ok && data.requireOtp) {
         setPendingEmail(data.email || email.trim());
         setSuccessMsg(data.message || 'Account created! 6-digit verification code sent directly to your email address (Valid for 10 mins).');
-        setRegOtp('');
+        if (data.devOtp || data.otp) setRegOtp(data.devOtp || data.otp);
+        else setRegOtp('');
         setRegStep(2);
       } else if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Registration successful!');
@@ -208,7 +209,8 @@ export default function CustomerAuthModal({
       const data = await res.json();
       if (res.ok) {
         setSuccessMsg(data.message || 'Fresh verification code sent to your email! (Valid for 10 mins).');
-        setRegOtp('');
+        if (data.devOtp || data.otp) setRegOtp(data.devOtp || data.otp);
+        else setRegOtp('');
       } else {
         setErrorMsg(data.error || 'Could not resend OTP code.');
       }
@@ -243,7 +245,8 @@ export default function CustomerAuthModal({
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset OTP sent to your email.');
         if (data.email) setPendingEmail(data.email);
-        setForgotOtp('');
+        if (data.devOtp || data.otp) setForgotOtp(data.devOtp || data.otp);
+        else setForgotOtp('');
         setForgotStep(2);
       } else {
         setErrorMsg(data.error || 'Failed to process request.');

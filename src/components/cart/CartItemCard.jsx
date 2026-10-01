@@ -38,8 +38,15 @@ export default function CartItemCard({
           </div>
         )}
 
-        <div className="text-xs text-[#2d6a4f] font-black mt-1">
-          {currencySymbol}{price} <span className="text-gray-400 font-medium text-[11px]">/ unit</span>
+        <div className="flex items-center justify-between text-xs text-gray-700 mt-1.5 pt-1.5 border-t border-gray-100">
+          <div>
+            <span className="text-gray-500 font-medium text-[11px]">Unit Price: </span>
+            <span className="font-extrabold text-[#2d6a4f]">{currencySymbol}{price.toFixed(2)}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 font-medium text-[11px]">Total: </span>
+            <span className="font-black text-gray-900 text-sm">{currencySymbol}{(price * item.quantity).toFixed(2)}</span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between mt-3">

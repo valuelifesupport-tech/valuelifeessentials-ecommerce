@@ -64,6 +64,10 @@ export default function CatalogControlsBar({
           <option value="default">Sort by ▾</option>
           <option value="low_high">Price: Low to High</option>
           <option value="high_low">Price: High to Low</option>
+          <option value="weight_low_high">Weight: Low to High</option>
+          <option value="weight_high_low">Weight: High to Low</option>
+          <option value="name_az">Name: A to Z</option>
+          <option value="name_za">Name: Z to A</option>
         </select>
 
         {(route?.category || route?.collection || searchQuery || route?.view === 'all_products') && (

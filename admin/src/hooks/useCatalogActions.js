@@ -57,7 +57,7 @@ export default function useCatalogActions({
   const [inventoryItemsPerPage, setInventoryItemsPerPage] = useState(15);
 
   // Admin profile
-  const [adminProfileForm, setAdminProfileForm] = useState({ name: '', email: '', currentPass: '', newPass: '', confirmPass: '' });
+  const [adminProfileForm, setAdminProfileForm] = useState({ name: 'Master Admin Owner', email: 'admin@valuelifeessentials.com', currentPass: '', newPass: '', confirmPass: '' });
 
   // Media states
   const [mediaSearch, setMediaSearch] = useState('');

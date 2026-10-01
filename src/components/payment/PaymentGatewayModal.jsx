@@ -117,7 +117,9 @@ export default function PaymentGatewayModal({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                order_id: orderData?.orderId || orderData?.order_id || orderData?.id
+                order_id: orderData?.orderId || orderData?.order_id || orderData?.id,
+                customer_email: customerInfo?.email || orderData?.customer_email,
+                user_id: orderData?.user_id
               })
             });
             const verifyData = await verifyRes.json();

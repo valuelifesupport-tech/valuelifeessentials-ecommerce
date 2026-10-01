@@ -269,7 +269,7 @@ function initDb(db) {
       (
         'Contact Us',
         'contact-us',
-        '# Contact OrganicBazar Customer Support\n\nHave questions about your order or need product guidance? We''re here to help!\n\n### Get in Touch\n- **Email Support**: support@organicbazar.com\n- **Toll-Free Phone**: 1800-123-4567 (Mon-Sat, 9 AM - 7 PM IST)\n- **WhatsApp Assistance**: +91 98123 45678\n- **Head Office**: OrganicBazar Pvt Ltd, Green Tech Park, Sector 62, Noida, Uttar Pradesh 201309\n\nFill out our interactive inquiry form below and our wellness experts will respond within 2 hours.',
+        '# Contact OrganicBazar Customer Support\n\nHave questions about your order or need product guidance? We''re here to help!\n\n### Get in Touch\n- **Email Support**: support@organicbazar.com\n- **Toll-Free Phone**: 1800-123-4567 (Mon-Sat, 9 AM - 7 PM IST)\n- **WhatsApp Assistance**: +91 98123 45678\n- **Head Office**: OrganicBazar Pvt Ltd, Green Tech Park, Sector 62, Noida, Uttar Pradesh 201309\n\nFill out our interactive inquiry form below and our wellness experts will respond within 24 hours.',
         'Contact Us - OrganicBazar Customer Support',
         'Get in touch with OrganicBazar support for order inquiries, product guidance, and customer service.',
         'PUBLISHED'

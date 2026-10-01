@@ -60,8 +60,20 @@ export default function ProductReviews({
         {/* RATING SCORE */}
         <div className="text-center md:text-left space-y-1">
           <div className="star-rating text-amber-500 font-extrabold text-lg flex items-center justify-center md:justify-start gap-1">
-            <span>★★★★★</span>
-            <span className="text-gray-900 font-black text-xl">{avgRatingFormatted} out of 5</span>
+            {totalReviews > 0 ? (
+              <>
+                <span>
+                  {'★'.repeat(Math.min(5, Math.max(1, Math.round(avgRatingNum))))}
+                  {'☆'.repeat(5 - Math.min(5, Math.max(1, Math.round(avgRatingNum))))}
+                </span>
+                <span className="text-gray-900 font-black text-xl">{avgRatingFormatted} out of 5</span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-300">☆☆☆☆☆</span>
+                <span className="text-gray-500 font-black text-lg">0.0 out of 5</span>
+              </>
+            )}
           </div>
           <p className="text-xs text-gray-500 font-bold">
             {totalReviews > 0 ? `Based on ${totalReviews} verified customer ${totalReviews === 1 ? 'review' : 'reviews'}` : 'No reviews yet for this product'}

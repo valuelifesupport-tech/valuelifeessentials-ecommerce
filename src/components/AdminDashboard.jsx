@@ -285,6 +285,75 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     newPass: '',
     confirmPass: ''
   });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  const handleUpdateAdminPassword = async () => {
+    if (!adminProfileForm.currentPass) {
+      if (showToast) showToast('error', 'Missing Current Password', 'Please enter your current admin password.');
+      return false;
+    }
+    if (!adminProfileForm.newPass) {
+      if (showToast) showToast('error', 'Missing New Password', 'Please enter a new password.');
+      return false;
+    }
+    if (adminProfileForm.newPass.length < 6) {
+      if (showToast) showToast('error', 'Password Too Short', 'New password must be at least 6 characters long.');
+      return false;
+    }
+    if (adminProfileForm.newPass !== adminProfileForm.confirmPass) {
+      if (showToast) showToast('error', 'Password Mismatch', 'New password and confirm password do not match.');
+      return false;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const res = await fetch(getApiUrl('/api/admin/change-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: adminProfileForm.email || 'admin@valuelifeessentials.com',
+          current_password: adminProfileForm.currentPass,
+          new_password: adminProfileForm.newPass
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (showToast) showToast('success', 'Password Updated 🔐', data.message || 'Master Admin password changed successfully!');
+        setAdminProfileForm(prev => ({ ...prev, currentPass: '', newPass: '', confirmPass: '' }));
+        return true;
+      } else {
+        if (showToast) showToast('error', 'Password Update Failed', data.error || 'Failed to update admin password.');
+        return false;
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Network Error', err.message || 'Failed to connect to server.');
+      return false;
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  // Fetch Admin Profile (Name & Email) on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAdminProfile() {
+      try {
+        const res = await fetch(getApiUrl('/api/admin/profile'));
+        if (res.ok) {
+          const data = await res.json();
+          if (data && isMounted) {
+            setAdminProfileForm(prev => ({
+              ...prev,
+              name: data.name || prev.name || 'Master Admin Owner',
+              email: data.email || prev.email || 'admin@valuelifeessentials.com'
+            }));
+          }
+        }
+      } catch (e) {}
+    }
+    loadAdminProfile();
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     setAdminProductPage(1);
@@ -709,12 +778,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
   const fetchAdminData = async () => {
     // Fast Essential Data load ONLY
-    const [prods, cats, colls, ords, sets] = await Promise.all([
+    const [prods, cats, colls, ords, sets, adminProf] = await Promise.all([
       safeFetchJson('/api/products?includeDrafts=true'),
       safeFetchJson('/api/categories'),
       safeFetchJson('/api/collections'),
       safeFetchJson('/api/admin/orders'),
-      safeFetchJson('/api/settings')
+      safeFetchJson('/api/settings'),
+      safeFetchJson('/api/admin/profile')
     ]);
 
     if (prods) setProducts(prods);
@@ -724,6 +794,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     if (sets) {
       setSettings(sets);
       setSettingsForm(sets);
+    }
+    if (adminProf) {
+      setAdminProfileForm(prev => ({
+        ...prev,
+        name: adminProf.name || prev.name || 'Master Admin Owner',
+        email: adminProf.email || prev.email || 'admin@valuelifeessentials.com'
+      }));
     }
   };
 
@@ -7445,10 +7522,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                 </div>
 
                 {/* PASSWORD CHANGE FORM */}
-                <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 space-y-3">
-                  <span className="font-extrabold text-xs text-amber-400 block uppercase tracking-wider">
-                    🔒 Change Master Admin Password:
-                  </span>
+                <div className="p-4 bg-slate-850 rounded-xl border border-slate-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <span className="font-extrabold text-xs text-amber-400 block uppercase tracking-wider flex items-center gap-1.5">
+                      🔒 Change Master Admin Password:
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Minimum 6 characters • Affects Master Admin login
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div>
                       <label className="block text-slate-400 mb-1 font-bold">Current Password</label>
@@ -7457,7 +7539,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         placeholder="••••••••"
                         value={adminProfileForm.currentPass}
                         onChange={(e) => setAdminProfileForm({ ...adminProfileForm, currentPass: e.target.value })}
-                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
                       />
                     </div>
                     <div>
@@ -7467,7 +7549,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         placeholder="••••••••"
                         value={adminProfileForm.newPass}
                         onChange={(e) => setAdminProfileForm({ ...adminProfileForm, newPass: e.target.value })}
-                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
                       />
                     </div>
                     <div>
@@ -7477,9 +7559,19 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                         placeholder="••••••••"
                         value={adminProfileForm.confirmPass}
                         onChange={(e) => setAdminProfileForm({ ...adminProfileForm, confirmPass: e.target.value })}
-                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
                       />
                     </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      disabled={isUpdatingPassword}
+                      onClick={handleUpdateAdminPassword}
+                      className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-md transition-all active:scale-95"
+                    >
+                      <span>{isUpdatingPassword ? '⏳ Updating Password...' : '🔐 Update Admin Password'}</span>
+                    </button>
                   </div>
                 </div>
 
@@ -7511,10 +7603,30 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
 
                 <button 
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    try {
+                      // 1. Save Admin Profile Name and Email
+                      await fetch(getApiUrl('/api/admin/profile'), {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          name: adminProfileForm.name,
+                          email: adminProfileForm.email
+                        })
+                      });
+                    } catch (e) {
+                      console.error('Failed to update admin profile:', e);
+                    }
+
+                    // 2. Save Store Settings
                     onUpdateSettings(settingsForm);
-                    if (showToast) showToast('success', 'Profile & Settings Saved', 'Master Admin credentials and store settings saved successfully!');
-                    setAdminProfileForm({ ...adminProfileForm, currentPass: '', newPass: '', confirmPass: '' });
+
+                    // 3. Update Password if entered
+                    if (adminProfileForm.newPass) {
+                      await handleUpdateAdminPassword();
+                    } else {
+                      if (showToast) showToast('success', 'Profile & Settings Saved', 'Master Admin credentials and store settings saved successfully!');
+                    }
                   }}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs tracking-wider shadow-lg uppercase cursor-pointer"
                 >

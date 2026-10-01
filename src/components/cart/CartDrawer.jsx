@@ -92,12 +92,14 @@ export default function CartDrawer({
       <div className="drawer-content">
         {/* Drawer Header */}
         <div className="p-4 border-b border-emerald-900/20 flex justify-between items-center bg-gradient-to-r from-[#1b4332] to-[#2d6a4f] text-white shadow-md shrink-0 z-10">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🛒</span>
-            <h3 className="font-extrabold text-white text-lg font-['Outfit']">Your Shopping Cart</h3>
-            <span className="bg-emerald-400/20 border border-emerald-300/40 text-emerald-200 text-xs font-black px-2.5 py-0.5 rounded-full">
-              {cartItems.length} {cartItems.length === 1 ? 'Item' : 'Items'}
-            </span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">🛒</span>
+            <div>
+              <h3 className="font-extrabold text-white text-lg font-['Outfit'] leading-tight">Your Shopping Cart</h3>
+              <p className="text-[11px] text-emerald-200 font-bold mt-0.5">
+                {cartItems.length} {cartItems.length === 1 ? 'Product' : 'Products'} • {cartItems.reduce((acc, i) => acc + (i.quantity || 1), 0)} Total Units
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-white/10 text-emerald-100 hover:text-white rounded-full transition-colors cursor-pointer" data-reticle-target="cart-close-btn">
             <X size={20} />

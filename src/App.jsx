@@ -405,7 +405,7 @@ export default function App() {
 
     setIsSubmittingOrder(true);
     try {
-      const isOnlinePay = checkoutData?.paymentMode === 'PREPAID' || checkoutData?.paymentMode === 'PARTIAL';
+      const isOnlinePay = checkoutData?.paymentMode === 'PREPAID' || checkoutData?.paymentMode === 'PARTIAL' || checkoutData?.paymentMode === 'FULL';
       const payableAmount = checkoutData?.paymentMode === 'PARTIAL' ? checkoutData?.depositAmount : checkoutData?.finalTotal;
 
       const orderRes = await fetch(getApiUrl('/api/orders'), {
@@ -539,11 +539,37 @@ export default function App() {
     return true;
   });
 
+  const parseWeightGrams = (str) => {
+    if (!str) return 0;
+    const s = String(str);
+    const kg = s.match(/(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilo|kilogram)/i);
+    if (kg) return parseFloat(kg[1]) * 1000;
+    const gm = s.match(/(\d+(?:\.\d+)?)\s*(?:g|gm|gms|gram|grams)/i);
+    if (gm) return parseFloat(gm[1]);
+    const ltr = s.match(/(\d+(?:\.\d+)?)\s*(?:l|ltr|litre|liter)/i);
+    if (ltr) return parseFloat(ltr[1]) * 1000;
+    const ml = s.match(/(\d+(?:\.\d+)?)\s*(?:ml|milliliter)/i);
+    if (ml) return parseFloat(ml[1]);
+    return 0;
+  };
+
+  const getProductWeight = (p) => {
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      const list = p.variants.map(v => parseWeightGrams(v.variant_name || v.title || v.sku)).filter(w => w > 0);
+      if (list.length > 0) return Math.min(...list);
+    }
+    return parseWeightGrams(p.title || p.name || '');
+  };
+
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     const priceA = getProductPricing(a).pPrice;
     const priceB = getProductPricing(b).pPrice;
     if (sortBy === 'low_high') return priceA - priceB;
     if (sortBy === 'high_low') return priceB - priceA;
+    if (sortBy === 'weight_low_high') return getProductWeight(a) - getProductWeight(b);
+    if (sortBy === 'weight_high_low') return getProductWeight(b) - getProductWeight(a);
+    if (sortBy === 'name_az') return (a.title || a.name || '').localeCompare(b.title || b.name || '');
+    if (sortBy === 'name_za') return (b.title || b.name || '').localeCompare(a.title || a.name || '');
     return 0;
   });
 

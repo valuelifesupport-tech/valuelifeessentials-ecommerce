@@ -6,6 +6,7 @@ const { ADMIN_SECRET_KEY, ADMIN_PASSWORD } = require('../config/constants.cjs');
 const { hashPassword, verifyPassword, activeAdminTokens, registerToken } = require('../middleware/auth.cjs');
 const rateLimiter = require('../middleware/rateLimiter.cjs');
 const { sendEmailNotification } = require('../config/email.cjs');
+const { sendSmsNotification, cleanIndianPhone } = require('../utils/sms.service.cjs');
 
 // In-memory OTP cache fallback
 const otpStore = new Map(); // key: email/phone, value: { otp, expiresAt, userData }
@@ -20,20 +21,14 @@ setInterval(() => {
 
 // Helper: Normalize any Indian phone number strictly to clean 10 digits
 function sanitize10DigitPhone(raw) {
-  if (!raw) return '';
-  const digits = String(raw).replace(/\D/g, '');
-  if (digits.length === 10) return digits;
-  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
-  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
-  const m = digits.match(/[6-9]\d{9}/);
-  if (m) return m[0];
-  return digits.length > 10 ? digits.slice(-10) : digits;
+  return cleanIndianPhone(raw);
 }
 
 // POST Admin Login
 router.post('/api/admin/login', rateLimiter(10, 60000), async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
+    const adminIdentifier = String(email || username || '').trim();
     if (!password) {
       return res.status(400).json({ error: 'Password is required' });
     }
@@ -41,14 +36,38 @@ router.post('/api/admin/login', rateLimiter(10, 60000), async (req, res) => {
     const cleanPass = String(password).trim();
     let isValid = (cleanPass === ADMIN_PASSWORD);
 
-    // Also check MySQL admin user if exists
-    if (!isValid && email) {
+    // Also check MySQL/SQLite admin user if exists
+    if (!isValid) {
       try {
-        const users = await executeMySQL('SELECT password, role FROM users WHERE email = ? AND role = ?', [email, 'ADMIN']);
-        if (users && users.length > 0) {
-          isValid = verifyPassword(cleanPass, users[0].password);
+        let adminUsers = [];
+        if (adminIdentifier) {
+          adminUsers = await executeMySQL(
+            'SELECT id, name, email, password, role FROM users WHERE role = ? AND (LOWER(email) = ? OR LOWER(name) = ?)',
+            ['ADMIN', adminIdentifier.toLowerCase(), adminIdentifier.toLowerCase()]
+          );
+        }
+        if (!adminUsers || adminUsers.length === 0) {
+          adminUsers = await executeMySQL('SELECT id, name, email, password, role FROM users WHERE role = ?', ['ADMIN']);
+        }
+        for (const u of (adminUsers || [])) {
+          if (u.password && verifyPassword(cleanPass, u.password)) {
+            isValid = true;
+            break;
+          }
         }
       } catch (e) {}
+
+      if (!isValid) {
+        try {
+          const sqAdmins = db.prepare('SELECT id, name, email, password, role FROM users WHERE role = ?').all('ADMIN');
+          for (const u of (sqAdmins || [])) {
+            if (u.password && verifyPassword(cleanPass, u.password)) {
+              isValid = true;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
     }
 
     if (!isValid) {
@@ -62,9 +81,179 @@ router.post('/api/admin/login', rateLimiter(10, 60000), async (req, res) => {
       success: true,
       token,
       admin: {
-        email: email || process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || '',
+        email: adminIdentifier || process.env.ADMIN_EMAIL || 'admin@valuelifeessentials.com',
         role: 'ADMIN',
         name: 'Master Admin'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Dedicated Master Admin Change Password
+router.post('/api/admin/change-password', async (req, res) => {
+  try {
+    const { current_password, new_password, email } = req.body;
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    const cleanCurrent = String(current_password).trim();
+    const cleanNew = String(new_password).trim();
+    if (cleanNew.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    let isCurrentValid = (cleanCurrent === ADMIN_PASSWORD);
+
+    // Also verify against stored admin password in MySQL
+    if (!isCurrentValid) {
+      try {
+        const myAdmins = await executeMySQL('SELECT id, email, password FROM users WHERE role = ?', ['ADMIN']);
+        for (const admin of (myAdmins || [])) {
+          if (admin.password && verifyPassword(cleanCurrent, admin.password)) {
+            isCurrentValid = true;
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Also verify against stored admin password in SQLite
+    if (!isCurrentValid) {
+      try {
+        const sqAdmins = db.prepare('SELECT id, email, password FROM users WHERE role = ?').all('ADMIN');
+        for (const admin of (sqAdmins || [])) {
+          if (admin.password && verifyPassword(cleanCurrent, admin.password)) {
+            isCurrentValid = true;
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!isCurrentValid) {
+      return res.status(401).json({ error: 'Current password incorrect. Please enter your valid current password.' });
+    }
+
+    const newHash = hashPassword(cleanNew);
+    const targetEmail = (email && String(email).trim().toLowerCase()) || 'admin@valuelifeessentials.com';
+
+    // Update MySQL
+    try {
+      const myAdmins = await executeMySQL('SELECT id FROM users WHERE role = ?', ['ADMIN']);
+      if (myAdmins && myAdmins.length > 0) {
+        await executeMySQL('UPDATE users SET password = ? WHERE role = ?', [newHash, 'ADMIN']);
+      } else {
+        await executeMySQL(
+          'INSERT INTO users (name, email, password, role, is_verified) VALUES (?, ?, ?, ?, 1)',
+          ['Master Admin', targetEmail, newHash, 'ADMIN']
+        );
+      }
+    } catch (e) {
+      console.error('MySQL admin password change error:', e.message);
+    }
+
+    // Update SQLite
+    try {
+      const sqAdmins = db.prepare('SELECT id FROM users WHERE role = ?').all('ADMIN');
+      if (sqAdmins && sqAdmins.length > 0) {
+        db.prepare('UPDATE users SET password = ? WHERE role = ?').run(newHash, 'ADMIN');
+      } else {
+        db.prepare(
+          'INSERT INTO users (name, email, password, role, is_verified) VALUES (?, ?, ?, ?, 1)'
+        ).run('Master Admin', targetEmail, newHash, 'ADMIN');
+      }
+    } catch (e) {
+      console.error('SQLite admin password change error:', e.message);
+    }
+
+    res.json({ success: true, message: 'Master Admin password updated successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Master Admin Profile (Display Name & Email)
+router.get('/api/admin/profile', async (req, res) => {
+  try {
+    let admin = null;
+    try {
+      const myAdmins = await executeMySQL('SELECT id, name, email, role FROM users WHERE role = ? LIMIT 1', ['ADMIN']);
+      if (myAdmins && myAdmins.length > 0) admin = myAdmins[0];
+    } catch (e) {}
+
+    if (!admin) {
+      try {
+        const sqAdmin = db.prepare('SELECT id, name, email, role FROM users WHERE role = ? LIMIT 1').get('ADMIN');
+        if (sqAdmin) admin = sqAdmin;
+      } catch (e) {}
+    }
+
+    if (!admin) {
+      admin = {
+        id: 1,
+        name: 'Master Admin Owner',
+        email: process.env.ADMIN_EMAIL || 'admin@valuelifeessentials.com',
+        role: 'ADMIN'
+      };
+    }
+
+    res.json({
+      success: true,
+      name: admin.name || 'Master Admin Owner',
+      email: admin.email || 'admin@valuelifeessentials.com',
+      role: 'ADMIN'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT Update Master Admin Profile (Display Name & Email)
+router.put('/api/admin/profile', async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const cleanName = (name && String(name).trim()) || 'Master Admin Owner';
+    const cleanEmail = (email && String(email).trim().toLowerCase()) || 'admin@valuelifeessentials.com';
+
+    // 1. Update or Insert in MySQL
+    try {
+      const myAdmins = await executeMySQL('SELECT id FROM users WHERE role = ?', ['ADMIN']);
+      if (myAdmins && myAdmins.length > 0) {
+        await executeMySQL('UPDATE users SET name = ?, email = ? WHERE role = ?', [cleanName, cleanEmail, 'ADMIN']);
+      } else {
+        await executeMySQL(
+          'INSERT INTO users (name, email, role, is_verified) VALUES (?, ?, ?, 1)',
+          [cleanName, cleanEmail, 'ADMIN']
+        );
+      }
+    } catch (e) {
+      console.error('MySQL update admin profile error:', e.message);
+    }
+
+    // 2. Update or Insert in SQLite
+    try {
+      const sqAdmins = db.prepare('SELECT id FROM users WHERE role = ?').all('ADMIN');
+      if (sqAdmins && sqAdmins.length > 0) {
+        db.prepare('UPDATE users SET name = ?, email = ? WHERE role = ?').run(cleanName, cleanEmail, 'ADMIN');
+      } else {
+        db.prepare(
+          'INSERT INTO users (name, email, role, is_verified) VALUES (?, ?, ?, 1)'
+        ).run(cleanName, cleanEmail, 'ADMIN');
+      }
+    } catch (e) {
+      console.error('SQLite update admin profile error:', e.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Admin profile updated successfully',
+      admin: {
+        name: cleanName,
+        email: cleanEmail,
+        role: 'ADMIN'
       }
     });
   } catch (err) {
@@ -76,31 +265,43 @@ router.post('/api/admin/login', rateLimiter(10, 60000), async (req, res) => {
 router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
-    if (!email || !String(email).trim() || !password) {
-      return res.status(400).json({ error: 'Valid email and password are required' });
+    const cleanPhone = sanitize10DigitPhone(phone || email);
+    const hasEmail = Boolean(email && String(email).trim() && String(email).includes('@'));
+    const cleanEmail = hasEmail 
+      ? String(email).trim().toLowerCase() 
+      : (cleanPhone ? `${cleanPhone}@valuelifeessentials.com` : '');
+
+    if (!cleanEmail && !cleanPhone) {
+      return res.status(400).json({ error: 'Valid mobile phone number or email address is required.' });
+    }
+    if (!password || String(password).length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters long.' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
-    const cleanName = (name && String(name).trim()) ? String(name).trim() : cleanEmail.split('@')[0];
-    const cleanPhone = sanitize10DigitPhone(phone);
+    const cleanName = (name && String(name).trim()) ? String(name).trim() : (cleanPhone ? `Customer ${cleanPhone.slice(-4)}` : cleanEmail.split('@')[0]);
     const passwordHash = hashPassword(String(password));
 
     // 1. Check if verified user already exists
     let existing = null;
     try {
-      const myRows = await executeMySQL('SELECT id, is_verified FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+      const myRows = await executeMySQL(
+        'SELECT id, is_verified FROM users WHERE LOWER(email) = ? OR (phone != "" AND phone = ?)', 
+        [cleanEmail, cleanPhone || 'NON_EXISTENT']
+      );
       if (myRows && myRows.length > 0) existing = myRows[0];
     } catch (e) {}
 
     if (!existing) {
       try {
-        const sqRow = db.prepare('SELECT id, is_verified FROM users WHERE LOWER(email) = ?').get(cleanEmail);
+        const sqRow = db.prepare(
+          'SELECT id, is_verified FROM users WHERE LOWER(email) = ? OR (phone != "" AND phone = ?)'
+        ).get(cleanEmail, cleanPhone || 'NON_EXISTENT');
         if (sqRow) existing = sqRow;
       } catch (e) {}
     }
 
     if (existing && existing.is_verified === 1) {
-      return res.status(409).json({ error: 'An account with this email address already exists! Please Sign In.' });
+      return res.status(409).json({ error: 'An account with this email or mobile number already exists! Please Sign In.' });
     }
 
     // 2. Generate secure 6-digit OTP (10 minutes validity)
@@ -170,6 +371,13 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
       </div>`
     );
 
+    // Also dispatch SMS OTP if mobile phone is provided
+    if (cleanPhone) {
+      sendSmsNotification(cleanPhone, otp, 'VERIFICATION').catch(e => console.warn('SMS notice:', e.message));
+    }
+
+    const isDev = process.env.NODE_ENV !== 'production';
+
     // If email could not be sent (e.g. SMTP credentials not yet provided or failed), auto-verify so customer is not trapped!
     if (!emailSent) {
       try {
@@ -190,7 +398,7 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
         is_verified: 1
       };
 
-      console.log(`✅ Auto-verified customer account (email delivery unconfigured/offline): ${cleanEmail} (ID: ${userId})`);
+      console.log(`✅ Auto-verified customer account (email delivery failed/offline): ${cleanEmail} (ID: ${userId})`);
 
       return res.status(200).json({
         success: true,
@@ -200,13 +408,15 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
       });
     }
 
-    // Email was successfully delivered - require OTP verification
+    // OTP was dispatched
     res.status(200).json({
       success: true,
       requireOtp: true,
       email: cleanEmail,
-      emailSent: true,
-      message: `Account created! 6-digit verification code sent directly to ${cleanEmail}. Valid for 10 minutes.`
+      phone: cleanPhone,
+      emailSent: Boolean(emailSent),
+      devOtp: isDev ? otp : undefined,
+      message: `Account created! 6-digit verification code sent directly to ${cleanEmail}${cleanPhone ? ' & +91 ' + cleanPhone : ''}. Valid for 10 minutes.`
     });
   } catch (err) {
     console.error('Registration error:', err);
@@ -217,29 +427,36 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
 // POST Verify Registration OTP & Activate Account
 router.post('/api/auth/verify-registration-otp', rateLimiter(25, 60000), async (req, res) => {
   try {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email address and 6-digit OTP code are required.' });
+    const rawIdentifier = req.body.email || req.body.phone || req.body.identifier || '';
+    const { otp } = req.body;
+    if (!rawIdentifier || !otp) {
+      return res.status(400).json({ error: 'Email or Mobile Number and 6-digit OTP code are required.' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanEmail = String(rawIdentifier).trim().toLowerCase();
+    const cleanPhone = sanitize10DigitPhone(rawIdentifier);
     const cleanOtp = String(otp).trim();
 
     // 1. Query MySQL first
     let user = null;
     try {
-      const myRows = await executeMySQL('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+      const myRows = await executeMySQL(
+        'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)', 
+        [cleanEmail, cleanEmail, cleanPhone || 'NON_EXISTENT']
+      );
       if (myRows && myRows.length > 0) user = myRows[0];
     } catch (e) {}
 
     if (!user) {
       try {
-        user = db.prepare('SELECT * FROM users WHERE LOWER(email) = ?').get(cleanEmail);
+        user = db.prepare(
+          'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)'
+        ).get(cleanEmail, cleanEmail, cleanPhone || 'NON_EXISTENT');
       } catch (e) {}
     }
 
     if (!user) {
-      return res.status(404).json({ error: 'Registration record not found for this email address. Please register again.' });
+      return res.status(404).json({ error: 'Registration record not found. Please register again.' });
     }
 
     // 2. Already verified check
@@ -260,11 +477,11 @@ router.post('/api/auth/verify-registration-otp', rateLimiter(25, 60000), async (
     }
 
     // 3. Verify OTP against MySQL (or in-memory cache)
-    const memEntry = otpStore.get(cleanEmail);
+    const memEntry = otpStore.get(cleanEmail) || (cleanPhone ? otpStore.get(cleanPhone) : null);
     const validOtp = user.email_otp || (memEntry ? memEntry.otp : null);
 
     if (!validOtp || String(validOtp).trim() !== cleanOtp) {
-      return res.status(400).json({ error: 'Invalid 6-digit verification code. Please check your email inbox.' });
+      return res.status(400).json({ error: 'Invalid 6-digit verification code. Please check your email or SMS.' });
     }
 
     // 4. Check OTP Expiry
@@ -282,6 +499,7 @@ router.post('/api/auth/verify-registration-otp', rateLimiter(25, 60000), async (
     } catch (e) {}
 
     otpStore.delete(cleanEmail);
+    if (cleanPhone) otpStore.delete(cleanPhone);
 
     const activeUser = {
       id: user.id,
@@ -296,7 +514,7 @@ router.post('/api/auth/verify-registration-otp', rateLimiter(25, 60000), async (
 
     res.json({
       success: true,
-      message: 'Email verified & account activated successfully!',
+      message: 'Verified & account activated successfully!',
       user: activeUser
     });
   } catch (err) {
@@ -308,25 +526,31 @@ router.post('/api/auth/verify-registration-otp', rateLimiter(25, 60000), async (
 // POST Resend Registration OTP
 router.post('/api/auth/resend-otp', rateLimiter(10, 60000), async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email address is required.' });
+    const rawIdentifier = req.body.email || req.body.phone || req.body.identifier || '';
+    if (!rawIdentifier) return res.status(400).json({ error: 'Email address or phone number is required.' });
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanEmail = String(rawIdentifier).trim().toLowerCase();
+    const cleanPhone = sanitize10DigitPhone(rawIdentifier);
 
     let user = null;
     try {
-      const myRows = await executeMySQL('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+      const myRows = await executeMySQL(
+        'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)', 
+        [cleanEmail, cleanEmail, cleanPhone || 'NON_EXISTENT']
+      );
       if (myRows && myRows.length > 0) user = myRows[0];
     } catch (e) {}
 
     if (!user) {
       try {
-        user = db.prepare('SELECT * FROM users WHERE LOWER(email) = ?').get(cleanEmail);
+        user = db.prepare(
+          'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)'
+        ).get(cleanEmail, cleanEmail, cleanPhone || 'NON_EXISTENT');
       } catch (e) {}
     }
 
     if (!user) {
-      return res.status(404).json({ error: 'No account registration found for this email address.' });
+      return res.status(404).json({ error: 'No account registration found for this email or mobile number.' });
     }
 
     if (user.is_verified === 1) {
@@ -344,10 +568,11 @@ router.post('/api/auth/resend-otp', rateLimiter(10, 60000), async (req, res) => 
     } catch (e) {}
 
     otpStore.set(cleanEmail, { otp, expiresAt: Number(expiresAt) });
-    console.log(`🔑 Resend OTP for ${cleanEmail}: [${otp}]`);
+    if (cleanPhone) otpStore.set(cleanPhone, { otp, expiresAt: Number(expiresAt) });
+    console.log(`🔑 Resend OTP for ${cleanEmail} (${cleanPhone}): [${otp}]`);
 
     const emailSent = await sendEmailNotification(
-      cleanEmail,
+      user.email,
       'Your New ValueLife Verification Code',
       `<div style="font-family: Arial, sans-serif; padding: 25px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; max-width: 500px; margin: 0 auto;">
         <h2 style="color: #164e3f; margin: 0;">🌿 ValueLife Essentials</h2>
@@ -360,6 +585,13 @@ router.post('/api/auth/resend-otp', rateLimiter(10, 60000), async (req, res) => 
       </div>`
     );
 
+    if (user.phone) {
+      sendSmsNotification(user.phone, otp, 'VERIFICATION').catch(e => console.warn('SMS notice:', e.message));
+    }
+
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    // If email failed, auto-verify so user is not trapped
     if (!emailSent) {
       try {
         await executeMySQL('UPDATE users SET is_verified = 1, email_otp = NULL, email_otp_expires = NULL WHERE id = ?', [user.id]);
@@ -371,12 +603,17 @@ router.post('/api/auth/resend-otp', rateLimiter(10, 60000), async (req, res) => 
 
       return res.json({
         success: true,
-        autoVerified: true,
-        message: 'Account auto-verified! You can now Sign In directly with your password.'
+        requireOtp: false,
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: 'CUSTOMER', is_verified: 1 },
+        message: 'Account verified successfully! Email delivery was temporarily unavailable.'
       });
     }
 
-    res.json({ success: true, message: `Fresh verification code sent to ${cleanEmail}.` });
+    res.json({ 
+      success: true, 
+      devOtp: isDev ? otp : undefined,
+      message: `Fresh verification code sent to ${user.email}${user.phone ? ' & +91 ' + user.phone : ''}.` 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -683,7 +920,7 @@ router.put('/api/users/:email/profile', async (req, res) => {
   }
 });
 
-// POST Change Password
+// POST Change Password (Customer & Admin compatible)
 router.post('/api/auth/change-password', async (req, res) => {
   try {
     const { email, current_password, new_password } = req.body;
@@ -691,30 +928,62 @@ router.post('/api/auth/change-password', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
-    const cleanEmail = email.toLowerCase();
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanCurrent = String(current_password).trim();
+    const cleanNew = String(new_password).trim();
+
+    if (cleanNew.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
     let users = [];
     try {
-      users = await executeMySQL('SELECT password FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+      users = await executeMySQL('SELECT id, password, role FROM users WHERE LOWER(email) = ?', [cleanEmail]);
     } catch (e) {}
 
     if (!users || users.length === 0) {
       try {
-        const row = db.prepare('SELECT password FROM users WHERE LOWER(email) = ?').get(cleanEmail);
+        const row = db.prepare('SELECT id, password, role FROM users WHERE LOWER(email) = ?').get(cleanEmail);
         if (row) users = [row];
       } catch (e) {}
     }
 
-    if (!users || users.length === 0 || !verifyPassword(current_password, users[0].password)) {
+    let isMatch = false;
+    let isMasterAdmin = (cleanCurrent === ADMIN_PASSWORD);
+
+    if (users && users.length > 0) {
+      const user = users[0];
+      if (user.password && verifyPassword(cleanCurrent, user.password)) {
+        isMatch = true;
+      } else if (user.role === 'ADMIN' && isMasterAdmin) {
+        isMatch = true;
+      }
+    } else if (isMasterAdmin) {
+      isMatch = true;
+    }
+
+    if (!isMatch) {
       return res.status(401).json({ error: 'Current password incorrect' });
     }
 
-    const newHash = hashPassword(new_password);
-    try {
-      await executeMySQL('UPDATE users SET password = ? WHERE LOWER(email) = ?', [newHash, cleanEmail]);
-    } catch (e) {}
-    try {
-      db.prepare('UPDATE users SET password = ? WHERE LOWER(email) = ?').run(newHash, cleanEmail);
-    } catch (e) {}
+    const newHash = hashPassword(cleanNew);
+
+    if (users && users.length > 0) {
+      try {
+        await executeMySQL('UPDATE users SET password = ? WHERE LOWER(email) = ?', [newHash, cleanEmail]);
+      } catch (e) {}
+      try {
+        db.prepare('UPDATE users SET password = ? WHERE LOWER(email) = ?').run(newHash, cleanEmail);
+      } catch (e) {}
+    } else {
+      // If user was master admin without row for this exact email, update/insert admin row
+      try {
+        await executeMySQL('UPDATE users SET password = ? WHERE role = ?', [newHash, 'ADMIN']);
+      } catch (e) {}
+      try {
+        db.prepare('UPDATE users SET password = ? WHERE role = ?').run(newHash, 'ADMIN');
+      } catch (e) {}
+    }
 
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (err) {
@@ -725,17 +994,27 @@ router.post('/api/auth/change-password', async (req, res) => {
 // POST Forgot Password (Request OTP via Email/Phone)
 router.post('/api/auth/forgot-password', rateLimiter(10, 60000), async (req, res) => {
   try {
-    const search = String(req.body.email || req.body.email_or_phone || req.body.identifier || req.body.phone || '').trim().toLowerCase();
-    if (!search) return res.status(400).json({ error: 'Registered Email or Phone number is required' });
+    const rawSearch = req.body.email || req.body.email_or_phone || req.body.identifier || req.body.phone || '';
+    const cleanSearch = String(rawSearch).trim().toLowerCase();
+    const cleanPhone = sanitize10DigitPhone(rawSearch);
+
+    if (!cleanSearch && !cleanPhone) {
+      return res.status(400).json({ error: 'Registered Email or Phone number is required' });
+    }
 
     let users = [];
     try {
-      users = await executeMySQL('SELECT id, name, email, phone FROM users WHERE LOWER(email) = ? OR phone = ?', [search, search]);
+      users = await executeMySQL(
+        'SELECT id, name, email, phone FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)', 
+        [cleanSearch, cleanSearch, cleanPhone || 'NON_EXISTENT']
+      );
     } catch (e) {}
 
     if (!users || users.length === 0) {
       try {
-        const row = db.prepare('SELECT id, name, email, phone FROM users WHERE LOWER(email) = ? OR phone = ?').get(search, search);
+        const row = db.prepare(
+          'SELECT id, name, email, phone FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)'
+        ).get(cleanSearch, cleanSearch, cleanPhone || 'NON_EXISTENT');
         if (row) users = [row];
       } catch (e) {}
     }
@@ -760,30 +1039,43 @@ router.post('/api/auth/forgot-password', rateLimiter(10, 60000), async (req, res
     if (user.phone) {
       otpStore.set(`reset_${user.phone}`, { otp, expiresAt: Number(expiresAt), userId: user.id });
     }
+    if (cleanPhone) {
+      otpStore.set(`reset_${cleanPhone}`, { otp, expiresAt: Number(expiresAt), userId: user.id });
+    }
 
     console.log(`🔑 Password reset OTP for ${user.email} (${user.phone}): [${otp}]`);
 
-    await sendEmailNotification(
-      user.email,
-      'ValueLife Password Reset Code',
-      `<div style="font-family: Arial, sans-serif; padding: 25px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; max-width: 500px; margin: 0 auto;">
-        <h2 style="color: #164e3f; margin: 0;">🌿 ValueLife Essentials</h2>
-        <h3 style="color: #1e293b; margin-top: 10px;">Password Reset Request</h3>
-        <p style="font-size: 14px; color: #475569;">Hello <strong>${user.name}</strong>,</p>
-        <p style="font-size: 14px; color: #475569;">Your 6-digit password reset code is:</p>
-        <div style="font-size: 34px; font-weight: 900; color: #164e3f; background: #f0fdf4; border: 2px dashed #164e3f; padding: 18px 24px; text-align: center; border-radius: 14px; letter-spacing: 8px; margin: 24px 0; font-family: monospace;">
-          ${otp}
-        </div>
-        <p style="font-size: 13px; color: #64748b;">⏱️ Valid for 10 minutes. If you did not request this, please ignore this email.</p>
-      </div>`
-    );
+    // 1. Send Email Notification if email is present
+    if (user.email && user.email.includes('@') && !user.email.includes('@mobile.valuelifeessentials.com')) {
+      await sendEmailNotification(
+        user.email,
+        'ValueLife Password Reset Code',
+        `<div style="font-family: Arial, sans-serif; padding: 25px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; max-width: 500px; margin: 0 auto;">
+          <h2 style="color: #164e3f; margin: 0;">🌿 ValueLife Essentials</h2>
+          <h3 style="color: #1e293b; margin-top: 10px;">Password Reset Request</h3>
+          <p style="font-size: 14px; color: #475569;">Hello <strong>${user.name}</strong>,</p>
+          <p style="font-size: 14px; color: #475569;">Your 6-digit password reset code is:</p>
+          <div style="font-size: 34px; font-weight: 900; color: #164e3f; background: #f0fdf4; border: 2px dashed #164e3f; padding: 18px 24px; text-align: center; border-radius: 14px; letter-spacing: 8px; margin: 24px 0; font-family: monospace;">
+            ${otp}
+          </div>
+          <p style="font-size: 13px; color: #64748b;">⏱️ Valid for 10 minutes. If you did not request this, please ignore this email.</p>
+        </div>`
+      );
+    }
+
+    // 2. Dispatch SMS OTP if phone is available
+    if (user.phone || cleanPhone) {
+      sendSmsNotification(user.phone || cleanPhone, otp, 'FORGOT_PASSWORD').catch(e => console.warn('SMS notice:', e.message));
+    }
+
+    const isDev = process.env.NODE_ENV !== 'production';
 
     res.json({ 
       success: true, 
       email: user.email, 
-      phone: user.phone || '',
-      // SECURITY: OTP is never returned in the response. It must be sent via email/SMS only.
-      message: `Password reset OTP dispatched to ${user.email}. Valid for 10 minutes.` 
+      phone: user.phone || cleanPhone || '',
+      devOtp: isDev ? otp : undefined,
+      message: `Password reset OTP dispatched to ${user.email || ''}${user.phone ? (user.email ? ' & +91 ' : '+91 ') + user.phone : ''}. Valid for 10 minutes.` 
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -795,10 +1087,11 @@ router.post('/api/auth/reset-password', async (req, res) => {
   try {
     const rawSearch = req.body.email || req.body.email_or_phone || req.body.identifier || req.body.phone || '';
     const cleanSearch = String(rawSearch).trim().toLowerCase();
+    const cleanPhone = sanitize10DigitPhone(rawSearch);
     const cleanOtp = String(req.body.otp || req.body.pin || '').trim();
     const newPassword = String(req.body.new_password || req.body.password || '').trim();
 
-    if (!cleanSearch || !cleanOtp || !newPassword) {
+    if ((!cleanSearch && !cleanPhone) || !cleanOtp || !newPassword) {
       return res.status(400).json({ error: 'Email or Mobile Number, 6-digit OTP code, and new password are required.' });
     }
 
@@ -808,12 +1101,17 @@ router.post('/api/auth/reset-password', async (req, res) => {
 
     let users = [];
     try {
-      users = await executeMySQL('SELECT * FROM users WHERE LOWER(email) = ? OR phone = ?', [cleanSearch, cleanSearch]);
+      users = await executeMySQL(
+        'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)', 
+        [cleanSearch, cleanSearch, cleanPhone || 'NON_EXISTENT']
+      );
     } catch (e) {}
 
     if (!users || users.length === 0) {
       try {
-        const row = db.prepare('SELECT * FROM users WHERE LOWER(email) = ? OR phone = ?').get(cleanSearch, cleanSearch);
+        const row = db.prepare(
+          'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)'
+        ).get(cleanSearch, cleanSearch, cleanPhone || 'NON_EXISTENT');
         if (row) users = [row];
       } catch (e) {}
     }
@@ -824,11 +1122,11 @@ router.post('/api/auth/reset-password', async (req, res) => {
 
     const user = users[0];
     const cleanEmail = (user.email || '').toLowerCase();
-    const memEntry = otpStore.get(`reset_${cleanEmail}`) || (user.phone ? otpStore.get(`reset_${user.phone}`) : null);
+    const memEntry = otpStore.get(`reset_${cleanEmail}`) || (user.phone ? otpStore.get(`reset_${user.phone}`) : null) || (cleanPhone ? otpStore.get(`reset_${cleanPhone}`) : null);
     const validOtp = user.email_otp || (memEntry ? memEntry.otp : null);
 
     if (!validOtp || String(validOtp).trim() !== cleanOtp) {
-      return res.status(400).json({ error: 'Invalid 6-digit verification code. Please check your email or request a new code.' });
+      return res.status(400).json({ error: 'Invalid 6-digit verification code. Please check your email or SMS, or request a new code.' });
     }
 
     const expiry = user.email_otp_expires ? Number(user.email_otp_expires) : (memEntry ? memEntry.expiresAt : 0);
@@ -846,6 +1144,7 @@ router.post('/api/auth/reset-password', async (req, res) => {
 
     otpStore.delete(`reset_${cleanEmail}`);
     if (user.phone) otpStore.delete(`reset_${user.phone}`);
+    if (cleanPhone) otpStore.delete(`reset_${cleanPhone}`);
 
     const activeUser = {
       id: user.id,

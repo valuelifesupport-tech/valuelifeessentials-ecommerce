@@ -65,12 +65,14 @@ export default function CartSummary({
           </div>
         )}
 
-        {appliedCoupon?.free_shipping && (
-          <div className="flex justify-between text-emerald-600 font-bold">
-            <span>Delivery / Shipping</span>
+        <div className="flex justify-between">
+          <span>Delivery Charges</span>
+          {rawSubtotal >= 499 || appliedCoupon?.free_shipping ? (
             <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-extrabold">FREE 🚚</span>
-          </div>
-        )}
+          ) : (
+            <span className="font-bold text-gray-900">{currencySymbol}49</span>
+          )}
+        </div>
 
         {!isTaxInclusive ? (
           <div className="flex justify-between text-amber-800 font-bold">

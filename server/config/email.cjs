@@ -2,17 +2,34 @@ const nodemailer = require('nodemailer');
 
 const getTransporter = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465');
+  const port = parseInt(process.env.SMTP_PORT || '587');
   const user = (process.env.SMTP_USER || '').trim();
   const pass = (process.env.SMTP_PASS || '').trim();
 
   if (!user || !pass) return null;
 
+  // Use 'service' shortcut for Gmail for maximum reliability
+  if (host.includes('gmail')) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
+    });
+  }
+
   return nodemailer.createTransport({
     host,
     port,
     secure: (port === 465),
-    auth: { user, pass }
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+    // Force IPv4 to avoid IPv6 hangs on Windows/cloud
+    family: 4
   });
 };
 
@@ -42,6 +59,22 @@ const sendEmailNotification = async (to, subject, htmlBody) => {
     return false;
   }
 };
+
+// Verify SMTP connectivity on module load (non-blocking)
+const _verifySmtp = async () => {
+  const t = getTransporter();
+  if (!t) {
+    console.warn('⚠️ SMTP transporter not configured — email OTPs will use auto-verify fallback.');
+    return;
+  }
+  try {
+    await t.verify();
+    console.log('✅ SMTP connection verified — email OTPs will be delivered.');
+  } catch (err) {
+    console.warn('⚠️ SMTP verification failed:', err.message, '— check credentials and network.');
+  }
+};
+_verifySmtp();
 
 module.exports = {
   mailTransporter: getTransporter(),
