@@ -224,10 +224,16 @@ export default function useCatalogActions({
         ...couponForm,
         discount_value: isFreeShip ? 0 : Number(couponForm.discount_value) || 0,
         coupon_category: selectedDiscountType?.id || 'amount_off_order',
+        free_shipping: isFreeShip ? 1 : 0,
         applies_to_type: browseTargetType,
         target_ids: targetIds,
+        specific_ids: targetIds,
+        applies_to: browseTargetType === 'products' ? 'SPECIFIC_PRODUCTS' : browseTargetType === 'categories' ? 'SPECIFIC_CATEGORIES' : 'ALL',
         max_uses: limitTotalUses ? Number(limitTotalUsesVal) || 0 : 0,
-        one_per_customer: limitOnePerCustomer ? 1 : 0
+        usage_limit: limitTotalUses ? Number(limitTotalUsesVal) || 0 : 0,
+        one_per_customer: limitOnePerCustomer ? 1 : 0,
+        min_spend: Number(couponForm.min_spend_inr) || 0,
+        expiry_date: couponForm.end_date || null
       };
 
       const url = editingCouponId ? `/api/coupons/${editingCouponId}` : '/api/coupons';

@@ -80,23 +80,23 @@ export default function CouponsTab({
                   <td className="py-3 px-2 text-center">
                     <button 
                       onClick={async () => {
-                        const newActive = c.active ? 0 : 1;
+                        const newActive = (c.active || c.is_active) ? 0 : 1;
                         const res = await adminFetch(`/api/coupons/${c.id}`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ active: newActive })
+                          body: JSON.stringify({ is_active: newActive, active: newActive })
                         });
                         if (res.ok) {
-                          setCoupons(prev => prev.map(x => x.id === c.id ? { ...x, active: newActive } : x));
+                          setCoupons(prev => prev.map(x => x.id === c.id ? { ...x, active: newActive, is_active: newActive } : x));
                           if (showToast) showToast('success', newActive ? 'Coupon Activated' : 'Coupon Deactivated', `${c.code} is now ${newActive ? 'active' : 'inactive'}`);
                         }
                       }}
                       className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold cursor-pointer ${
-                        c.active ? 'bg-emerald-900/60 text-emerald-400 border border-emerald-700' : 'bg-red-900/40 text-red-400 border border-red-800'
+                        (c.active || c.is_active) ? 'bg-emerald-900/60 text-emerald-400 border border-emerald-700' : 'bg-red-900/40 text-red-400 border border-red-800'
                       }`}
                       data-reticle-target={`admin-coupon-toggle-${c.id}`}
                     >
-                      {c.active ? '● Active' : '○ Inactive'}
+                      {(c.active || c.is_active) ? '● Active' : '○ Inactive'}
                     </button>
                   </td>
                   <td className="py-3 px-2 text-[10px] text-slate-400">

@@ -73,11 +73,15 @@ export default function CartDrawer({
       const res = await fetch(getApiUrl('/api/coupons/validate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode, order_amount: rawSubtotal, cart_items: cartItems })
+        body: JSON.stringify({ code: couponCode, cart_subtotal: rawSubtotal, order_amount: rawSubtotal, cart_items: cartItems })
       });
       const data = await res.json();
       if (res.ok) {
-        setAppliedCoupon(data);
+        setAppliedCoupon({
+          ...data,
+          discount: data.discount_amount || data.discount || 0,
+          free_shipping: data.free_shipping || false
+        });
         setCouponError('');
       } else {
         setCouponError(data.error || 'Invalid coupon code');
