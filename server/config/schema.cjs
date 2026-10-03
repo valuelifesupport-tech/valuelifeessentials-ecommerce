@@ -396,6 +396,21 @@ function initDb(db) {
   try { db.exec(`ALTER TABLE coupons ADD COLUMN buy_qty INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE coupons ADD COLUMN get_qty INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE coupons ADD COLUMN get_discount_type TEXT DEFAULT 'FREE'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN is_active INTEGER DEFAULT 1`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN min_spend REAL DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN min_order_amount REAL DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN max_discount REAL DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN expiry_date DATETIME DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN usage_limit INTEGER DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN used_count INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN applies_to TEXT DEFAULT 'ALL'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN specific_ids TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN free_shipping INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN description TEXT DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN start_date DATETIME DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN end_date DATETIME DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN max_uses INTEGER DEFAULT NULL`); } catch (e) {}
+  try { db.exec(`ALTER TABLE coupons ADD COLUMN one_per_customer INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE store_settings ADD COLUMN enable_multi_currency INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE store_settings ADD COLUMN enable_cod INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE store_settings ADD COLUMN enable_partial_payment INTEGER DEFAULT 1`); } catch (e) {}
