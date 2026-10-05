@@ -20,8 +20,8 @@ export default function Footer({ settings, categories = [], navigateTo }) {
               <div className="w-8 h-8 rounded-full bg-emerald-800 text-white flex items-center justify-center font-bold">
                 <Leaf size={16} />
               </div>
-              <span className="font-extrabold text-xl text-white font-['Outfit'] tracking-tight uppercase">
-                Value<span className="text-emerald-400 font-medium">Life</span>
+              <span className="font-bold text-xl text-white font-handel tracking-wide uppercase inline-flex items-center">
+                VALUE<span className="text-emerald-400">LIFE</span><sup className="text-[9px] font-sans font-bold ml-0.5 text-emerald-300">®</sup>
               </span>
             </div>
             <p className="text-emerald-200/80 text-xs leading-relaxed font-sans">

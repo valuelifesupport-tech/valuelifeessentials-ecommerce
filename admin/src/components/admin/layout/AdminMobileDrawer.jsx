@@ -37,8 +37,8 @@ export default function AdminMobileDrawer({
                 className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl bg-white p-0.5 shadow-lg shrink-0" 
               />
               <div className="min-w-0">
-                <h2 className="font-extrabold text-sm sm:text-base text-white tracking-tight font-['Outfit'] truncate uppercase">
-                  VALUELIFE ESSENTIALS
+                <h2 className="font-bold text-sm sm:text-base text-white tracking-wide font-handel truncate uppercase">
+                  VALUELIFE<sup className="text-[9px] font-sans font-bold ml-0.5 text-emerald-400">®</sup> <span className="font-sans font-extrabold text-xs text-slate-300">ESSENTIALS</span>
                 </h2>
                 <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block truncate">
                   {import.meta.env.VITE_STORE_DOMAIN || 'store'}

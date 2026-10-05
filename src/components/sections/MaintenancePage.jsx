@@ -68,8 +68,8 @@ export default function MaintenancePage({ onUnlock }) {
             className="h-10 sm:h-12 w-auto object-contain bg-white/90 p-1.5 rounded-xl shadow-lg shadow-emerald-950/40" 
           />
           <div>
-            <span className="font-black text-lg sm:text-xl tracking-tight text-white block leading-none uppercase font-['Outfit']">
-              VALUELIFE <span className="text-emerald-400">ESSENTIALS</span>
+            <span className="font-bold text-lg sm:text-xl tracking-wide text-white block leading-none uppercase font-handel">
+              VALUELIFE<sup className="text-[9px] font-sans font-bold ml-0.5 text-emerald-400">®</sup> <span className="text-emerald-400 font-sans font-extrabold text-sm sm:text-base">ESSENTIALS</span>
             </span>
             <span className="text-[10px] text-emerald-300/80 font-mono tracking-wider block mt-0.5">
               valuelifeessentials.com

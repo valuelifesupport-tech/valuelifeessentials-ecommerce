@@ -78,9 +78,9 @@ export default function Header({
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             <div>
-              <div className="flex items-center gap-1.5 leading-none">
-                <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-[#164e3f] font-['Outfit'] uppercase">
-                  Value<span className="text-[#2d6a4f] font-medium">Life</span>
+              <div className="flex items-center gap-1 leading-none">
+                <span className="font-bold text-lg sm:text-2xl tracking-wide text-[#164e3f] font-handel uppercase inline-flex items-center">
+                  VALUE<span className="text-[#2d6a4f]">LIFE</span><sup className="text-[9px] sm:text-[10px] font-sans font-bold ml-0.5 text-emerald-700">®</sup>
                 </span>
               </div>
               <span className="text-[10px] text-emerald-800/80 font-semibold tracking-wider block mt-0.5 font-sans">

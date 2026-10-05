@@ -21,7 +21,7 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
     },
     {
       id: 2,
-      tagline: '100% CERTIFIED ORGANIC ESSENTIALS',
+      tagline: '100% Nature pure Essentials',
       title_part1: 'Pure Superfoods',
       title_part2: 'Pure Vitality.',
       description: 'Farm-fresh chia seeds, pure herbal teas, cold-pressed oils & natural pantry staples.',

@@ -122,9 +122,12 @@ export default function CartSummary({
           </div>
         )}
 
-        <div className="flex justify-between text-sm font-extrabold text-gray-900 border-t pt-2">
-          <span>Total Amount</span>
-          <span className="text-emerald-800 text-base">{currencySymbol}{finalTotal}</span>
+        <div className="flex justify-between items-baseline text-sm font-extrabold text-gray-900 border-t pt-2.5">
+          <div>
+            <span className="block text-sm font-black text-gray-900 uppercase tracking-wider">Final Payable Amount</span>
+            <span className="text-[10px] text-gray-400 font-medium">All taxes & delivery included</span>
+          </div>
+          <span className="text-emerald-800 text-xl font-black font-['Outfit']">{currencySymbol}{finalTotal}</span>
         </div>
       </div>
 

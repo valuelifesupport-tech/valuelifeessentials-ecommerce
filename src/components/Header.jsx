@@ -207,8 +207,8 @@ export default function Header({
               className="h-9 sm:h-11 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform" 
             />
             <div className="min-w-0">
-              <span className="font-black text-base sm:text-xl tracking-tight text-[#2d6a4f] block leading-none font-['Outfit'] truncate uppercase">
-                VALUELIFE <span className="text-[#800000]">ESSENTIALS</span>
+              <span className="font-bold text-base sm:text-xl tracking-wider text-[#2d6a4f] block leading-none font-handel truncate uppercase">
+                VALUELIFE<sup className="text-[9px] font-sans font-bold ml-0.5 text-emerald-700">®</sup> <span className="text-[#800000] font-sans font-extrabold text-xs sm:text-sm tracking-normal">ESSENTIALS</span>
               </span>
               <span className="text-[9px] sm:text-[10px] text-emerald-800 font-extrabold tracking-wider uppercase block mt-0.5 truncate hidden xs:block font-mono">
                 valuelifeessentials.com

@@ -70,11 +70,34 @@ export function useProductFilters(products, getProductPricing, navigateTo, route
     return true;
   });
 
+  const getProductWeight = (p) => {
+    if (p.weight !== undefined && p.weight !== null) {
+      const parsed = parseFloat(p.weight);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    const text = `${p.variant_name || ''} ${p.title || ''}`;
+    const kgMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:kg|kilo)/i);
+    if (kgMatch) return parseFloat(kgMatch[1]);
+    const gMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:g|gm|gram)/i);
+    if (gMatch) return parseFloat(gMatch[1]) / 1000;
+    return 0;
+  };
+
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     const priceA = getProductPricing(a).pPrice;
     const priceB = getProductPricing(b).pPrice;
     if (sortBy === 'low_high') return priceA - priceB;
     if (sortBy === 'high_low') return priceB - priceA;
+    if (sortBy === 'weight_low_high') return getProductWeight(a) - getProductWeight(b);
+    if (sortBy === 'weight_high_low') return getProductWeight(b) - getProductWeight(a);
+    if (sortBy === 'rating') {
+      const ratA = Number(a.ratingStats?.avg_rating ?? a.avg_rating ?? 0);
+      const ratB = Number(b.ratingStats?.avg_rating ?? b.avg_rating ?? 0);
+      return ratB - ratA;
+    }
+    if (sortBy === 'newest') {
+      return (b.id || 0) - (a.id || 0);
+    }
     return 0;
   });
 

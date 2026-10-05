@@ -32,33 +32,35 @@ export default function SignupForm({
       </div>
 
       <div>
-        <label className="block font-bold text-gray-700 mb-1">Email Address * (Mandatory for Verification)</label>
+        <label className="block font-bold text-gray-700 mb-1">
+          Mobile Phone Number <span className="text-gray-400 font-normal">(for login & order updates)</span>
+        </label>
         <div className="relative">
-          <Mail size={16} className="absolute left-3 top-3 text-gray-400" />
+          <Phone size={16} className="absolute left-3 top-3 text-gray-400" />
           <input
-            type="email"
-            required
-            placeholder="e.g. vikram@gmail.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="tel"
+            placeholder="e.g. 98123 45678"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
-            data-reticle-target="user-auth-signup-email"
+            data-reticle-target="user-auth-signup-phone"
           />
         </div>
       </div>
 
       <div>
-        <label className="block font-bold text-gray-700 mb-1">Mobile Phone Number *</label>
+        <label className="block font-bold text-gray-700 mb-1">
+          Email Address <span className="text-gray-400 font-normal">(optional if phone is entered)</span>
+        </label>
         <div className="relative">
-          <Phone size={16} className="absolute left-3 top-3 text-gray-400" />
+          <Mail size={16} className="absolute left-3 top-3 text-gray-400" />
           <input
-            type="tel"
-            required
-            placeholder="e.g. +91 98123 45678"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            type="email"
+            placeholder="e.g. vikram@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
-            data-reticle-target="user-auth-signup-phone"
+            data-reticle-target="user-auth-signup-email"
           />
         </div>
       </div>

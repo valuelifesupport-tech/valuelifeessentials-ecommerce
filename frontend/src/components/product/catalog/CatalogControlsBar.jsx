@@ -61,9 +61,13 @@ export default function CatalogControlsBar({
           className="bg-white border border-gray-300 text-xs font-bold text-gray-800 rounded-full px-4 py-2 focus:outline-none focus:border-[#3b6e14] cursor-pointer shadow-sm"
           data-reticle-target="catalog-sort-select"
         >
-          <option value="default">Sort by ▾</option>
+          <option value="default">Sort: Featured</option>
           <option value="low_high">Price: Low to High</option>
           <option value="high_low">Price: High to Low</option>
+          <option value="weight_low_high">Weight / Qty: Low to High</option>
+          <option value="weight_high_low">Weight / Qty: High to Low</option>
+          <option value="rating">Customer Rating</option>
+          <option value="newest">New Arrivals</option>
         </select>
 
         {(route?.category || route?.collection || searchQuery || route?.view === 'all_products') && (

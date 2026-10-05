@@ -279,7 +279,7 @@ export default function ProductDetailPage({
                 </div>
                 <div className="bg-white p-2.5 rounded-xl border border-gray-200">
                   <span className="text-gray-400 block text-[10px] uppercase font-bold">Brand</span>
-                  <span className="font-black text-gray-900">ValueLife Essentials</span>
+                  <span className="font-black text-gray-900">ValueLife Essentials®</span>
                 </div>
               </div>
             )}

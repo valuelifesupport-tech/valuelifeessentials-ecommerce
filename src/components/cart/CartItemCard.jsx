@@ -30,13 +30,19 @@ export default function CartItemCard({
       <div className="flex-1 min-w-0">
         <h4 className="font-extrabold text-sm text-gray-900 line-clamp-1 font-['Outfit']">{item.title}</h4>
         
-        {variantName && (
-          <div className="mt-1">
+        {/* Variant & Unit/Weight Badges */}
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          {variantName && (
             <span className="inline-block bg-[#f0f7e6] text-[#33691e] border border-[#558b2f]/30 text-[11px] font-extrabold px-2 py-0.5 rounded-md">
-              Variant: {variantName}
+              Option: {variantName}
             </span>
-          </div>
-        )}
+          )}
+          {item.weight && (
+            <span className="inline-block bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold px-2 py-0.5 rounded-md">
+              ⚖️ Weight: {parseFloat(item.weight) >= 1 ? `${parseFloat(item.weight)} kg` : `${Math.round(parseFloat(item.weight) * 1000)} g`}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center justify-between text-xs text-gray-700 mt-1.5 pt-1.5 border-t border-gray-100">
           <div>

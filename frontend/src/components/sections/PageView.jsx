@@ -47,7 +47,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to submit inquiry');
       setSubmitted(true);
-      if (showToast) showToast('success', 'Message Sent!', 'Thank you! Our support team will get back to you within 2 hours.');
+      if (showToast) showToast('success', 'Message Sent!', 'Thank you! Our support team will get back to you within 24 hours (1 business day).');
     } catch (err) {
       if (showToast) showToast('error', 'Submission Failed', err.message || 'Could not submit your inquiry. Please try again.');
     } finally {
@@ -205,7 +205,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                     <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center space-y-2">
                       <CheckCircle2 size={36} className="text-emerald-600 mx-auto" />
                       <h4 className="font-bold text-emerald-900 text-base">Thank You! Message Received</h4>
-                      <p className="text-xs text-emerald-700">Our organic wellness team will respond to your query within 2 hours.</p>
+                      <p className="text-xs text-emerald-700">Our organic wellness team will respond to your query within 24 hours (1 business day).</p>
                       <button onClick={() => setSubmitted(false)} className="mt-2 text-xs font-bold text-emerald-800 underline">
                         Send another message
                       </button>

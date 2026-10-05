@@ -1,4 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Audiowide&display=swap');
+
+/* 🌿 VALUELIFE REGISTERED TRADEMARK FONT: HANDEL GOTHIC */
+@font-face {
+  font-family: 'Handel Gothic';
+  src: url('/fonts/handel_gothic_bold.woff2') format('woff2'),
+       url('/fonts/handel_gothic_bold.woff') format('woff'),
+       url('/fonts/handel_gothic_bold.ttf') format('truetype'),
+       url('https://db.onlinewebfonts.com/t/4a1049b574de758a730ae13b4a78fa5a.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Handel Gothic';
+  src: url('/fonts/handel_gothic.woff2') format('woff2'),
+       url('/fonts/handel_gothic.woff') format('woff'),
+       url('/fonts/handel_gothic.ttf') format('truetype'),
+       url('https://db.onlinewebfonts.com/t/f7b21b96bd07f0683d304dd041567001.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Handel Gothic Bold';
+  src: url('/fonts/handel_gothic_bold.woff2') format('woff2'),
+       url('/fonts/handel_gothic_bold.woff') format('woff'),
+       url('/fonts/handel_gothic_bold.ttf') format('truetype'),
+       url('https://db.onlinewebfonts.com/t/4a1049b574de758a730ae13b4a78fa5a.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-handel,
+.font-trademark,
+.font-brand-trademark {
+  font-family: 'Handel Gothic', 'Handel Gothic Bold', 'Audiowide', sans-serif !important;
+  letter-spacing: 0.03em;
+}
 
 :root {
   --primary: #2d6a4f;

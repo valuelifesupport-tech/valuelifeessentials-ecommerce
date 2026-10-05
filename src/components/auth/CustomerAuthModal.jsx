@@ -121,8 +121,10 @@ export default function CustomerAuthModal({
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !email.trim() || !email.includes('@')) {
-      setErrorMsg('Valid Email Address is mandatory to receive your 6-digit verification code.');
+    const cleanPhone = (phone || '').trim();
+    const cleanEmail = (email || '').trim();
+    if (!cleanPhone && (!cleanEmail || !cleanEmail.includes('@'))) {
+      setErrorMsg('Please enter either a mobile phone number or a valid email address.');
       return;
     }
     setErrorMsg('');
@@ -133,13 +135,25 @@ export default function CustomerAuthModal({
       const res = await fetch(getApiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name ? name.trim() : '', email: email.trim(), phone: phone ? phone.trim() : '', password })
+        body: JSON.stringify({ 
+          name: name ? name.trim() : '', 
+          email: cleanEmail, 
+          phone: cleanPhone, 
+          password 
+        })
       });
       const data = await res.json();
 
-      if (res.ok && data.requireOtp) {
-        setPendingEmail(data.email || email.trim());
-        setSuccessMsg(data.message || 'Account created! 6-digit verification code sent directly to your email address (Valid for 10 mins).');
+      if (res.ok && (data.user || data.autoVerified)) {
+        setSuccessMsg(data.message || 'Registration successful!');
+        onLoginSuccess(data.user);
+        fetchMyOrders(data.user.email);
+        setTimeout(() => {
+          setActiveTab('PROFILE');
+        }, 600);
+      } else if (res.ok && data.requireOtp) {
+        setPendingEmail(data.email || cleanEmail || cleanPhone);
+        setSuccessMsg(data.message || 'Account created! Verification code sent.');
         if (data.devOtp || data.otp) setRegOtp(data.devOtp || data.otp);
         else setRegOtp('');
         setRegStep(2);

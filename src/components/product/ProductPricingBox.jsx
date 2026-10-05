@@ -50,6 +50,17 @@ export default function ProductPricingBox({
   return (
     <div className="space-y-6" data-reticle-target="pdp-pricing-box">
       <div>
+        {/* CATEGORY & BRAND BADGE */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+            <span>🌿</span>
+            <span>Category: {productData.category_name || productData.category?.name || productData.category || 'Organic Essentials'}</span>
+          </span>
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+            Brand: <strong className="text-gray-800">ValueLife Essentials®</strong>
+          </span>
+        </div>
+
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-snug font-['Outfit']">
           {productData.title || productData.name || 'ValueLife Essentials Product'}
         </h1>

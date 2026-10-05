@@ -1846,7 +1846,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
           <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-800">
             <img src="/valuelife_logo.png" alt="ValueLife Essentials Logo" className="w-10 h-10 object-contain rounded-xl bg-white p-0.5 shadow-lg shrink-0" />
             <div className="min-w-0">
-              <h2 className="font-extrabold text-base text-white tracking-tight font-['Outfit'] truncate uppercase">VALUELIFE ESSENTIALS</h2>
+              <h2 className="font-bold text-base text-white tracking-wide font-handel truncate uppercase">
+                VALUELIFE<sup className="text-[9px] font-sans font-bold ml-0.5 text-emerald-400">®</sup> <span className="font-sans font-extrabold text-xs text-slate-300">ESSENTIALS</span>
+              </h2>
               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block truncate">valuelifeessentials.com</span>
             </div>
           </div>

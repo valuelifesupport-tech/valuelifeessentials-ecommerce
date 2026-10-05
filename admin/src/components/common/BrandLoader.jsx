@@ -21,7 +21,7 @@ export default function BrandLoader({ text = 'Loading ValueLife Essentials...', 
 
       {/* TYPOGRAPHY & ELEGANT SPINNER DOTS */}
       <div className="space-y-1 z-10">
-        <div className="flex items-center justify-center gap-1.5 font-extrabold text-sm sm:text-base text-gray-800 tracking-tight font-['Outfit']">
+        <div className="flex items-center justify-center gap-1.5 font-bold text-sm sm:text-base text-gray-800 tracking-wide font-handel uppercase">
           <span>{text}</span>
           <span className="flex items-center gap-1 text-emerald-600">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '0ms' }}></span>

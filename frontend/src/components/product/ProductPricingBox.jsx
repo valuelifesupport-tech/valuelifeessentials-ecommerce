@@ -38,6 +38,20 @@ export default function ProductPricingBox({
     setCheckingPincode(true);
     setDeliveryResult(null);
     try {
+      // Lookup city and state for customer confirmation
+      let locationName = '';
+      try {
+        const pinRes = await fetch(`https://api.postalpincode.in/pincode/${cleanPin}`);
+        const pinData = await pinRes.json();
+        if (pinData?.[0]?.Status === 'Success' && pinData[0].PostOffice?.length > 0) {
+          const po = pinData[0].PostOffice[0];
+          const dist = po.District || po.Name || '';
+          locationName = dist ? `${dist}${po.State ? `, ${po.State}` : ''}` : (po.State || '');
+        }
+      } catch (locErr) {
+        // Fallback gracefully
+      }
+
       const res = await fetch(getApiUrl('/api/shipping/shiprocket/check-serviceability'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,6 +68,7 @@ export default function ProductPricingBox({
         setDeliveryResult({
           success: true,
           pincode: cleanPin,
+          location: locationName || data.city || data.state || '',
           courierName: fastest.name || 'Express Courier',
           days: fastest.estimated_delivery_days || 3,
           etd: fastest.etd || null,
@@ -64,6 +79,7 @@ export default function ProductPricingBox({
         setDeliveryResult({
           success: false,
           pincode: cleanPin,
+          location: locationName,
           message: data.message || 'Delivery currently unavailable for this pincode.'
         });
       }
@@ -90,6 +106,17 @@ export default function ProductPricingBox({
   return (
     <div className="space-y-6" data-reticle-target="pdp-pricing-box">
       <div>
+        {/* CATEGORY & BRAND BADGE */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+            <span>🌿</span>
+            <span>Category: {productData.category_name || productData.category?.name || productData.category || 'Organic Essentials'}</span>
+          </span>
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+            Brand: <strong className="text-gray-800">ValueLife Essentials®</strong>
+          </span>
+        </div>
+
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-snug font-['Outfit']">
           {productData.title || productData.name || 'ValueLife Essentials Product'}
         </h1>
@@ -300,10 +327,12 @@ export default function ProductPricingBox({
                 <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
                   <div className="flex items-center gap-1.5 font-extrabold text-emerald-900 text-xs">
                     <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                    <span>Deliverable to <b>{deliveryResult.pincode}</b></span>
+                    <span>
+                      Delivery to: <b className="text-emerald-950">{deliveryResult.location ? `${deliveryResult.location} – ${deliveryResult.pincode}` : deliveryResult.pincode}</b>
+                    </span>
                   </div>
                   <span className="bg-emerald-200 text-emerald-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Verified Pincode
+                    Verified Location
                   </span>
                 </div>
 
