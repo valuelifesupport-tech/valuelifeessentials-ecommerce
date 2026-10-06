@@ -21,11 +21,18 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
   const [pages, setPages] = useState([]);
   const [mediaFiles, setMediaFiles] = useState([]);
   const [filterGroups, setFilterGroups] = useState([]);
+  const [heroSlides, setHeroSlides] = useState([]);
 
   // Tab lazy-loading
   const [loadedTabs, setLoadedTabs] = useState(new Set());
 
   const sf = (url) => safeFetchJson(adminFetch, url);
+
+  const fetchHeroSlides = async () => {
+    const s = await sf('/api/admin/hero-slides');
+    if (s && Array.isArray(s)) setHeroSlides(s);
+    return s;
+  };
 
   // ------ Fetchers ------
   const fetchAnalytics = async () => {
@@ -35,13 +42,14 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
   const fetchAdminData = async () => {
     try {
-      const [prods, cats, cols, ords, setts, revs] = await Promise.all([
+      const [prods, cats, cols, ords, setts, revs, slides] = await Promise.all([
         sf('/api/products?includeDrafts=true'),
         sf('/api/categories'),
         sf('/api/collections'),
         sf('/api/admin/orders'),
         sf('/api/settings'),
-        sf('/api/reviews')
+        sf('/api/reviews'),
+        sf('/api/admin/hero-slides')
       ]);
       if (prods) setProducts(prods);
       if (cats) setCategories(cats);
@@ -49,6 +57,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
       if (ords) setOrders(ords);
       if (setts) setSettings(setts);
       if (revs) setReviews(revs);
+      if (slides && Array.isArray(slides)) setHeroSlides(slides);
     } catch (err) {
       console.error('fetchAdminData error:', err);
     }
@@ -60,6 +69,11 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
     try {
       switch (tab) {
+        case 'hero': {
+          const s = await sf('/api/admin/hero-slides');
+          if (s && Array.isArray(s)) setHeroSlides(s);
+          break;
+        }
         case 'media': {
           const m = await sf('/api/admin/media');
           if (m) setMediaFiles(m);
@@ -129,11 +143,13 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
     pages, setPages,
     mediaFiles, setMediaFiles,
     filterGroups, setFilterGroups,
+    heroSlides, setHeroSlides,
     loadedTabs,
     // Fetchers
     fetchAnalytics,
     fetchAdminData,
     fetchTabData,
+    fetchHeroSlides,
     sf
   };
 }

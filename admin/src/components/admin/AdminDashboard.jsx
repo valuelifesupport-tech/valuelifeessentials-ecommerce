@@ -462,6 +462,11 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               handleHeroSubmit={config.handleHeroSubmit}
               updateAndSaveHeroToggle={config.updateAndSaveHeroToggle}
               showToast={showToast}
+              adminFetch={auth.adminFetch}
+              heroSlides={data.heroSlides}
+              setHeroSlides={data.setHeroSlides}
+              fetchHeroSlides={data.fetchHeroSlides}
+              askConfirmation={modals.askConfirmation}
             />
           )}
 

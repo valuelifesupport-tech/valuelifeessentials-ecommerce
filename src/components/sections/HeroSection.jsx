@@ -2,9 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, Leaf, Shield, HeartHandshake, Award } from 'lucide-react';
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 
-export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) {
+export default function HeroSection({ 
+  heroConfig, 
+  navigateTo, 
+  sectionsConfig, 
+  heroSlides: propHeroSlides, 
+  activeSlideIndex: propActiveIndex, 
+  onSlideChange 
+}) {
 
-  const [activeSlide, setActiveSlide] = useState(0);
+  const [internalActiveSlide, setInternalActiveSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [slides, setSlides] = useState([
     {
@@ -33,8 +40,17 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
     }
   ]);
 
-  // Fetch dynamic hero slides from API
+  // Sync prop heroSlides if provided
   useEffect(() => {
+    if (propHeroSlides && Array.isArray(propHeroSlides) && propHeroSlides.length > 0) {
+      setSlides(propHeroSlides);
+    }
+  }, [propHeroSlides]);
+
+  // Fetch dynamic hero slides from API if prop not provided
+  useEffect(() => {
+    if (propHeroSlides && Array.isArray(propHeroSlides) && propHeroSlides.length > 0) return;
+
     let isMounted = true;
     fetch(getApiUrl('/api/hero-slides'))
       .then(res => res.json())
@@ -50,16 +66,26 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
         console.warn('Could not fetch hero slides, using fallback:', err.message);
       });
     return () => { isMounted = false; };
-  }, []);
+  }, [propHeroSlides]);
+
+  const activeSlide = propActiveIndex !== undefined ? propActiveIndex : internalActiveSlide;
 
   // Auto-slide effect every 4.5 seconds
   useEffect(() => {
+    if (propActiveIndex !== undefined) return;
     if (isPaused || slides.length <= 1) return;
     const interval = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % slides.length);
+      setInternalActiveSlide(prev => (prev + 1) % slides.length);
     }, 4500);
     return () => clearInterval(interval);
-  }, [isPaused, slides.length]);
+  }, [isPaused, slides.length, propActiveIndex]);
+
+  const handleDotClick = (idx) => {
+    setInternalActiveSlide(idx);
+    if (typeof onSlideChange === 'function') {
+      onSlideChange(idx);
+    }
+  };
 
   const isHeroDisabled = (sectionsConfig && (Number(sectionsConfig.show_hero) === 0 || sectionsConfig.show_hero === false)) || (heroConfig && (Number(heroConfig.hero_enabled) === 0 || heroConfig.hero_enabled === false || heroConfig.hero_enabled === '0'));
   if (isHeroDisabled) return null;
@@ -246,7 +272,7 @@ export default function HeroSection({ heroConfig, navigateTo, sectionsConfig }) 
               <button
                 key={idx}
                 type="button"
-                onClick={() => setActiveSlide(idx)}
+                onClick={() => handleDotClick(idx)}
                 className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
                   activeSlide === idx ? 'w-6 bg-[#164e3f]' : 'bg-gray-300 hover:bg-gray-400'
                 }`}

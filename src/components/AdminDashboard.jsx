@@ -4471,8 +4471,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
                       </div>
 
                       {/* RENDERED HERO SECTION */}
-                      <div className="max-h-[580px] overflow-y-auto bg-slate-950 scrollbar-thin">
-                        <StoreHeroSection heroConfig={heroConfig} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
+                      <div className="max-h-[580px] overflow-y-auto bg-[#fbf9f5] scrollbar-thin">
+                        <StoreHeroSection heroConfig={heroConfig} heroSlides={heroSlides} navigateTo={() => {}} sectionsConfig={sectionsConfig} />
                       </div>
                     </div>
 
