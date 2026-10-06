@@ -11,15 +11,22 @@ export default function OtpVerificationForm({
   onResendOtp,
   onEditInfo
 }) {
+  const rawTarget = pendingEmail || email || '';
+  const isNumericPhone = rawTarget.replace(/\D/g, '').length >= 10 && !rawTarget.includes('@');
+  const displayTarget = isNumericPhone ? `+91 ${rawTarget.replace(/\D/g, '').slice(-10)}` : rawTarget;
+
   return (
     <form onSubmit={onSubmit} className="space-y-4 text-xs" data-reticle-target="user-auth-otp-form">
       <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center text-emerald-900">
-        <div className="font-extrabold text-sm text-[#3b6e14] mb-1">📧 Enter Email Verification Code</div>
+        <div className="font-extrabold text-sm text-[#3b6e14] mb-1">
+          {isNumericPhone ? '📱 Enter Mobile SMS OTP Code' : '📧 Enter Verification Code'}
+        </div>
         <p className="text-[11px] text-gray-600">
-          We sent a 6-digit OTP code to: <strong>{pendingEmail || email}</strong>
+          We sent a 6-digit OTP code to: <strong>{displayTarget}</strong>
         </p>
         <p className="text-[10px] text-emerald-700 mt-1 font-bold">⏱️ Code is valid for 10 minutes</p>
       </div>
+
 
       <div>
         <label className="block font-bold text-gray-700 mb-1 text-center">6-Digit Verification OTP Code *</label>

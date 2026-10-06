@@ -20,6 +20,13 @@ export default function CustomerAuthModal({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
 
+  // Dual-channel OTP Login State
+  const [loginMode, setLoginMode] = useState('OTP'); // 'OTP' | 'PASSWORD'
+  const [loginOtpStep, setLoginOtpStep] = useState(1); // 1 = Input, 2 = Verify
+  const [loginOtp, setLoginOtp] = useState('');
+  const [loginOtpTarget, setLoginOtpTarget] = useState('');
+  const [loginOtpChannel, setLoginOtpChannel] = useState('SMS');
+
   const [regStep, setRegStep] = useState(1); // 1 = Form, 2 = Verify OTP
   const [regOtp, setRegOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
@@ -75,6 +82,84 @@ export default function CustomerAuthModal({
     } finally {
       setLoadingOrders(false);
     }
+  };
+
+  const handleSendLoginOtp = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const loginVal = (phone || email || '').trim();
+    if (!loginVal) {
+      setErrorMsg('Please enter your mobile phone number or email address.');
+      return;
+    }
+    setErrorMsg('');
+    setSuccessMsg('');
+    setLoading(true);
+
+    try {
+      const res = await fetch(getApiUrl('/api/auth/send-login-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: loginVal })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setLoginOtpTarget(data.maskedTarget || loginVal);
+        setLoginOtpChannel(data.channel || (loginVal.includes('@') ? 'EMAIL' : 'SMS'));
+        setLoginOtpStep(2);
+        setSuccessMsg(data.message || 'OTP verification code dispatched!');
+        if (data.devOtp) setLoginOtp(data.devOtp);
+        else setLoginOtp('');
+      } else {
+        setErrorMsg(data.error || 'Failed to send OTP code. Please try again.');
+      }
+    } catch (err) {
+      setErrorMsg('Network error sending OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyLoginOtp = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const loginVal = (phone || email || '').trim();
+    if (!loginOtp || !loginOtp.trim()) {
+      setErrorMsg('Please enter the 6-digit OTP code.');
+      return;
+    }
+    setErrorMsg('');
+    setSuccessMsg('');
+    setLoading(true);
+
+    try {
+      const res = await fetch(getApiUrl('/api/auth/verify-login-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: loginVal, otp: loginOtp.trim() })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.user) {
+        setSuccessMsg(data.message || 'Login successful!');
+        onLoginSuccess(data.user);
+        fetchMyOrders(data.user.email);
+        setTimeout(() => {
+          setActiveTab('PROFILE');
+          setLoginOtpStep(1);
+          setLoginOtp('');
+        }, 600);
+      } else {
+        setErrorMsg(data.error || 'Invalid OTP code. Please verify and try again.');
+      }
+    } catch (err) {
+      setErrorMsg('Network error verifying OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendLoginOtp = async () => {
+    return handleSendLoginOtp();
   };
 
   const handleLoginSubmit = async (e) => {
@@ -154,7 +239,8 @@ export default function CustomerAuthModal({
       } else if (res.ok && data.requireOtp) {
         setPendingEmail(data.email || cleanEmail || cleanPhone);
         setSuccessMsg(data.message || 'Account created! Verification code sent.');
-        setRegOtp(data.devOtp || '');
+        if (data.devOtp || data.otp) setRegOtp(data.devOtp || data.otp);
+        else setRegOtp('');
         setRegStep(2);
       } else if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Registration successful!');
@@ -222,7 +308,8 @@ export default function CustomerAuthModal({
       const data = await res.json();
       if (res.ok) {
         setSuccessMsg(data.message || 'Fresh verification code sent to your email! (Valid for 10 mins).');
-        setRegOtp('');
+        if (data.devOtp || data.otp) setRegOtp(data.devOtp || data.otp);
+        else setRegOtp('');
       } else {
         setErrorMsg(data.error || 'Could not resend OTP code.');
       }
@@ -257,7 +344,8 @@ export default function CustomerAuthModal({
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset OTP sent to your email.');
         if (data.email) setPendingEmail(data.email);
-        setForgotOtp('');
+        if (data.devOtp || data.otp) setForgotOtp(data.devOtp || data.otp);
+        else setForgotOtp('');
         setForgotStep(2);
       } else {
         setErrorMsg(data.error || 'Failed to process request.');
@@ -433,6 +521,17 @@ export default function CustomerAuthModal({
             loading={loading}
             onSubmit={handleLoginSubmit}
             onForgotPassword={() => { setActiveTab('FORGOT'); setErrorMsg(''); setSuccessMsg(''); setForgotStep(1); }}
+            loginMode={loginMode}
+            setLoginMode={setLoginMode}
+            loginOtpStep={loginOtpStep}
+            setLoginOtpStep={setLoginOtpStep}
+            loginOtp={loginOtp}
+            setLoginOtp={setLoginOtp}
+            loginOtpTarget={loginOtpTarget}
+            loginOtpChannel={loginOtpChannel}
+            onSendLoginOtp={handleSendLoginOtp}
+            onVerifyLoginOtp={handleVerifyLoginOtp}
+            onResendLoginOtp={handleResendLoginOtp}
           />
         )}
 

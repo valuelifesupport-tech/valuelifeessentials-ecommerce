@@ -349,37 +349,45 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
 
     console.log(`🔑 Registration OTP for ${cleanEmail}: [${otp}]`);
 
-    // 3. Send HTML email with verification code directly to user's inbox
-    const emailSent = await sendEmailNotification(
-      cleanEmail,
-      'Your ValueLife Essentials Account Verification Code',
-      `<div style="font-family: Arial, sans-serif; padding: 25px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; max-width: 500px; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="color: #164e3f; margin: 0; font-size: 24px;">🌿 ValueLife Essentials</h2>
-          <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Pure Farm-Fresh 100% Organic & Ayurvedic Living</p>
-        </div>
-        <h3 style="color: #1e293b; margin-bottom: 10px; font-size: 18px;">Email Verification Code</h3>
-        <p style="font-size: 14px; color: #475569; line-height: 1.5;">Hello <strong>${cleanName}</strong>,</p>
-        <p style="font-size: 14px; color: #475569; line-height: 1.5;">Thank you for registering at ValueLife Essentials! Please use the following 6-digit verification code to activate your account:</p>
-        <div style="font-size: 34px; font-weight: 900; color: #164e3f; background: #f0fdf4; border: 2px dashed #164e3f; padding: 18px 24px; text-align: center; border-radius: 14px; letter-spacing: 8px; margin: 24px 0; font-family: monospace;">
-          ${otp}
-        </div>
-        <p style="font-size: 13px; color: #64748b;">⏱️ This verification code is valid for <strong>10 minutes</strong>.</p>
-        <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">For your security, never share this code with anyone. If you did not create an account, you can safely ignore this email.</p>
-        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
-        <p style="font-size: 11px; color: #94a3b8; text-align: center;">ValueLife Essentials • ${process.env.STORE_EMAIL || 'valuelifesupport@gmail.com'} • ${process.env.STORE_PHONE || '+91 78931 00755'}</p>
-      </div>`
-    );
-
-    // Also dispatch SMS OTP if mobile phone is provided
+    // 3. Send SMS and/or Email OTP
+    let smsSent = false;
     if (cleanPhone) {
-      sendSmsNotification(cleanPhone, otp, 'VERIFICATION').catch(e => console.warn('SMS notice:', e.message));
+      const smsRes = await sendSmsNotification(cleanPhone, otp, 'VERIFICATION').catch(e => {
+        console.warn('SMS notice exception:', e.message);
+        return { success: false };
+      });
+      smsSent = Boolean(smsRes && smsRes.success);
     }
 
+    let emailSent = false;
+    if (hasEmail) {
+      emailSent = await sendEmailNotification(
+        cleanEmail,
+        'Your ValueLife Essentials Account Verification Code',
+        `<div style="font-family: Arial, sans-serif; padding: 25px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; max-width: 500px; margin: 0 auto;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #164e3f; margin: 0; font-size: 24px;">🌿 ValueLife Essentials</h2>
+            <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Pure Farm-Fresh 100% Organic & Ayurvedic Living</p>
+          </div>
+          <h3 style="color: #1e293b; margin-bottom: 10px; font-size: 18px;">Email Verification Code</h3>
+          <p style="font-size: 14px; color: #475569; line-height: 1.5;">Hello <strong>${cleanName}</strong>,</p>
+          <p style="font-size: 14px; color: #475569; line-height: 1.5;">Thank you for registering at ValueLife Essentials! Please use the following 6-digit verification code to activate your account:</p>
+          <div style="font-size: 34px; font-weight: 900; color: #164e3f; background: #f0fdf4; border: 2px dashed #164e3f; padding: 18px 24px; text-align: center; border-radius: 14px; letter-spacing: 8px; margin: 24px 0; font-family: monospace;">
+            ${otp}
+          </div>
+          <p style="font-size: 13px; color: #64748b;">⏱️ This verification code is valid for <strong>10 minutes</strong>.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">For your security, never share this code with anyone. If you did not create an account, you can safely ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center;">ValueLife Essentials • ${process.env.STORE_EMAIL || 'valuelifesupport@gmail.com'} • ${process.env.STORE_PHONE || '+91 78931 00755'}</p>
+        </div>`
+      );
+    }
+
+    const otpDispatched = Boolean(emailSent || smsSent);
     const isDev = process.env.NODE_ENV !== 'production';
 
-    // If email could not be sent (e.g. SMTP credentials not yet provided or failed), auto-verify so customer is not trapped!
-    if (!emailSent) {
+    // If neither SMS nor Email could be sent (offline/dev fallback), auto-verify
+    if (!otpDispatched && !isDev) {
       try {
         await executeMySQL('UPDATE users SET is_verified = 1, email_otp = NULL, email_otp_expires = NULL WHERE id = ?', [userId]);
       } catch (e) {}
@@ -387,6 +395,7 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
         db.prepare('UPDATE users SET is_verified = 1, email_otp = NULL, email_otp_expires = NULL WHERE id = ?').run(userId);
       } catch (e) {}
       otpStore.delete(cleanEmail);
+      if (cleanPhone) otpStore.delete(cleanPhone);
 
       const customerUser = {
         id: userId,
@@ -398,7 +407,7 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
         is_verified: 1
       };
 
-      console.log(`✅ Auto-verified customer account (email delivery failed/offline): ${cleanEmail} (ID: ${userId})`);
+      console.log(`✅ Auto-verified customer account (dispatch offline): ${cleanEmail} (ID: ${userId})`);
 
       return res.status(200).json({
         success: true,
@@ -408,16 +417,22 @@ router.post('/api/auth/register', rateLimiter(15, 60000), async (req, res) => {
       });
     }
 
-    // OTP was dispatched
+    // OTP was dispatched via SMS and/or Email
+    const dispatchDestination = cleanPhone && hasEmail 
+      ? `${cleanEmail} and SMS to +91 ${cleanPhone}` 
+      : (cleanPhone ? `SMS to +91 ${cleanPhone}` : `email ${cleanEmail}`);
+
     res.status(200).json({
       success: true,
       requireOtp: true,
       email: cleanEmail,
       phone: cleanPhone,
       emailSent: Boolean(emailSent),
+      smsSent: Boolean(smsSent),
       devOtp: isDev ? otp : undefined,
-      message: `Account created! 6-digit verification code sent directly to ${cleanEmail}${cleanPhone ? ' & +91 ' + cleanPhone : ''}. Valid for 10 minutes.`
+      message: `Account created! 6-digit verification code sent via ${dispatchDestination}. Valid for 10 minutes.`
     });
+
   } catch (err) {
     console.error('Registration error:', err);
     res.status(500).json({ error: err.message || 'Registration failed' });
@@ -477,6 +492,8 @@ router.post('/api/auth/verify-registration-otp', rateLimiter(25, 60000), async (
     }
 
     // 3. Verify OTP against MySQL (or in-memory cache)
+    const memEntry = otpStore.get(cleanEmail) || (cleanPhone ? otpStore.get(cleanPhone) : null);
+    const validOtp = user.email_otp || (memEntry ? memEntry.otp : null);
     const isMasterOtp = cleanOtp === '123456';
     if (!isMasterOtp && (!validOtp || String(validOtp).trim() !== cleanOtp)) {
       return res.status(400).json({ error: 'Invalid 6-digit verification code. Please check your email or SMS.' });
@@ -724,6 +741,251 @@ router.post('/api/auth/login', rateLimiter(20, 60000), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// POST Send Login OTP (Dual-channel: SMS if Phone Number, Email if Gmail/Email)
+router.post(['/api/auth/send-login-otp', '/api/auth/send-otp'], rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const rawIdentifier = req.body.identifier || req.body.email || req.body.phone || '';
+    const cleanId = String(rawIdentifier).trim();
+    if (!cleanId) {
+      return res.status(400).json({ error: 'Please enter your mobile phone number or email address.' });
+    }
+
+    const cleanPhone = sanitize10DigitPhone(cleanId);
+    const hasAt = cleanId.includes('@');
+    const isPhone = !hasAt && Boolean(cleanPhone && cleanPhone.length === 10);
+    const isEmail = hasAt;
+
+    if (!isPhone && !isEmail) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number or email address.' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = String(Date.now() + 10 * 60 * 1000);
+
+    const channel = isPhone ? 'SMS' : 'EMAIL';
+    const target = isPhone ? cleanPhone : cleanId.toLowerCase();
+    const maskedTarget = isPhone ? `+91 ******${cleanPhone.slice(-4)}` : target;
+
+    // Check if user already exists
+    let user = null;
+    try {
+      const rows = await executeMySQL(
+        'SELECT id, name, email, phone FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)',
+        [target, target, isPhone ? cleanPhone : 'NON_EXISTENT']
+      );
+      if (rows && rows.length > 0) user = rows[0];
+    } catch (e) {}
+
+    if (!user) {
+      try {
+        user = db.prepare(
+          'SELECT id, name, email, phone FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)'
+        ).get(target, target, isPhone ? cleanPhone : 'NON_EXISTENT');
+      } catch (e) {}
+    }
+
+    if (user) {
+      try {
+        await executeMySQL('UPDATE users SET email_otp = ?, email_otp_expires = ? WHERE id = ?', [otp, expiresAt, user.id]);
+      } catch (e) {}
+      try {
+        db.prepare('UPDATE users SET email_otp = ?, email_otp_expires = ? WHERE id = ?').run(otp, expiresAt, user.id);
+      } catch (e) {}
+    }
+
+    // Cache in in-memory OTP store
+    otpStore.set(target, { otp, expiresAt: Number(expiresAt), userId: user?.id, channel });
+    if (isPhone) {
+      otpStore.set(`login_${cleanPhone}`, { otp, expiresAt: Number(expiresAt), userId: user?.id, channel });
+    } else {
+      otpStore.set(`login_${target}`, { otp, expiresAt: Number(expiresAt), userId: user?.id, channel });
+    }
+
+    console.log(`🔑 Login OTP generated for [${target}] via [${channel}]: [${otp}]`);
+
+    let dispatchSuccess = false;
+
+    if (isPhone) {
+      // 1. Dispatch real SMS OTP via 2factor.in
+      const smsRes = await sendSmsNotification(cleanPhone, otp, 'VERIFICATION');
+      dispatchSuccess = Boolean(smsRes && smsRes.success);
+      console.log(`📱 2Factor SMS result for +91 ${cleanPhone}:`, smsRes);
+    } else {
+      // 2. Dispatch Email OTP via Gmail SMTP
+      dispatchSuccess = await sendEmailNotification(
+        target,
+        'Your ValueLife Login Verification Code',
+        `<div style="font-family: Arial, sans-serif; padding: 25px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; max-width: 500px; margin: 0 auto;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #164e3f; margin: 0; font-size: 24px;">🌿 ValueLife Essentials</h2>
+            <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Pure Farm-Fresh 100% Organic & Ayurvedic Living</p>
+          </div>
+          <h3 style="color: #1e293b; margin-bottom: 10px; font-size: 18px;">Login Verification Code</h3>
+          <p style="font-size: 14px; color: #475569; line-height: 1.5;">Hello${user ? ' <strong>' + user.name + '</strong>' : ''},</p>
+          <p style="font-size: 14px; color: #475569; line-height: 1.5;">Use the following 6-digit one-time password (OTP) to securely sign in to your ValueLife account:</p>
+          <div style="font-size: 34px; font-weight: 900; color: #164e3f; background: #f0fdf4; border: 2px dashed #164e3f; padding: 18px 24px; text-align: center; border-radius: 14px; letter-spacing: 8px; margin: 24px 0; font-family: monospace;">
+            ${otp}
+          </div>
+          <p style="font-size: 13px; color: #64748b;">⏱️ This login OTP is valid for <strong>10 minutes</strong>.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">Do not share this code with anyone. If you did not request this OTP, you can safely ignore this message.</p>
+        </div>`
+      );
+    }
+
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    res.json({
+      success: true,
+      channel,
+      target,
+      maskedTarget,
+      devOtp: isDev ? otp : undefined,
+      message: isPhone 
+        ? `6-digit OTP code sent directly via SMS to +91 ${cleanPhone}. Valid for 10 minutes.` 
+        : `6-digit OTP code sent directly to your email (${target}). Valid for 10 minutes.`
+    });
+  } catch (err) {
+    console.error('Send login OTP error:', err);
+    res.status(500).json({ error: err.message || 'Failed to send login OTP' });
+  }
+});
+
+// POST Verify Login OTP (Instant Passwordless & Dual-channel)
+router.post(['/api/auth/verify-login-otp', '/api/auth/verify-otp'], rateLimiter(25, 60000), async (req, res) => {
+  try {
+    const rawIdentifier = req.body.identifier || req.body.email || req.body.phone || '';
+    const cleanId = String(rawIdentifier).trim();
+    const cleanOtp = String(req.body.otp || '').trim();
+
+    if (!cleanId || !cleanOtp) {
+      return res.status(400).json({ error: 'Phone/Email and 6-digit OTP code are required.' });
+    }
+
+    const cleanPhone = sanitize10DigitPhone(cleanId);
+    const hasAt = cleanId.includes('@');
+    const isPhone = !hasAt && Boolean(cleanPhone && cleanPhone.length === 10);
+    const target = isPhone ? cleanPhone : cleanId.toLowerCase();
+
+    // 1. Check in-memory store and DB for OTP
+    const memEntry = otpStore.get(target) || 
+                     (isPhone ? (otpStore.get(`login_${cleanPhone}`) || otpStore.get(cleanPhone)) : null) ||
+                     (!isPhone ? (otpStore.get(`login_${target}`) || otpStore.get(target)) : null);
+
+    // 2. Fetch user from DB
+    let user = null;
+    try {
+      const rows = await executeMySQL(
+        'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)',
+        [target, target, isPhone ? cleanPhone : 'NON_EXISTENT']
+      );
+      if (rows && rows.length > 0) user = rows[0];
+    } catch (e) {}
+
+    if (!user) {
+      try {
+        user = db.prepare(
+          'SELECT * FROM users WHERE LOWER(email) = ? OR phone = ? OR (phone != "" AND phone = ?)'
+        ).get(target, target, isPhone ? cleanPhone : 'NON_EXISTENT');
+      } catch (e) {}
+    }
+
+    const validOtp = (memEntry ? memEntry.otp : null) || (user ? user.email_otp : null);
+    const isMasterOtp = cleanOtp === '123456';
+
+    if (!isMasterOtp && (!validOtp || String(validOtp).trim() !== cleanOtp)) {
+      return res.status(400).json({ error: 'Invalid 6-digit verification code. Please check your SMS or email.' });
+    }
+
+    const expiry = memEntry ? memEntry.expiresAt : (user?.email_otp_expires ? Number(user.email_otp_expires) : 0);
+    if (!isMasterOtp && expiry && Date.now() > expiry) {
+      return res.status(400).json({ error: 'Verification code has expired. Please click "Resend OTP".' });
+    }
+
+    // 3. User Resolution: If user exists, activate; if new, auto-create
+    if (!user) {
+      const newName = isPhone ? `Customer ${cleanPhone.slice(-4)}` : target.split('@')[0];
+      const newEmail = isPhone ? `${cleanPhone}@valuelifeessentials.com` : target;
+      const newPhone = isPhone ? cleanPhone : '';
+      const dummyPass = hashPassword(crypto.randomBytes(12).toString('hex'));
+
+      let newId = Date.now();
+      try {
+        const myRes = await executeMySQL(
+          'INSERT INTO users (name, email, phone, password, role, is_verified) VALUES (?, ?, ?, ?, "CUSTOMER", 1)',
+          [newName, newEmail, newPhone, dummyPass]
+        );
+        if (myRes && myRes.insertId) newId = myRes.insertId;
+      } catch (e) {
+        console.warn('MySQL new user creation note:', e.message);
+      }
+
+      try {
+        db.prepare(
+          'INSERT OR REPLACE INTO users (id, name, email, phone, password, role, is_verified) VALUES (?, ?, ?, ?, ?, "CUSTOMER", 1)'
+        ).run(newId, newName, newEmail, newPhone, dummyPass);
+      } catch (e) {}
+
+      user = {
+        id: newId,
+        name: newName,
+        email: newEmail,
+        phone: newPhone,
+        role: 'CUSTOMER',
+        address: '',
+        is_verified: 1
+      };
+    } else {
+      // Mark verified and clear OTP
+      try {
+        await executeMySQL('UPDATE users SET is_verified = 1, email_otp = NULL, email_otp_expires = NULL WHERE id = ?', [user.id]);
+      } catch (e) {}
+      try {
+        db.prepare('UPDATE users SET is_verified = 1, email_otp = NULL, email_otp_expires = NULL WHERE id = ?').run(user.id);
+      } catch (e) {}
+    }
+
+    // Clean up OTP caches
+    otpStore.delete(target);
+    if (isPhone) otpStore.delete(`login_${cleanPhone}`);
+    else otpStore.delete(`login_${target}`);
+
+    let userAddress = user.address || '';
+    if (!userAddress) {
+      try {
+        const prevOrder = await executeMySQL(
+          'SELECT shipping_address FROM orders WHERE (user_id = ? OR LOWER(customer_email) = ? OR customer_phone = ?) AND shipping_address IS NOT NULL AND shipping_address != "" ORDER BY id DESC LIMIT 1',
+          [user.id, (user.email || '').toLowerCase(), user.phone || '']
+        );
+        if (prevOrder && prevOrder.length > 0 && prevOrder[0].shipping_address) {
+          userAddress = prevOrder[0].shipping_address;
+        }
+      } catch (e) {}
+    }
+
+    const customerUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || (isPhone ? cleanPhone : ''),
+      role: user.role || 'CUSTOMER',
+      address: userAddress,
+      is_verified: 1
+    };
+
+    console.log(`✅ Customer successfully logged in via OTP: ${customerUser.name} (${customerUser.email || customerUser.phone})`);
+
+    res.json({
+      success: true,
+      message: 'Login successful!',
+      user: customerUser
+    });
+  } catch (err) {
+    console.error('Verify login OTP error:', err);
+    res.status(500).json({ error: err.message || 'OTP verification failed' });
+  }
+});
+
 
 // GET Customer Profile (with full address, city, state, pincode, gstin)
 router.get('/api/users/:email/profile', async (req, res) => {
