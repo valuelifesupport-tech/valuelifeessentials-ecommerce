@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, ToggleRight, ToggleLeft, Plus, Edit, Trash2, 
   CheckCircle, XCircle, Eye, ArrowRight, Image as ImageIcon,
-  Layers, ExternalLink, HelpCircle
+  Layers, ExternalLink, HelpCircle, LayoutGrid, Monitor
 } from 'lucide-react';
 import ImageUploader from '../../common/ImageUploader';
 import HeroSection from '../../sections/HeroSection';
@@ -31,6 +31,7 @@ export default function HeroTab({
   const [previewSlideIndex, setPreviewSlideIndex] = useState(0);
 
   const initialSlideForm = {
+    slide_type: 'SPLIT', // 'SPLIT' | 'FULL_BANNER'
     title_part1: '',
     title_part2: '',
     tagline: '100% Nature pure Essentials',
@@ -40,6 +41,9 @@ export default function HeroTab({
     packaging_img: '',
     jars_img: '',
     script_quote: 'Good Products, Brighter Days.',
+    banner_img: '',
+    mobile_banner_img: '',
+    show_overlay_text: 0,
     sort_order: (heroSlides?.length || 0) + 1,
     is_active: 1
   };
@@ -78,6 +82,7 @@ export default function HeroTab({
   const handleOpenEditSlide = (slide) => {
     setEditingSlide(slide);
     setSlideForm({
+      slide_type: slide.slide_type || 'SPLIT',
       title_part1: slide.title_part1 || '',
       title_part2: slide.title_part2 || '',
       tagline: slide.tagline || '',
@@ -87,6 +92,9 @@ export default function HeroTab({
       packaging_img: slide.packaging_img || '',
       jars_img: slide.jars_img || '',
       script_quote: slide.script_quote || '',
+      banner_img: slide.banner_img || slide.packaging_img || '',
+      mobile_banner_img: slide.mobile_banner_img || '',
+      show_overlay_text: slide.show_overlay_text !== undefined ? Number(slide.show_overlay_text) : 0,
       sort_order: slide.sort_order !== undefined ? Number(slide.sort_order) : 0,
       is_active: slide.is_active !== undefined ? Number(slide.is_active) : 1
     });
@@ -96,9 +104,24 @@ export default function HeroTab({
   // Submit Add or Edit Slide
   const handleSlideFormSubmit = async (e) => {
     e.preventDefault();
-    if (!slideForm.title_part1) {
-      if (showToast) showToast('error', 'Title Required', 'Please enter Headline Part 1.');
-      return;
+
+    // Validation based on slide format
+    if (slideForm.slide_type === 'FULL_BANNER') {
+      if (!slideForm.banner_img && !slideForm.packaging_img) {
+        if (showToast) showToast('error', 'Banner Required', 'Please upload or enter a Full Screen Banner image.');
+        return;
+      }
+      if (!slideForm.title_part1) {
+        slideForm.title_part1 = 'Promotional Banner';
+      }
+      if (!slideForm.packaging_img && slideForm.banner_img) {
+        slideForm.packaging_img = slideForm.banner_img;
+      }
+    } else {
+      if (!slideForm.title_part1) {
+        if (showToast) showToast('error', 'Title Required', 'Please enter Headline Part 1.');
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -224,14 +247,14 @@ export default function HeroTab({
         <div>
           <div className="flex items-center gap-2.5">
             <h3 className="text-lg font-extrabold text-white flex items-center gap-2 font-['Outfit']">
-              <Sparkles className="text-emerald-400" size={20} /> Storefront Hero Carousel Studio
+              <Sparkles className="text-emerald-400" size={20} /> Storefront Hero Carousel & Studio
             </h3>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-950 text-emerald-400 border border-emerald-800">
               {heroSlides?.length || 0} Slides
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Create, edit, sort and manage dynamic rotating slides shown on your live homepage. Live preview on right matches storefront 100%.
+            Create, edit, sort and manage dynamic slides or full-screen graphic banners. Live preview on right matches storefront 100%.
           </p>
         </div>
 
@@ -310,7 +333,7 @@ export default function HeroTab({
                 <Sparkles className="mx-auto text-emerald-400" size={32} />
                 <p className="text-sm font-bold text-slate-200">No slides found in database</p>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  Click the button below to add your first dynamic rotating slide with custom headline, tagline, and packaging image.
+                  Click the button below to add your first dynamic slide or full-screen graphic banner.
                 </p>
                 <button
                   type="button"
@@ -325,6 +348,7 @@ export default function HeroTab({
                 {heroSlides.map((slide, idx) => {
                   const isActive = Number(slide.is_active) === 1;
                   const isSelectedForPreview = previewSlideIndex === idx;
+                  const isFullBanner = slide.slide_type === 'FULL_BANNER';
 
                   return (
                     <div 
@@ -335,19 +359,29 @@ export default function HeroTab({
                           : 'border-slate-800 hover:border-slate-700'
                       }`}
                     >
-                      {/* Top Bar: Order, Tagline & Action Buttons */}
+                      {/* Top Bar: Order, Type Badge, Tagline & Action Buttons */}
                       <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center text-xs font-black">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="w-6 h-6 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center text-xs font-black shrink-0">
                             {slide.sort_order || idx + 1}
                           </span>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-900/60">
+
+                          {/* Format Badge */}
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
+                            isFullBanner 
+                              ? 'bg-purple-950/80 text-purple-300 border-purple-800' 
+                              : 'bg-emerald-950/80 text-emerald-400 border-emerald-800'
+                          }`}>
+                            {isFullBanner ? '🖼️ FULL BANNER' : '📦 SPLIT CONTENT'}
+                          </span>
+
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                             {slide.tagline || 'HERO SLIDE'}
                           </span>
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {/* Active / Inactive toggle */}
                           <button
                             type="button"
@@ -417,38 +451,61 @@ export default function HeroTab({
 
                       {/* Image Thumbnails & Info Row */}
                       <div className="flex items-center gap-3 pt-1 border-t border-slate-850">
-                        {/* Packaging Image Thumbnail */}
-                        <div className="w-16 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
-                          {slide.packaging_img ? (
-                            <img 
-                              src={resolveImgUrl(slide.packaging_img)} 
-                              alt="Packaging" 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-600">No Img</div>
-                          )}
-                        </div>
-
-                        {/* Floating Jars Image Thumbnail */}
-                        {slide.jars_img && (
-                          <div className="w-12 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
-                            <img 
-                              src={resolveImgUrl(slide.jars_img)} 
-                              alt="Jars" 
-                              className="w-full h-full object-cover"
-                            />
+                        {/* If Full Banner: show wide banner thumbnail */}
+                        {isFullBanner ? (
+                          <div className="w-28 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
+                            {slide.banner_img || slide.packaging_img ? (
+                              <img 
+                                src={resolveImgUrl(slide.banner_img || slide.packaging_img)} 
+                                alt="Full Banner" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-600">No Banner Img</div>
+                            )}
                           </div>
+                        ) : (
+                          <>
+                            {/* Packaging Image Thumbnail */}
+                            <div className="w-16 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
+                              {slide.packaging_img ? (
+                                <img 
+                                  src={resolveImgUrl(slide.packaging_img)} 
+                                  alt="Packaging" 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-600">No Img</div>
+                              )}
+                            </div>
+
+                            {/* Floating Jars Image Thumbnail */}
+                            {slide.jars_img && (
+                              <div className="w-12 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
+                                <img 
+                                  src={resolveImgUrl(slide.jars_img)} 
+                                  alt="Jars" 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
 
                         <div className="min-w-0 text-[11px] text-slate-400 space-y-0.5 truncate flex-1">
                           <div className="truncate">
-                            <strong className="text-slate-300">CTA:</strong> {slide.cta_text || 'Shop Now'} → <span className="font-mono text-[10px] text-slate-500">{slide.cta_link || '/products'}</span>
+                            <strong className="text-slate-300">Target Link:</strong> <span className="font-mono text-[10px] text-emerald-400">{slide.cta_link || '/products'}</span>
                           </div>
-                          {slide.script_quote && (
-                            <div className="italic text-emerald-400/80 truncate font-serif">
-                              "{slide.script_quote}"
+                          {isFullBanner ? (
+                            <div className="text-[10px] text-purple-300 font-bold">
+                              Overlay Text: {Number(slide.show_overlay_text) === 1 ? 'Enabled' : 'Disabled (Pure Graphic)'}
                             </div>
+                          ) : (
+                            slide.script_quote && (
+                              <div className="italic text-emerald-400/80 truncate font-serif">
+                                "{slide.script_quote}"
+                              </div>
+                            )
                           )}
                         </div>
                       </div>
@@ -494,7 +551,7 @@ export default function HeroTab({
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
-                    Slide #{idx + 1} {s.title_part1 ? `(${s.title_part1.slice(0, 10)}...)` : ''}
+                    Slide #{idx + 1} {s.slide_type === 'FULL_BANNER' ? '🖼️ (Banner)' : '📦 (Split)'}
                   </button>
                 ))}
               </div>
@@ -552,7 +609,7 @@ export default function HeroTab({
             </div>
 
             <p className="text-[10px] text-slate-400 text-center font-medium">
-              💡 The preview above renders the exact storefront hero with real rotating slides from database, kraft packaging imagery, cursive script quote & trust badges!
+              💡 The preview above renders the exact storefront hero with real rotating slides or full-screen graphic banners from database!
             </p>
           </div>
         </div>
@@ -561,12 +618,12 @@ export default function HeroTab({
       {/* HERO SLIDE MODAL (CREATE / EDIT) */}
       {showSlideModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" data-reticle-target="admin-hero-slide-modal">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">HERO STUDIO</span>
                 <h3 className="font-extrabold text-base text-white font-['Outfit']">
-                  {editingSlide ? 'Edit Rotating Hero Slide' : 'Add New Rotating Hero Slide'}
+                  {editingSlide ? 'Edit Hero Slide' : 'Add New Hero Slide'}
                 </h3>
               </div>
               <button 
@@ -579,107 +636,277 @@ export default function HeroTab({
             </div>
 
             <form onSubmit={handleSlideFormSubmit} className="space-y-4 text-xs">
-              {/* Headlines */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">Headline Part 1 *</label>
-                  <input 
-                    type="text" required
-                    value={slideForm.title_part1}
-                    onChange={(e) => setSlideForm({ ...slideForm, title_part1: e.target.value })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
-                    placeholder="e.g. Better Choices"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">Headline Part 2 (Green Italic)</label>
-                  <input 
-                    type="text"
-                    value={slideForm.title_part2}
-                    onChange={(e) => setSlideForm({ ...slideForm, title_part2: e.target.value })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-serif italic"
-                    placeholder="e.g. Better Life."
-                  />
-                </div>
-              </div>
+              {/* 1. SLIDE FORMAT / LAYOUT PICKER */}
+              <div className="p-3.5 bg-slate-850 rounded-2xl border border-slate-800 space-y-2">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                  1. Choose Slide Format / Style
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* OPTION A: SPLIT CONTENT */}
+                  <button
+                    type="button"
+                    onClick={() => setSlideForm({ ...slideForm, slide_type: 'SPLIT' })}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      slideForm.slide_type === 'SPLIT'
+                        ? 'bg-emerald-950/80 border-emerald-500 text-white ring-2 ring-emerald-500/30'
+                        : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-extrabold text-xs text-white flex items-center gap-1.5">
+                        <LayoutGrid size={15} className="text-emerald-400" /> Split Content Slide
+                      </span>
+                      {slideForm.slide_type === 'SPLIT' && <CheckCircle size={14} className="text-emerald-400" />}
+                    </div>
+                    <p className="text-[10px] opacity-80 leading-normal">
+                      Left text headline & button + Right craft product packaging card and jars flourish.
+                    </p>
+                  </button>
 
-              {/* Tagline Pill */}
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Tagline Pill *</label>
-                <input 
-                  type="text" required
-                  value={slideForm.tagline}
-                  onChange={(e) => setSlideForm({ ...slideForm, tagline: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold tracking-wider"
-                  placeholder="e.g. 100% Nature pure Essentials"
-                />
-              </div>
-
-              {/* Description Subtext */}
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Description Subtext</label>
-                <textarea 
-                  rows={2}
-                  value={slideForm.description}
-                  onChange={(e) => setSlideForm({ ...slideForm, description: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium"
-                  placeholder="Discover natural, healthy and premium products for a smarter, happier everyday life."
-                />
-              </div>
-
-              {/* CTA Button Text & Link */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">CTA Button Text</label>
-                  <input 
-                    type="text"
-                    value={slideForm.cta_text}
-                    onChange={(e) => setSlideForm({ ...slideForm, cta_text: e.target.value })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
-                    placeholder="Shop Now"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">CTA Target Link</label>
-                  <input 
-                    type="text"
-                    value={slideForm.cta_link}
-                    onChange={(e) => setSlideForm({ ...slideForm, cta_link: e.target.value })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono"
-                    placeholder="/products"
-                  />
+                  {/* OPTION B: FULL SCREEN BANNER */}
+                  <button
+                    type="button"
+                    onClick={() => setSlideForm({ ...slideForm, slide_type: 'FULL_BANNER' })}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      slideForm.slide_type === 'FULL_BANNER'
+                        ? 'bg-purple-950/80 border-purple-500 text-white ring-2 ring-purple-500/30'
+                        : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-extrabold text-xs text-white flex items-center gap-1.5">
+                        <Monitor size={15} className="text-purple-400" /> Full-Screen Graphic Banner
+                      </span>
+                      {slideForm.slide_type === 'FULL_BANNER' && <CheckCircle size={14} className="text-purple-400" />}
+                    </div>
+                    <p className="text-[10px] opacity-80 leading-normal">
+                      Full-width promotional banner image (e.g. designed festive sales, new launches). Clickable to any link.
+                    </p>
+                  </button>
                 </div>
               </div>
 
-              {/* Script Quote */}
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Script Quote (Cursive Flourish)</label>
-                <input 
-                  type="text"
-                  value={slideForm.script_quote}
-                  onChange={(e) => setSlideForm({ ...slideForm, script_quote: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-serif italic"
-                  placeholder="e.g. Good Products, Brighter Days."
-                />
-              </div>
+              {/* 2. FORM FIELDS BASED ON SLIDE TYPE */}
+              {slideForm.slide_type === 'FULL_BANNER' ? (
+                /* FULL SCREEN BANNER INPUTS */
+                <div className="space-y-4 p-3.5 bg-slate-850 rounded-2xl border border-slate-800">
+                  <span className="block text-[11px] font-black uppercase tracking-wider text-purple-400">
+                    2. Full-Screen Banner Configuration
+                  </span>
 
-              {/* Primary Packaging Image */}
-              <ImageUploader 
-                label="Primary Product Packaging Image *"
-                value={slideForm.packaging_img}
-                onChange={(url) => setSlideForm({ ...slideForm, packaging_img: url })}
-                placeholder="Upload primary product kraft pouch or paste image URL..."
-              />
+                  {/* Primary Desktop Banner Image */}
+                  <ImageUploader 
+                    label="Desktop Full-Width Banner Image * (Recommended: 1920x600 px or 1600x500 px)"
+                    value={slideForm.banner_img || slideForm.packaging_img}
+                    onChange={(url) => setSlideForm({ ...slideForm, banner_img: url, packaging_img: url })}
+                    placeholder="Upload full-screen banner image or paste URL..."
+                  />
 
-              {/* Secondary Floating Accent Image */}
-              <ImageUploader 
-                label="Secondary Floating Visual Image (Optional Accent)"
-                value={slideForm.jars_img}
-                onChange={(url) => setSlideForm({ ...slideForm, jars_img: url })}
-                placeholder="Upload secondary accent image (jars, honey, leaves)..."
-              />
+                  {/* Mobile-Optimized Banner Image */}
+                  <ImageUploader 
+                    label="Mobile Banner Image (Optional - Recommended for small phone screens: 800x600 px)"
+                    value={slideForm.mobile_banner_img}
+                    onChange={(url) => setSlideForm({ ...slideForm, mobile_banner_img: url })}
+                    placeholder="Upload mobile-optimized banner image (optional)..."
+                  />
 
-              {/* Sort Order & Active Status */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-300 mb-1">Banner Click Target Link *</label>
+                      <input 
+                        type="text" required
+                        value={slideForm.cta_link}
+                        onChange={(e) => setSlideForm({ ...slideForm, cta_link: e.target.value })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono"
+                        placeholder="/products or /offers"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Clicking anywhere on the banner opens this link</span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-300 mb-1">Internal Slide Name / Title</label>
+                      <input 
+                        type="text"
+                        value={slideForm.title_part1}
+                        onChange={(e) => setSlideForm({ ...slideForm, title_part1: e.target.value })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                        placeholder="e.g. Festive Mega Sale Banner"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Helps you identify this slide in admin list</span>
+                    </div>
+                  </div>
+
+                  {/* Overlay Text Toggle */}
+                  <div className="p-3 bg-slate-800 rounded-xl border border-slate-700 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-extrabold text-xs text-white block">Overlay Text & CTA Button</span>
+                        <span className="text-[10px] text-slate-400">
+                          Turn ON only if your banner image does NOT already contain text graphics.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSlideForm({ ...slideForm, show_overlay_text: Number(slideForm.show_overlay_text) === 1 ? 0 : 1 })}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-black transition-colors cursor-pointer ${
+                          Number(slideForm.show_overlay_text) === 1 
+                            ? 'bg-emerald-600 text-white' 
+                            : 'bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {Number(slideForm.show_overlay_text) === 1 ? 'OVERLAY ON' : 'OVERLAY OFF (Pure Graphic)'}
+                      </button>
+                    </div>
+
+                    {Number(slideForm.show_overlay_text) === 1 && (
+                      <div className="space-y-3 pt-2 border-t border-slate-700">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block font-bold text-slate-300 mb-1">Tagline Badge</label>
+                            <input 
+                              type="text"
+                              value={slideForm.tagline}
+                              onChange={(e) => setSlideForm({ ...slideForm, tagline: e.target.value })}
+                              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                              placeholder="e.g. SPECIAL OFFER"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-300 mb-1">CTA Button Label</label>
+                            <input 
+                              type="text"
+                              value={slideForm.cta_text}
+                              onChange={(e) => setSlideForm({ ...slideForm, cta_text: e.target.value })}
+                              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+                              placeholder="Shop Now"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-300 mb-1">Banner Description Subtext</label>
+                          <textarea 
+                            rows={2}
+                            value={slideForm.description}
+                            onChange={(e) => setSlideForm({ ...slideForm, description: e.target.value })}
+                            className="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                            placeholder="Optional banner subtitle description..."
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* SPLIT CONTENT INPUTS */
+                <div className="space-y-4 p-3.5 bg-slate-850 rounded-2xl border border-slate-800">
+                  <span className="block text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                    2. Split Content Headlines & Imagery
+                  </span>
+
+                  {/* Headlines */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-300 mb-1">Headline Part 1 *</label>
+                      <input 
+                        type="text" required
+                        value={slideForm.title_part1}
+                        onChange={(e) => setSlideForm({ ...slideForm, title_part1: e.target.value })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                        placeholder="e.g. Better Choices"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-300 mb-1">Headline Part 2 (Green Italic)</label>
+                      <input 
+                        type="text"
+                        value={slideForm.title_part2}
+                        onChange={(e) => setSlideForm({ ...slideForm, title_part2: e.target.value })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-serif italic"
+                        placeholder="e.g. Better Life."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tagline Pill */}
+                  <div>
+                    <label className="block font-bold text-slate-300 mb-1">Tagline Pill *</label>
+                    <input 
+                      type="text" required
+                      value={slideForm.tagline}
+                      onChange={(e) => setSlideForm({ ...slideForm, tagline: e.target.value })}
+                      className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold tracking-wider"
+                      placeholder="e.g. 100% Nature pure Essentials"
+                    />
+                  </div>
+
+                  {/* Description Subtext */}
+                  <div>
+                    <label className="block font-bold text-slate-300 mb-1">Description Subtext</label>
+                    <textarea 
+                      rows={2}
+                      value={slideForm.description}
+                      onChange={(e) => setSlideForm({ ...slideForm, description: e.target.value })}
+                      className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium"
+                      placeholder="Discover natural, healthy and premium products for a smarter, happier everyday life."
+                    />
+                  </div>
+
+                  {/* CTA Button Text & Link */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-300 mb-1">CTA Button Text</label>
+                      <input 
+                        type="text"
+                        value={slideForm.cta_text}
+                        onChange={(e) => setSlideForm({ ...slideForm, cta_text: e.target.value })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                        placeholder="Shop Now"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-300 mb-1">CTA Target Link</label>
+                      <input 
+                        type="text"
+                        value={slideForm.cta_link}
+                        onChange={(e) => setSlideForm({ ...slideForm, cta_link: e.target.value })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono"
+                        placeholder="/products"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Script Quote */}
+                  <div>
+                    <label className="block font-bold text-slate-300 mb-1">Script Quote (Cursive Flourish)</label>
+                    <input 
+                      type="text"
+                      value={slideForm.script_quote}
+                      onChange={(e) => setSlideForm({ ...slideForm, script_quote: e.target.value })}
+                      className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-serif italic"
+                      placeholder="e.g. Good Products, Brighter Days."
+                    />
+                  </div>
+
+                  {/* Primary Packaging Image */}
+                  <ImageUploader 
+                    label="Primary Product Packaging Image *"
+                    value={slideForm.packaging_img}
+                    onChange={(url) => setSlideForm({ ...slideForm, packaging_img: url })}
+                    placeholder="Upload primary product kraft pouch or paste image URL..."
+                  />
+
+                  {/* Secondary Floating Accent Image */}
+                  <ImageUploader 
+                    label="Secondary Floating Visual Image (Optional Accent)"
+                    value={slideForm.jars_img}
+                    onChange={(url) => setSlideForm({ ...slideForm, jars_img: url })}
+                    placeholder="Upload secondary accent image (jars, honey, leaves)..."
+                  />
+                </div>
+              )}
+
+              {/* 3. SORT ORDER & ACTIVE STATUS */}
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block font-bold text-slate-300 mb-1">Sort Order</label>

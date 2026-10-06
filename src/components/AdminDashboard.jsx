@@ -1457,6 +1457,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleOpenAddHeroSlide = () => {
     setEditingHeroSlide(null);
     setHeroSlideForm({
+      slide_type: 'SPLIT',
       title_part1: '',
       title_part2: '',
       tagline: 'NATURAL • HEALTHY • SUSTAINABLE',
@@ -1466,6 +1467,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       packaging_img: '',
       jars_img: '',
       script_quote: 'Good Products, Brighter Days.',
+      banner_img: '',
+      mobile_banner_img: '',
+      show_overlay_text: 0,
       sort_order: heroSlides.length + 1,
       is_active: 1
     });
@@ -1475,6 +1479,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const handleOpenEditHeroSlide = (slide) => {
     setEditingHeroSlide(slide);
     setHeroSlideForm({
+      slide_type: slide.slide_type || 'SPLIT',
       title_part1: slide.title_part1 || '',
       title_part2: slide.title_part2 || '',
       tagline: slide.tagline || '',
@@ -1484,6 +1489,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
       packaging_img: slide.packaging_img || '',
       jars_img: slide.jars_img || '',
       script_quote: slide.script_quote || '',
+      banner_img: slide.banner_img || slide.packaging_img || '',
+      mobile_banner_img: slide.mobile_banner_img || '',
+      show_overlay_text: slide.show_overlay_text !== undefined ? Number(slide.show_overlay_text) : 0,
       sort_order: slide.sort_order || 0,
       is_active: slide.is_active !== undefined ? Number(slide.is_active) : 1
     });

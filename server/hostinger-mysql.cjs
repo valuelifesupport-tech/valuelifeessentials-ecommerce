@@ -421,6 +421,10 @@ async function setupHostingerMySQL() {
         script_quote VARCHAR(255) DEFAULT 'Good Products, Brighter Days.',
         sort_order INT DEFAULT 0,
         is_active INT DEFAULT 1,
+        slide_type VARCHAR(50) DEFAULT 'SPLIT',
+        banner_img TEXT,
+        mobile_banner_img TEXT,
+        show_overlay_text INT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

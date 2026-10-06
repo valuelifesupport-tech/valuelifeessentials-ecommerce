@@ -15,6 +15,7 @@ export default function HeroSection({
   const [slides, setSlides] = useState([
     {
       id: 1,
+      slide_type: 'SPLIT',
       tagline: 'NATURAL • HEALTHY • SUSTAINABLE',
       title_part1: 'Better Choices',
       title_part2: 'Better Life.',
@@ -27,6 +28,7 @@ export default function HeroSection({
     },
     {
       id: 2,
+      slide_type: 'SPLIT',
       tagline: '100% Nature pure Essentials',
       title_part1: 'Pure Superfoods',
       title_part2: 'Pure Vitality.',
@@ -83,6 +85,7 @@ export default function HeroSection({
   if (isHeroDisabled) return null;
 
   const currentSlide = slides[activeSlide] || slides[0] || {};
+  const isFullBanner = currentSlide.slide_type === 'FULL_BANNER';
 
   const handleCta = (link) => {
     const targetLink = link || currentSlide.cta_link || currentSlide.ctaLink || '/products';
@@ -123,164 +126,238 @@ export default function HeroSection({
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Background Soft Natural Lighting Accents */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 right-1/4 w-96 h-96 bg-amber-100/30 rounded-full blur-3xl pointer-events-none" />
+      {/* Background Soft Natural Lighting Accents for Split mode */}
+      {!isFullBanner && (
+        <>
+          <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-32 right-1/4 w-96 h-96 bg-amber-100/30 rounded-full blur-3xl pointer-events-none" />
+        </>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          
-          {/* Left Content Column (6 cols) */}
-          <div className="lg:col-span-6 space-y-5 z-10 text-center lg:text-left">
-            {/* Tagline Pill */}
-            <div className="inline-flex items-center gap-2">
-              <span className="text-[11px] sm:text-xs font-black tracking-[0.2em] text-[#164e3f] uppercase font-sans">
-                {currentSlide.tagline || currentSlide.badge_text || 'NATURAL • HEALTHY • SUSTAINABLE'}
-              </span>
-            </div>
+      {/* OPTION 1: FULL SCREEN GRAPHIC BANNER SLIDE */}
+      {isFullBanner ? (
+        <div 
+          onClick={() => currentSlide.cta_link && handleCta(currentSlide.cta_link)}
+          className={`relative w-full overflow-hidden group ${currentSlide.cta_link ? 'cursor-pointer' : ''}`}
+        >
+          <div className="relative w-full min-h-[300px] sm:min-h-[400px] lg:min-h-[480px] bg-slate-950 flex items-center justify-center overflow-hidden">
+            <picture className="w-full h-full block">
+              {currentSlide.mobile_banner_img && (
+                <source 
+                  media="(max-width: 640px)" 
+                  srcSet={resolveImgUrl(currentSlide.mobile_banner_img)} 
+                />
+              )}
+              <img
+                src={resolveImgUrl(currentSlide.banner_img || currentSlide.packaging_img)}
+                alt={currentSlide.title_part1 || 'ValueLife Full Screen Promotional Banner'}
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out"
+              />
+            </picture>
 
-            {/* Main Headline */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl leading-[1.15] font-serif tracking-tight text-gray-950 font-bold">
-              {currentSlide.title_part1 || currentSlide.titlePart1 || 'Better Choices'} <br />
-              <span className="text-[#164e3f] italic font-serif font-normal">
-                {currentSlide.title_part2 || currentSlide.titlePart2 || 'Better Life.'}
-              </span>
-            </h1>
-
-            {/* Subtitle Description */}
-            <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-              {currentSlide.description}
-            </p>
-
-            {/* CTA Button */}
-            <div className="pt-1 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <button
-                type="button"
-                onClick={() => handleCta(currentSlide.cta_link || currentSlide.ctaLink)}
-                className="bg-[#124734] hover:bg-[#0a2e22] text-white px-7 py-3 rounded-full font-bold text-xs sm:text-sm tracking-wide shadow-md hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 inline-flex items-center gap-2 cursor-pointer"
-                data-reticle-target="hero-shop-now-btn"
-              >
-                <span>{currentSlide.cta_text || currentSlide.ctaText || 'Shop Now'}</span>
-                <ArrowRight size={15} />
-              </button>
-            </div>
-
-            {/* Trust Badges Bar */}
-            {showTrustBadges && (
-              <div className="pt-5 border-t border-gray-200/80">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
-                      <Leaf size={13} />
-                    </div>
-                    <div>
-                      <h5 className="text-[11px] font-bold text-gray-900">{trustBadge1Title}</h5>
-                      <p className="text-[9px] text-gray-500">{trustBadge1Sub}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
-                      <Shield size={13} />
-                    </div>
-                    <div>
-                      <h5 className="text-[11px] font-bold text-gray-900">{trustBadge2Title}</h5>
-                      <p className="text-[9px] text-gray-500">{trustBadge2Sub}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
-                      <HeartHandshake size={13} />
-                    </div>
-                    <div>
-                      <h5 className="text-[11px] font-bold text-gray-900">{trustBadge3Title}</h5>
-                      <p className="text-[9px] text-gray-500">{trustBadge3Sub}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
-                      <Award size={13} />
-                    </div>
-                    <div>
-                      <h5 className="text-[11px] font-bold text-gray-900">{trustBadge4Title}</h5>
-                      <p className="text-[9px] text-gray-500">{trustBadge4Sub}</p>
-                    </div>
+            {/* Optional Overlay Text (If enabled in admin) */}
+            {Number(currentSlide.show_overlay_text) === 1 && (
+              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent flex items-center">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+                  <div className="max-w-xl space-y-4 text-white">
+                    {currentSlide.tagline && (
+                      <span className="inline-block bg-emerald-600/90 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full shadow">
+                        {currentSlide.tagline}
+                      </span>
+                    )}
+                    {currentSlide.title_part1 && (
+                      <h2 className="text-3xl sm:text-5xl font-black font-serif tracking-tight leading-tight">
+                        {currentSlide.title_part1}{' '}
+                        {currentSlide.title_part2 && (
+                          <span className="text-emerald-300 italic font-serif font-normal">
+                            {currentSlide.title_part2}
+                          </span>
+                        )}
+                      </h2>
+                    )}
+                    {currentSlide.description && (
+                      <p className="text-xs sm:text-base text-gray-200 line-clamp-2 leading-relaxed">
+                        {currentSlide.description}
+                      </p>
+                    )}
+                    {currentSlide.cta_text && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCta(currentSlide.cta_link);
+                          }}
+                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-7 py-3 rounded-full text-xs sm:text-sm uppercase tracking-wider inline-flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <span>{currentSlide.cta_text}</span>
+                          <ArrowRight size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             )}
           </div>
-
-          {/* Right Visual Composition (6 cols) */}
-          <div className="lg:col-span-6 relative flex justify-center items-center">
-            {/* Script Text Flourish matching Mockup */}
-            {(currentSlide.script_quote || currentSlide.scriptQuote) && (
-              <div className="absolute top-1 right-2 z-20 hidden sm:block text-right pointer-events-none">
-                <span className="font-serif italic text-xl text-emerald-900/70 block leading-tight font-medium drop-shadow-sm">
-                  {currentSlide.script_quote || currentSlide.scriptQuote}
+        </div>
+      ) : (
+        /* OPTION 2: STANDARD SPLIT CONTENT SLIDE */
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Left Content Column (6 cols) */}
+            <div className="lg:col-span-6 space-y-5 z-10 text-center lg:text-left">
+              {/* Tagline Pill */}
+              <div className="inline-flex items-center gap-2">
+                <span className="text-[11px] sm:text-xs font-black tracking-[0.2em] text-[#164e3f] uppercase font-sans">
+                  {currentSlide.tagline || currentSlide.badge_text || 'NATURAL • HEALTHY • SUSTAINABLE'}
                 </span>
-                <span className="text-[10px] text-emerald-800 font-sans block mt-0.5">🌿 ValueLife Organics</span>
               </div>
-            )}
 
-            {/* Hero Visual Collage Container */}
-            <div className="relative w-full max-w-md aspect-[4/3] flex items-center justify-center">
-              {/* Natural Halo */}
-              <div className="absolute inset-2 bg-gradient-to-tr from-amber-100/60 via-emerald-100/50 to-white/90 rounded-[32px] shadow-lg border border-white/60" />
+              {/* Main Headline */}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl leading-[1.15] font-serif tracking-tight text-gray-950 font-bold">
+                {currentSlide.title_part1 || currentSlide.titlePart1 || 'Better Choices'} <br />
+                <span className="text-[#164e3f] italic font-serif font-normal">
+                  {currentSlide.title_part2 || currentSlide.titlePart2 || 'Better Life.'}
+                </span>
+              </h1>
 
-              {/* Main Product Kraft Packaging Image */}
-              <div className="relative z-10 w-4/5 h-4/5 rounded-2xl overflow-hidden shadow-2xl border-4 border-white group">
-                <img
-                  src={resolveImgUrl(currentSlide.packaging_img || currentSlide.packagingImg)}
-                  alt="ValueLife Natural Products"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md p-2.5 rounded-xl shadow-lg border border-white/40 flex items-center justify-between">
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 block">Organic Harvest</span>
-                    <h4 className="text-[11px] font-extrabold text-gray-900">ValueLife Signature Packaging</h4>
+              {/* Subtitle Description */}
+              <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                {currentSlide.description}
+              </p>
+
+              {/* CTA Button */}
+              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleCta(currentSlide.cta_link || currentSlide.ctaLink)}
+                  className="bg-[#124734] hover:bg-[#0a2e22] text-white px-7 py-3 rounded-full font-bold text-xs sm:text-sm tracking-wide shadow-md hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 inline-flex items-center gap-2 cursor-pointer"
+                  data-reticle-target="hero-shop-now-btn"
+                >
+                  <span>{currentSlide.cta_text || currentSlide.ctaText || 'Shop Now'}</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+
+              {/* Trust Badges Bar */}
+              {showTrustBadges && (
+                <div className="pt-5 border-t border-gray-200/80">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
+                        <Leaf size={13} />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold text-gray-900">{trustBadge1Title}</h5>
+                        <p className="text-[9px] text-gray-500">{trustBadge1Sub}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
+                        <Shield size={13} />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold text-gray-900">{trustBadge2Title}</h5>
+                        <p className="text-[9px] text-gray-500">{trustBadge2Sub}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
+                        <HeartHandshake size={13} />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold text-gray-900">{trustBadge3Title}</h5>
+                        <p className="text-[9px] text-gray-500">{trustBadge3Sub}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100/80 text-[#164e3f] flex items-center justify-center shrink-0">
+                        <Award size={13} />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold text-gray-900">{trustBadge4Title}</h5>
+                        <p className="text-[9px] text-gray-500">{trustBadge4Sub}</p>
+                      </div>
+                    </div>
                   </div>
-                  <span className="bg-[#124734] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">
-                    Certified
-                  </span>
-                </div>
-              </div>
-
-              {/* Secondary Floating Accent Visual */}
-              {(currentSlide.jars_img || currentSlide.jarsImg) && (
-                <div className="absolute -bottom-3 -left-3 z-20 w-32 h-32 rounded-xl overflow-hidden shadow-xl border-4 border-white hidden xs:block">
-                  <img
-                    src={resolveImgUrl(currentSlide.jars_img || currentSlide.jarsImg)}
-                    alt="Organic Seeds & Honey Jars"
-                    className="w-full h-full object-cover"
-                  />
                 </div>
               )}
             </div>
-          </div>
 
+            {/* Right Visual Composition (6 cols) */}
+            <div className="lg:col-span-6 relative flex justify-center items-center">
+              {/* Script Text Flourish matching Mockup */}
+              {(currentSlide.script_quote || currentSlide.scriptQuote) && (
+                <div className="absolute top-1 right-2 z-20 hidden sm:block text-right pointer-events-none">
+                  <span className="font-serif italic text-xl text-emerald-900/70 block leading-tight font-medium drop-shadow-sm">
+                    {currentSlide.script_quote || currentSlide.scriptQuote}
+                  </span>
+                  <span className="text-[10px] text-emerald-800 font-sans block mt-0.5">🌿 ValueLife Organics</span>
+                </div>
+              )}
+
+              {/* Hero Visual Collage Container */}
+              <div className="relative w-full max-w-md aspect-[4/3] flex items-center justify-center">
+                {/* Natural Halo */}
+                <div className="absolute inset-2 bg-gradient-to-tr from-amber-100/60 via-emerald-100/50 to-white/90 rounded-[32px] shadow-lg border border-white/60" />
+
+                {/* Main Product Kraft Packaging Image */}
+                <div className="relative z-10 w-4/5 h-4/5 rounded-2xl overflow-hidden shadow-2xl border-4 border-white group">
+                  <img
+                    src={resolveImgUrl(currentSlide.packaging_img || currentSlide.packagingImg)}
+                    alt="ValueLife Natural Products"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md p-2.5 rounded-xl shadow-lg border border-white/40 flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 block">Organic Harvest</span>
+                      <h4 className="text-[11px] font-extrabold text-gray-900">ValueLife Signature Packaging</h4>
+                    </div>
+                    <span className="bg-[#124734] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">
+                      Certified
+                    </span>
+                  </div>
+                </div>
+
+                {/* Secondary Floating Accent Visual */}
+                {(currentSlide.jars_img || currentSlide.jarsImg) && (
+                  <div className="absolute -bottom-3 -left-3 z-20 w-32 h-32 rounded-xl overflow-hidden shadow-xl border-4 border-white hidden xs:block">
+                    <img
+                      src={resolveImgUrl(currentSlide.jars_img || currentSlide.jarsImg)}
+                      alt="Organic Seeds & Honey Jars"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
         </div>
+      )}
 
-        {/* Carousel Dots */}
-        {slides.length > 1 && (
-          <div className="mt-6 flex justify-center items-center gap-2">
-            {slides.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleDotClick(idx)}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  activeSlide === idx ? 'w-6 bg-[#164e3f]' : 'w-2 bg-gray-300 hover:bg-gray-400'
-                }`}
-                title={`Slide ${idx + 1}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Carousel Dots (Works across both Split & Full Banner modes) */}
+      {slides.length > 1 && (
+        <div className="py-4 flex justify-center items-center gap-2">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleDotClick(idx)}
+              className={`h-2 rounded-full transition-all cursor-pointer ${
+                activeSlide === idx ? 'w-6 bg-[#164e3f]' : 'w-2 bg-gray-300 hover:bg-gray-400'
+              }`}
+              title={`Slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
