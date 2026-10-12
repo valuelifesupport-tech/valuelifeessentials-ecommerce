@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Plus, Check } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
+import { resolveBaseVariant, resolveItemOptionLabel } from '../../utils/pricing';
 
 export default function CartCrossSell({
   cartItems,
@@ -23,24 +24,21 @@ export default function CartCrossSell({
 
   const handleAddSuggestion = (prod) => {
     const isINR = currency === 'INR';
-    const activeVariants = Array.isArray(prod.variants) && prod.variants.length > 0
-      ? prod.variants.filter(v => !v.status || v.status === 'active')
-      : [];
-    
-    // Pick user-selected variant or default to first active variant
-    const chosenVariant = selectedVariants[prod.id] || (activeVariants.length > 0 ? activeVariants[0] : null);
+    // Pick user-selected variant or default to base variant matching displayed base price
+    const chosenVariant = selectedVariants[prod.id] || resolveBaseVariant(prod, currency);
 
     if (typeof onAddToCart === 'function') {
       const itemPriceInr = Number(chosenVariant?.price_inr || chosenVariant?.price || prod.discount_inr || prod.price_inr || prod.price || 0);
       const itemPriceUsd = Number(chosenVariant?.price_usd || prod.discount_usd || prod.price_usd || Math.round(itemPriceInr / 40));
       const activePrice = isINR ? itemPriceInr : itemPriceUsd;
+      const resolvedName = chosenVariant?.variant_name || chosenVariant?.name || resolveItemOptionLabel(prod, prod, currency, activePrice) || null;
 
       onAddToCart({
         ...prod,
         variant: chosenVariant,
         selectedVariant: chosenVariant,
         variant_id: chosenVariant?.id || null,
-        variant_name: chosenVariant?.variant_name || chosenVariant?.name || null,
+        variant_name: resolvedName,
         price: activePrice,
         thumbnail: chosenVariant?.image_url || prod.thumbnail || prod.image_url,
         quantity: 1
@@ -72,12 +70,13 @@ export default function CartCrossSell({
             ? sp.variants.filter(v => !v.status || v.status === 'active')
             : [];
           const hasVariants = activeVariants.length > 0;
-          const chosenVariant = selectedVariants[sp.id] || (hasVariants ? activeVariants[0] : null);
+          const chosenVariant = selectedVariants[sp.id] || resolveBaseVariant(sp, currency);
 
           const itemPriceInr = Number(chosenVariant?.price_inr || chosenVariant?.price || sp.discount_inr || sp.price_inr || 0);
           const itemPriceUsd = Number(chosenVariant?.price_usd || sp.discount_usd || sp.price_usd || Math.round(itemPriceInr / 40));
           const displayPrice = isINR ? itemPriceInr : itemPriceUsd;
           const displayImage = chosenVariant?.image_url || sp.thumbnail || sp.image_url;
+          const displayOptionLabel = chosenVariant?.variant_name || chosenVariant?.name || resolveItemOptionLabel(sp, sp, currency, displayPrice);
 
           const isAdded = addedSuggestions[sp.id];
 
@@ -110,9 +109,9 @@ export default function CartCrossSell({
                       <span className="text-xs font-black text-[#2d6a4f]">
                         {currencySymbol}{displayPrice}
                       </span>
-                      {chosenVariant && (
+                      {displayOptionLabel && (
                         <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
-                          {chosenVariant.variant_name || chosenVariant.name}
+                          {displayOptionLabel}
                         </span>
                       )}
                     </div>

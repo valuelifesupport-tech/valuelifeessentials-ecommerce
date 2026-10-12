@@ -1,9 +1,11 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
+import { resolveItemOptionLabel } from '../../utils/pricing';
 
 export default function CartItemCard({
   item,
+  allProducts = [],
   currency,
   currencySymbol,
   onUpdateQuantity,
@@ -13,10 +15,15 @@ export default function CartItemCard({
     ? Number(item.price) 
     : (currency === 'INR' ? (item.discount_inr || item.price_inr || 0) : (item.discount_usd || item.price_usd || 0));
   const itemKey = item.cartKey || item.id;
-  const variantName = item.variant_name || item.variant?.variant_name || item.variant?.name || null;
-  const weightDisplay = item.weight 
-    ? (parseFloat(item.weight) >= 1 ? `${parseFloat(item.weight)} kg` : `${Math.round(parseFloat(item.weight) * 1000)} g`) 
-    : (item.unit || null);
+  const matchedProduct = Array.isArray(allProducts)
+    ? allProducts.find(p => Number(p.id) === Number(item.id) || (p.slug && item.slug && p.slug === item.slug))
+    : null;
+  const optionLabel = resolveItemOptionLabel(item, matchedProduct, currency, price);
+  const effectiveGst = (item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '')
+    ? item.gst_percent
+    : ((item.gst_rate !== undefined && item.gst_rate !== null && item.gst_rate !== '')
+        ? item.gst_rate
+        : (matchedProduct?.gst_percent ?? matchedProduct?.gst_rate ?? null));
   const itemTotal = (price * item.quantity).toFixed(2);
 
   return (
@@ -34,28 +41,23 @@ export default function CartItemCard({
       <div className="flex-1 min-w-0">
         <h4 className="font-extrabold text-sm text-gray-900 line-clamp-1 font-['Outfit']">{item.title}</h4>
         
-        {/* Variant & Unit/Weight Badges */}
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          {variantName && (
+        {/* Selected or Default Base Option Badge */}
+        {optionLabel && (
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className="inline-block bg-[#f0f7e6] text-[#33691e] border border-[#558b2f]/30 text-[11px] font-extrabold px-2 py-0.5 rounded-md">
-              Option: {variantName}
+              Option: {optionLabel}
             </span>
-          )}
-          {weightDisplay && (
-            <span className="inline-block bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold px-2 py-0.5 rounded-md">
-              ⚖️ Weight: {weightDisplay}
-            </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Price Per Unit & GST */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           <span className="text-xs text-gray-600 font-bold">
             Unit Price: <strong className="text-[#2d6a4f] font-extrabold">{currencySymbol}{price}</strong>
           </span>
-          {((item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '') || (item.gst_rate !== undefined && item.gst_rate !== null && item.gst_rate !== '')) ? (
+          {(effectiveGst !== undefined && effectiveGst !== null && effectiveGst !== '') ? (
             <span className="bg-emerald-50 text-[#2d6a4f] border border-emerald-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
-              {item.gst_percent ?? item.gst_rate}% GST
+              {effectiveGst}% GST
             </span>
           ) : null}
         </div>

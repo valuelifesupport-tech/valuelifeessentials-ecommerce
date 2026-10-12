@@ -1,4 +1,5 @@
 import { getApiUrl, resolveImgUrl } from '../../api/config';
+import { resolveBaseVariant } from '../../utils/pricing';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, ChevronRight, ChevronLeft, Heart, ShoppingBag } from 'lucide-react';
 import BrandLoader from '../common/BrandLoader';
@@ -42,8 +43,8 @@ export default function ProductDetailPage({
       const data = await res.json();
       setProductData(data);
       if (Array.isArray(data?.variants) && data.variants.length > 0) {
-        const activeVars = data.variants.filter(v => !v.status || v.status === 'active');
-        setSelectedVariant(activeVars[0] || data.variants[0]);
+        const baseVar = resolveBaseVariant(data, currency);
+        setSelectedVariant(baseVar || data.variants[0]);
       } else {
         setSelectedVariant(null);
       }

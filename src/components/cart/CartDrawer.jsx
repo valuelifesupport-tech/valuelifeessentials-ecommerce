@@ -123,6 +123,7 @@ export default function CartDrawer({
               <CartItemCard
                 key={item.cartKey || item.id}
                 item={item}
+                allProducts={allProducts}
                 currency={currency}
                 currencySymbol={currencySymbol}
                 onUpdateQuantity={onUpdateQuantity}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl, resolveImgUrl } from './api/config';
-import { getProductPricing as getCalcProductPricing } from './utils/pricing';
+import { getProductPricing as getCalcProductPricing, resolveBaseVariant, resolveItemOptionLabel } from './utils/pricing';
 
 // Layout & Common Components
 import Header from './components/layout/Header';
@@ -278,31 +278,50 @@ export default function App() {
 
   const handleAddToCart = (productPayload) => {
     const isINR = currency === 'INR';
-    const variants = Array.isArray(productPayload.variants) && productPayload.variants.length > 0 ? productPayload.variants : null;
-    const selectedVariant = productPayload.variant || productPayload.selectedVariant || null;
+    const matchedProd = Array.isArray(products)
+      ? products.find(p => Number(p.id) === Number(productPayload.id) || (p.slug && productPayload.slug && p.slug === productPayload.slug))
+      : null;
 
-    // If product has variants but user has not selected one, show the SelectVariantModal!
-    if (variants && !selectedVariant) {
-      setVariantModalProduct(productPayload);
-      return;
-    }
+    const fullProduct = {
+      ...(matchedProd || {}),
+      ...productPayload,
+      variants: (Array.isArray(productPayload.variants) && productPayload.variants.length > 0)
+        ? productPayload.variants
+        : (matchedProd?.variants || [])
+    };
+
+    const explicitVariant = productPayload.variant || productPayload.selectedVariant || null;
+    const selectedVariant = explicitVariant || resolveBaseVariant(fullProduct, currency, productPayload.price || productPayload.discount_inr || productPayload.price_inr);
 
     const qty = productPayload.quantity || 1;
     const variantId = selectedVariant?.id || productPayload.variant_id || null;
-    const variantName = selectedVariant?.variant_name || selectedVariant?.name || productPayload.variant_name || null;
+    const variantName =
+      selectedVariant?.variant_name ||
+      selectedVariant?.name ||
+      selectedVariant?.title ||
+      productPayload.variant_name ||
+      resolveItemOptionLabel(fullProduct, matchedProd, currency, productPayload.price) ||
+      null;
 
-    let itemPriceInr = Number(selectedVariant?.price_inr || selectedVariant?.price || productPayload.price_inr || productPayload.price || 0);
-    let itemPriceUsd = Number(selectedVariant?.price_usd || productPayload.price_usd || Math.round(itemPriceInr / 40));
+    const rawVarPriceInr = Number(selectedVariant?.price_inr || selectedVariant?.price || fullProduct.price_inr || fullProduct.price || 0);
+    const rawVarDiscInr = Number(selectedVariant?.discount_inr || 0);
+    const itemPriceInr = (rawVarDiscInr > 0 && rawVarDiscInr < rawVarPriceInr)
+      ? rawVarDiscInr
+      : (rawVarPriceInr > 0 ? rawVarPriceInr : Number(productPayload.price || 0));
+
+    const itemPriceUsd = Number(selectedVariant?.price_usd || fullProduct.price_usd || Math.round(itemPriceInr / 40));
     const activePrice = isINR ? itemPriceInr : itemPriceUsd;
-    const cartKey = variantId ? `${productPayload.id}_var_${variantId}` : `${productPayload.id}`;
-    const itemThumbnail = selectedVariant?.image_url || productPayload.thumbnail || productPayload.image_url;
+    const cartKey = variantId ? `${fullProduct.id}_var_${variantId}` : (variantName ? `${fullProduct.id}_opt_${variantName}` : `${fullProduct.id}`);
+    const itemThumbnail = selectedVariant?.image_url || fullProduct.thumbnail || fullProduct.image_url;
 
     setCart(prev => {
-      const existingIndex = prev.findIndex(item => item.cartKey === cartKey || (item.id === productPayload.id && item.variant_id === variantId));
+      const existingIndex = prev.findIndex(item => item.cartKey === cartKey || (item.id === fullProduct.id && item.variant_id === variantId && (item.variant_name || null) === (variantName || null)));
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex] = {
           ...updated[existingIndex],
+          variant_id: variantId,
+          variant_name: variantName,
           quantity: updated[existingIndex].quantity + qty,
           price: activePrice
         };
@@ -311,9 +330,10 @@ export default function App() {
       return [
         ...prev,
         {
-          ...productPayload,
+          ...fullProduct,
           cartKey,
-          id: productPayload.id,
+          id: fullProduct.id,
+          variant: selectedVariant,
           variant_id: variantId,
           variant_name: variantName,
           thumbnail: itemThumbnail,
@@ -323,7 +343,7 @@ export default function App() {
       ];
     });
 
-    const displayTitle = variantName ? `${productPayload.title} (${variantName})` : productPayload.title;
+    const displayTitle = variantName ? `${fullProduct.title} (${variantName})` : fullProduct.title;
     showToast('success', 'Added to Cart', `Added "${displayTitle}" to cart!`);
     setIsCartOpen(true);
   };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, ShoppingBag, Heart, ExternalLink, Star } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
+import { resolveBaseVariant, resolveItemOptionLabel } from '../../utils/pricing';
 
 export default function SelectVariantModal({
   isOpen,
@@ -19,19 +20,16 @@ export default function SelectVariantModal({
   const variants = Array.isArray(product.variants) && product.variants.length > 0 ? product.variants : [];
   const activeVariants = variants.filter(v => !v.status || v.status === 'active');
   const variantList = activeVariants.length > 0 ? activeVariants : variants;
+  const defaultBaseVariant = resolveBaseVariant(product, currency) || variantList[0] || null;
 
-  const [selectedVariant, setSelectedVariant] = useState(variantList[0] || null);
+  const [selectedVariant, setSelectedVariant] = useState(defaultBaseVariant);
   const [quantity, setQuantity] = useState(1);
 
   // Sync when product changes
   useEffect(() => {
-    if (variantList.length > 0) {
-      setSelectedVariant(variantList[0]);
-    } else {
-      setSelectedVariant(null);
-    }
+    setSelectedVariant(resolveBaseVariant(product, currency) || variantList[0] || null);
     setQuantity(1);
-  }, [product]);
+  }, [product, currency]);
 
   // Compute pricing based on selected variant
   const activeItem = selectedVariant || product;
@@ -56,11 +54,18 @@ export default function SelectVariantModal({
 
   const handleAddToCartClick = () => {
     if (onAddToCart) {
+      const resolvedOptionName =
+        selectedVariant?.variant_name ||
+        selectedVariant?.name ||
+        selectedVariant?.title ||
+        resolveItemOptionLabel(product, product, currency, currentPrice) ||
+        null;
       onAddToCart({
         ...product,
         variant: selectedVariant,
+        selectedVariant,
         variant_id: selectedVariant?.id || null,
-        variant_name: selectedVariant?.variant_name || selectedVariant?.name || null,
+        variant_name: resolvedOptionName,
         price: currentPrice,
         price_inr: isINR ? currentPrice : Math.round(currentPrice * 95),
         price_usd: isINR ? Number((currentPrice / 95).toFixed(2)) : currentPrice,

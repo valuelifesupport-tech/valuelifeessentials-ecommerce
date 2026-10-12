@@ -62,7 +62,7 @@ export default function App() {
     cart, setCart, isCartOpen, setIsCartOpen,
     variantModalProduct, setVariantModalProduct, openVariantModal,
     handleAddToCart, handleUpdateQuantity, handleRemoveFromCart
-  } = useCartActions(currency, showToast);
+  } = useCartActions(currency, showToast, products);
 
   const {
     wishlist, setWishlist, isWishlistOpen, setIsWishlistOpen,

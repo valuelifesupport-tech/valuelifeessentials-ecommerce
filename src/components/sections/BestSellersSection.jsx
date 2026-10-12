@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight, ShoppingBag, ArrowRight } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
+import { resolveItemOptionLabel } from '../../utils/pricing';
 
 export default function BestSellersSection({ 
   products = [], 
@@ -15,15 +16,18 @@ export default function BestSellersSection({
 
   // Real products from database only
   const displayItems = (products && products.length > 0)
-    ? products.map((p) => ({
-        id: p.id,
-        title: p.title || p.name,
-        slug: p.slug || `product-${p.id}`,
-        pack: (p.variants && p.variants[0]?.variant_name) || 'Standard Pack',
-        price: Number(p.price_inr || p.price || 0),
-        image_url: resolveImgUrl(p.thumbnail || p.image_url),
-        rawProduct: p
-      }))
+    ? products.map((p) => {
+        const basePrice = Number(p.price_inr || p.price || 0);
+        return {
+          id: p.id,
+          title: p.title || p.name,
+          slug: p.slug || `product-${p.id}`,
+          pack: resolveItemOptionLabel(p, p, 'INR', basePrice) || 'Standard Pack',
+          price: basePrice,
+          image_url: resolveImgUrl(p.thumbnail || p.image_url),
+          rawProduct: p
+        };
+      })
     : [];
 
   const scroll = (direction) => {

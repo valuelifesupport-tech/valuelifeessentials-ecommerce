@@ -15,8 +15,11 @@ export default function CatalogProductCard({
   openVariantModal
 }) {
   const p = product;
-  const { pPrice, pOriginal, pct, hasVariants } = getProductPricing(p);
-  const variantsExist = Boolean(hasVariants || (Array.isArray(p.variants) && p.variants.length > 0));
+  const { pPrice, pOriginal, pct } = getProductPricing(p);
+  const rawVars = Array.isArray(p.variants) ? p.variants : [];
+  const activeVars = rawVars.filter(v => v && (!v.status || v.status === 'active'));
+  const effectiveVars = activeVars.length > 0 ? activeVars : rawVars;
+  const variantsExist = effectiveVars.length > 1;
 
   const handleActionClick = () => {
     if (variantsExist && openVariantModal) {

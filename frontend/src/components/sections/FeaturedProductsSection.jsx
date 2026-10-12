@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Star, ShoppingBag, ArrowRight } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
+import { resolveItemOptionLabel } from '../../utils/pricing';
 
 export default function FeaturedProductsSection({ 
   products = [], 
@@ -30,21 +31,24 @@ export default function FeaturedProductsSection({
 
   // Real products from database only - no fake hardcoded products
   const displayItems = (products && products.length > 0)
-    ? products.map((p, idx) => ({
-        id: p.id,
-        title: p.title || p.name || 'ValueLife Product',
-        slug: p.slug || `product-${p.id}`,
-        pack: (p.variants && p.variants[0]?.variant_name) || 'Standard Pack',
-        price: Number(p.price_inr || p.price || 0),
+    ? products.map((p, idx) => {
+        const basePrice = Number(p.price_inr || p.price || 0);
+        return {
+          id: p.id,
+          title: p.title || p.name || 'ValueLife Product',
+          slug: p.slug || `product-${p.id}`,
+          pack: resolveItemOptionLabel(p, p, 'INR', basePrice) || 'Standard Pack',
+          price: basePrice,
         originalPrice: Number(p.compare_price_inr || p.compare_price || 0) || Math.round(Number(p.price_inr || p.price || 0) * 1.25),
         discount: p.discount_inr ? `₹${p.discount_inr} OFF` : 'Special Offer',
         rating: Number(p.rating || 5.0),
         reviews: Number(p.review_count || 1),
         image_url: resolveImgUrl(p.thumbnail || p.image_url),
-        category: p.category_name || 'Natural Essentials',
-        is_best_product: p.is_best_product,
-        rawProduct: p
-      }))
+          category: p.category_name || 'Natural Essentials',
+          is_best_product: p.is_best_product,
+          rawProduct: p
+        };
+      })
     : [];
 
   const filteredItems = displayItems.filter(item => {
