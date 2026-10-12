@@ -21,6 +21,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
   const [pages, setPages] = useState([]);
   const [blogs, setBlogs] = useState([]);
   const [instagramPosts, setInstagramPosts] = useState([]);
+  const [subscribers, setSubscribers] = useState([]);
   const [mediaFiles, setMediaFiles] = useState([]);
   const [filterGroups, setFilterGroups] = useState([]);
   const [heroSlides, setHeroSlides] = useState([]);
@@ -36,6 +37,12 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
     return s;
   };
 
+  const fetchSubscribers = async () => {
+    const subs = await sf('/api/admin/newsletter/subscribers');
+    if (subs && Array.isArray(subs)) setSubscribers(subs);
+    return subs;
+  };
+
   // ------ Fetchers ------
   const fetchAnalytics = async () => {
     const data = await sf('/api/admin/analytics');
@@ -44,7 +51,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
   const fetchAdminData = async () => {
     try {
-      const [prods, cats, cols, ords, setts, revs, slides, blgs, igs] = await Promise.all([
+      const [prods, cats, cols, ords, setts, revs, slides, blgs, igs, subs] = await Promise.all([
         sf('/api/products?includeDrafts=true'),
         sf('/api/categories'),
         sf('/api/collections'),
@@ -53,7 +60,8 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
         sf('/api/reviews'),
         sf('/api/admin/hero-slides'),
         sf('/api/admin/blogs'),
-        sf('/api/admin/instagram-posts')
+        sf('/api/admin/instagram-posts'),
+        sf('/api/admin/newsletter/subscribers')
       ]);
       if (prods) setProducts(prods);
       if (cats) setCategories(cats);
@@ -64,6 +72,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
       if (slides && Array.isArray(slides)) setHeroSlides(slides);
       if (blgs && Array.isArray(blgs)) setBlogs(blgs);
       if (igs && Array.isArray(igs)) setInstagramPosts(igs);
+      if (subs && Array.isArray(subs)) setSubscribers(subs);
     } catch (err) {
       console.error('fetchAdminData error:', err);
     }
@@ -120,6 +129,10 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
           if (ig && Array.isArray(ig)) setInstagramPosts(ig);
           break;
         }
+        case 'subscribers': {
+          await fetchSubscribers();
+          break;
+        }
         case 'filters': {
           const f = await sf('/api/filter-groups');
           if (f && Array.isArray(f)) setFilterGroups(f);
@@ -159,6 +172,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
     pages, setPages,
     blogs, setBlogs,
     instagramPosts, setInstagramPosts,
+    subscribers, setSubscribers,
     mediaFiles, setMediaFiles,
     filterGroups, setFilterGroups,
     heroSlides, setHeroSlides,
@@ -168,6 +182,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
     fetchAdminData,
     fetchTabData,
     fetchHeroSlides,
+    fetchSubscribers,
     sf
   };
 }

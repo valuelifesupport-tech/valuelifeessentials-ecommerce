@@ -40,6 +40,9 @@ import SectionsTab from './tabs/SectionsTab';
 import PaymentTab from './tabs/PaymentTab';
 import TaxesTab from './tabs/TaxesTab';
 import SettingsTab from './tabs/SettingsTab';
+import ThemeTab from './tabs/ThemeTab';
+import SubscribersTab from './tabs/SubscribersTab';
+import EditorialTab from './tabs/EditorialTab';
 
 // Modal Components
 import ProductModal from './modals/ProductModal';
@@ -106,8 +109,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   // Tab navigation
   const [activeTab, setActiveTab] = React.useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab') || 'analytics';
-    return tab === 'theme' ? 'analytics' : tab;
+    return params.get('tab') || 'analytics';
   });
 
   // Tab lazy-loading
@@ -157,7 +159,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     reviews: data.reviews.length,
     pages: data.pages.length,
     blogs: (data.blogs || []).length,
-    instagramPosts: (data.instagramPosts || []).length
+    instagramPosts: (data.instagramPosts || []).length,
+    subscribers: (data.subscribers || []).length
   };
 
   // --- Auth Gate ---
@@ -611,6 +614,34 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               setSettings={data.setSettings}
               onUpdateSettings={onUpdateSettings}
               showToast={showToast}
+            />
+          )}
+
+          {activeTab === 'theme' && (
+            <ThemeTab
+              themeConfig={config.themeConfig}
+              setThemeConfig={config.setThemeConfig}
+              handleThemeSubmit={config.handleThemeSubmit}
+            />
+          )}
+
+          {activeTab === 'editorial' && (
+            <EditorialTab
+              adminFetch={auth.adminFetch}
+              showToast={showToast}
+              sectionsConfig={config.sectionsConfig}
+              updateAndSaveSectionToggle={config.updateAndSaveSectionToggle}
+            />
+          )}
+
+          {activeTab === 'subscribers' && (
+            <SubscribersTab
+              subscribers={data.subscribers}
+              setSubscribers={data.setSubscribers}
+              fetchSubscribers={data.fetchSubscribers}
+              adminFetch={auth.adminFetch}
+              showToast={showToast}
+              askConfirmation={modals.askConfirmation}
             />
           )}
         </main>

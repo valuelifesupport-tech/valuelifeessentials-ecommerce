@@ -162,11 +162,15 @@ export default function useAdminConfig({
     let isMounted = true;
     const fetchHeroAndSections = async () => {
       try {
-        const [heroData, secData] = await Promise.all([
+        const [heroData, secData, themeData] = await Promise.all([
           sf('/api/hero-config'),
-          sf('/api/sections-config')
+          sf('/api/sections-config'),
+          sf('/api/theme-config')
         ]);
         if (!isMounted) return;
+        if (themeData && typeof themeData === 'object' && Object.keys(themeData).length > 0) {
+          setThemeConfig(prev => ({ ...prev, ...themeData }));
+        }
         if (heroData && typeof heroData === 'object') {
           const isHeroOn = heroData.hero_enabled !== undefined && heroData.hero_enabled !== null
             ? (Number(heroData.hero_enabled) === 1 || heroData.hero_enabled === true ? 1 : 0)
@@ -191,7 +195,7 @@ export default function useAdminConfig({
           }
         }
       } catch (err) {
-        console.warn('Hero and sections config fetch note:', err.message);
+        console.warn('Hero, sections, and theme config fetch note:', err.message);
       }
     };
     fetchHeroAndSections();

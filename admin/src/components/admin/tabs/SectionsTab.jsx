@@ -158,8 +158,45 @@ export default function SectionsTab({
             </SectionToggleCard>
 
             <SectionToggleCard
+              icon={<span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">✨</span>}
+              title="6. Featured Products Showcase Grid"
+              description="Curated high-visibility product showcase grid displayed prominently below categories."
+              configKey="show_featured_products"
+              value={sectionsConfig.show_featured_products}
+              onToggle={updateAndSaveSectionToggle}
+            />
+
+            <SectionToggleCard
+              icon={<span className="p-2 bg-amber-950/60 border border-amber-800 text-amber-400 rounded-xl text-lg">📰</span>}
+              title="7. Editorial Promo Banner (Pure Products, Happier Lives)"
+              description="Magazine-style high-impact promo card with script quotes, CTA buttons, and badge highlights."
+              configKey="show_editorial_promo"
+              value={sectionsConfig.show_editorial_promo}
+              onToggle={updateAndSaveSectionToggle}
+              extraActions={
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('editorial')}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                  data-reticle-target="admin-edit-editorial-link"
+                >
+                  ✏️ Edit Promo Banner
+                </button>
+              }
+            />
+
+            <SectionToggleCard
+              icon={<span className="p-2 bg-teal-950/60 border border-teal-800 text-teal-400 rounded-xl text-lg">🛡️</span>}
+              title="8. Why Choose ValueLife Grid"
+              description="Customer trust grid displaying certified quality, eco-conscious sourcing, and happiness guarantees."
+              configKey="show_why_choose_us"
+              value={sectionsConfig.show_why_choose_us}
+              onToggle={updateAndSaveSectionToggle}
+            />
+
+            <SectionToggleCard
               icon={<span className="p-2 bg-amber-950/60 border border-amber-800 text-amber-400 rounded-xl text-lg">🔥</span>}
-              title="6. Best Seller Products Showcase"
+              title="9. Best Seller Products Showcase"
               description="Curated highlight grid displaying top-selling products on storefront."
               configKey="show_bestsellers"
               value={sectionsConfig.show_bestsellers}
@@ -184,8 +221,65 @@ export default function SectionsTab({
             </SectionToggleCard>
 
             <SectionToggleCard
+              icon={<span className="p-2 bg-emerald-950/60 border border-emerald-800 text-emerald-400 rounded-xl text-lg">📖</span>}
+              title="10. Brand Story (Our Story Showcase)"
+              description="Rich narrative section introducing company mission, ethics, and craftsmanship."
+              configKey="show_brand_story"
+              value={sectionsConfig.show_brand_story}
+              onToggle={updateAndSaveSectionToggle}
+              extraActions={
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('editorial')}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                  data-reticle-target="admin-edit-brand-story-link"
+                >
+                  ✏️ Edit Brand Story
+                </button>
+              }
+            />
+
+            <SectionToggleCard
+              icon={<span className="p-2 bg-yellow-950/60 border border-yellow-800 text-yellow-400 rounded-xl text-lg">⭐</span>}
+              title="11. Customer Testimonials & Verified Reviews"
+              description="Carousel slider displaying authentic customer feedback, 5-star ratings, and customer portraits."
+              configKey="show_testimonials"
+              value={sectionsConfig.show_testimonials}
+              onToggle={updateAndSaveSectionToggle}
+              extraActions={
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reviews')}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-yellow-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                  data-reticle-target="admin-view-testimonials-reviews-link"
+                >
+                  ⭐ Manage Reviews
+                </button>
+              }
+            />
+
+            <SectionToggleCard
+              icon={<span className="p-2 bg-indigo-950/60 border border-indigo-800 text-indigo-400 rounded-xl text-lg">✍️</span>}
+              title="12. Wellness & Organic Journal (Blogs)"
+              description="Latest editorial articles and health tips from your wellness blog."
+              configKey="show_blog_section"
+              value={sectionsConfig.show_blog_section}
+              onToggle={updateAndSaveSectionToggle}
+              extraActions={
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('blogs')}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                  data-reticle-target="admin-edit-blogs-link"
+                >
+                  ✍️ Manage Blogs
+                </button>
+              }
+            />
+
+            <SectionToggleCard
               icon={<span className="p-2 bg-blue-950/60 border border-blue-800 text-blue-400 rounded-xl text-lg">🛍️</span>}
-              title="7. Main Product Catalog & Filter Grid"
+              title="13. Main Product Catalog & Filter Grid"
               description="Primary product catalog grid with dynamic pill filters and view controls."
               configKey="show_catalog_grid"
               value={sectionsConfig.show_catalog_grid}
@@ -194,7 +288,7 @@ export default function SectionsTab({
 
             <SectionToggleCard
               icon={<span className="p-2 bg-pink-950/60 border border-pink-800 text-pink-400 rounded-xl text-lg">📸</span>}
-              title="8. Instagram Feed (6-Grid Gallery)"
+              title="14. Instagram Feed (6-Grid Gallery)"
               description="Visual social gallery showcase linked directly to your Instagram reels and posts."
               configKey="show_instagram_feed"
               value={sectionsConfig.show_instagram_feed}
@@ -212,8 +306,27 @@ export default function SectionsTab({
             />
 
             <SectionToggleCard
+              icon={<span className="p-2 bg-sky-950/60 border border-sky-800 text-sky-400 rounded-xl text-lg">✉️</span>}
+              title="15. Newsletter Subscribe Banner"
+              description="Lead generation newsletter capture form with instant discount code reward."
+              configKey="show_newsletter"
+              value={sectionsConfig.show_newsletter}
+              onToggle={updateAndSaveSectionToggle}
+              extraActions={
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('subscribers')}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                  data-reticle-target="admin-view-subscribers-link"
+                >
+                  ✉️ View Subscribers
+                </button>
+              }
+            />
+
+            <SectionToggleCard
               icon={<span className="p-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-lg">🦶</span>}
-              title="9. Storefront Footer & Legal Links"
+              title="16. Storefront Footer & Legal Links"
               description="Footer column navigation, payment logos, contact details and copyright line."
               configKey="show_footer"
               value={sectionsConfig.show_footer}

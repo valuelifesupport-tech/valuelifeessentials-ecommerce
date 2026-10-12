@@ -104,7 +104,56 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
               </div>
             )}
 
-            {/* SECTION 6: BEST SELLERS SHOWCASE */}
+            {/* SECTION 6: FEATURED PRODUCTS */}
+            {sectionsConfig.show_featured_products === 1 ? (
+              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+                <span className="text-xs font-black text-emerald-400 font-['Outfit'] block">✨ Featured Products Showcase</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {products.slice(0, 2).map(p => (
+                    <div key={p.id} className="p-2 bg-slate-850 rounded-xl border border-slate-800 text-xs space-y-1">
+                      <img src={resolveImgUrl(p.thumbnail || p.image_url || p.images?.[0])} alt={p.title} onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_FALLBACK_SVG; }} className="w-full h-16 object-contain rounded bg-white" />
+                      <span className="font-bold text-white block text-[10px] truncate">{p.title}</span>
+                      <span className="text-emerald-400 font-black text-[10px]">₹{p.price_inr}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                ✨ 6. Featured Products Grid (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 7: EDITORIAL PROMO BANNER */}
+            {sectionsConfig.show_editorial_promo === 1 ? (
+              <div className="bg-gradient-to-r from-emerald-950/70 to-slate-900 p-3 rounded-xl border border-emerald-800/50 flex justify-between items-center text-xs">
+                <div>
+                  <span className="bg-amber-400/20 text-amber-300 font-black text-[8px] px-2 py-0.5 rounded-full uppercase">SPECIAL EDITORIAL</span>
+                  <p className="text-white font-extrabold text-xs mt-1">Pure Products, Happier Lives</p>
+                  <p className="text-slate-400 text-[9px]">Flat 20% Off Natural Essentials</p>
+                </div>
+                <span className="text-xl">🌿</span>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                📰 7. Editorial Promo Banner (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 8: WHY CHOOSE VALUELIFE */}
+            {sectionsConfig.show_why_choose_us === 1 ? (
+              <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-[10px] grid grid-cols-3 gap-1.5 text-center text-slate-300">
+                <div className="p-1.5 bg-slate-850 rounded-lg"><span>🌱</span><p className="font-bold text-[9px] mt-0.5">100% Organic</p></div>
+                <div className="p-1.5 bg-slate-850 rounded-lg"><span>⚡</span><p className="font-bold text-[9px] mt-0.5">Eco Packing</p></div>
+                <div className="p-1.5 bg-slate-850 rounded-lg"><span>🛡️</span><p className="font-bold text-[9px] mt-0.5">Lab Certified</p></div>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                🛡️ 8. Why Choose ValueLife (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 9: BEST SELLERS SHOWCASE */}
             {sectionsConfig.show_bestsellers === 1 ? (
               <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
@@ -123,11 +172,50 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
               </div>
             ) : (
               <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                🔥 6. Best Seller Showcase Grid (DISABLED)
+                🔥 9. Best Seller Showcase Grid (DISABLED)
               </div>
             )}
 
-            {/* SECTION 7: MAIN CATALOG GRID */}
+            {/* SECTION 10: BRAND STORY */}
+            {sectionsConfig.show_brand_story === 1 ? (
+              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1 text-[10px]">
+                <span className="text-[8px] bg-emerald-950 text-emerald-400 font-bold px-1.5 py-0.5 rounded uppercase">OUR STORY</span>
+                <p className="text-xs font-extrabold text-white">A Healthier Tomorrow Together</p>
+                <p className="text-slate-400 line-clamp-2">At ValueLife, we bring you high-quality natural essentials for everyday vitality.</p>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                📖 10. Our Brand Story (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 11: TESTIMONIALS */}
+            {sectionsConfig.show_testimonials === 1 ? (
+              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5 text-[10px]">
+                <span className="text-xs font-black text-yellow-400 font-['Outfit'] block">⭐ Customer Reviews (4.9 / 5.0)</span>
+                <div className="p-2 bg-slate-850 rounded-lg text-slate-300 italic">
+                  "Truly remarkable pure quality. The best unadulterated cold-pressed oil in India!"
+                </div>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                ⭐ 11. Customer Testimonials (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 12: BLOGS */}
+            {sectionsConfig.show_blog_section === 1 ? (
+              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1 text-[10px]">
+                <span className="text-xs font-black text-indigo-400 font-['Outfit'] block">✍️ Wellness & Organic Journal</span>
+                <p className="text-slate-300 font-bold">Top 5 Morning Habits for Natural Immunity & Energy</p>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                ✍️ 12. Wellness Journal & Blogs (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 13: MAIN CATALOG GRID */}
             {sectionsConfig.show_catalog_grid === 1 ? (
               <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
                 <span className="text-xs font-black text-white font-['Outfit'] block">🛍️ Main Catalog & Pill Filters</span>
@@ -143,11 +231,11 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
               </div>
             ) : (
               <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                🛍️ 7. Main Product Catalog & Filters (DISABLED)
+                🛍️ 13. Main Product Catalog & Filters (DISABLED)
               </div>
             )}
 
-            {/* SECTION 8: INSTAGRAM FEED */}
+            {/* SECTION 14: INSTAGRAM FEED */}
             {sectionsConfig.show_instagram_feed === 1 ? (
               <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
@@ -164,7 +252,22 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
               </div>
             ) : (
               <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                📸 8. Instagram Feed (6-Grid) (DISABLED)
+                📸 14. Instagram Feed (6-Grid) (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 15: NEWSLETTER BANNER */}
+            {sectionsConfig.show_newsletter === 1 ? (
+              <div className="bg-slate-900/90 p-3 rounded-xl border border-sky-800/60 flex justify-between items-center text-[10px]">
+                <div>
+                  <span className="text-xs font-black text-sky-400 font-['Outfit'] block">✉️ Stay in the Loop</span>
+                  <p className="text-slate-400 text-[9px]">Subscribe for 15% discount on your first order.</p>
+                </div>
+                <span className="px-2 py-1 bg-sky-500 text-slate-950 font-black rounded text-[9px]">Subscribe</span>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                ✉️ 15. Newsletter Subscribe Banner (DISABLED)
               </div>
             )}
 
