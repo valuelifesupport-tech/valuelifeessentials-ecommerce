@@ -892,12 +892,14 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   };
 
   const handleDownloadUsersCSV = () => {
-    window.open(getApiUrl('/api/admin/users/export'), '_blank');
+    const token = localStorage.getItem('admin_session_token') || '';
+    window.open(getApiUrl(`/api/admin/users/export?token=${token}&admin_token=${token}`), '_blank');
     if (showToast) showToast('info', 'Downloading CSV', 'Exporting user details CSV file...');
   };
 
-  const handleDownloadGstCSV = (monthKey = selectedGstMonth) => {
-    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey}`), '_blank');
+  const handleDownloadGstCSV = (monthKey = selectedGstMonth, type = 'ALL') => {
+    const token = localStorage.getItem('admin_session_token') || '';
+    window.open(getApiUrl(`/api/admin/gst-report/export?month=${monthKey || 'ALL'}&type=${type || 'ALL'}&token=${token}&admin_token=${token}`), '_blank');
     if (showToast) showToast('info', 'Downloading Monthly GST Tax Register', `Exporting GST B2C & B2B Sales Report CSV for ${monthKey === 'ALL' ? 'All Months' : monthKey}...`);
   };
 

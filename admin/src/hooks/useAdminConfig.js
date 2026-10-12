@@ -409,9 +409,31 @@ export default function useAdminConfig({
     if (showToast) showToast('info', 'Override Deleted', 'Tax override rule removed.');
   };
 
-  const handleDownloadGstCSV = (monthKey, type) => {
-    const token = localStorage.getItem('admin_session_token');
-    window.open(getApiUrl(`/api/admin/gst-report/csv?month=${monthKey || 'ALL'}&type=${type || 'full'}&token=${token}`), '_blank');
+  const handleDownloadGstCSV = async (monthKey, type) => {
+    const token = localStorage.getItem('admin_session_token') || '';
+    const m = monthKey || 'ALL';
+    const t = type || 'ALL';
+    try {
+      let res = await adminFetch(`/api/admin/gst-report/export?month=${m}&type=${t}&token=${token}&admin_token=${token}`);
+      if (!res.ok) {
+        res = await adminFetch(`/api/admin/gst-report/csv?month=${m}&type=${t}&token=${token}&admin_token=${token}`);
+      }
+      if (res.ok) {
+        const csvText = await res.text();
+        const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `GST_Tax_Register_${m === 'ALL' ? 'Cumulative' : m}_${String(t).toUpperCase()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if (showToast) showToast('success', 'GST CSV Downloaded', 'Tax register CSV exported successfully.');
+        return;
+      }
+    } catch (e) {}
+    window.open(getApiUrl(`/api/admin/gst-report/export?month=${m}&type=${t}&token=${token}&admin_token=${token}`), '_blank');
   };
 
   // ------ Sidebar navigation ------
