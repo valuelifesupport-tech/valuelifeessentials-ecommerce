@@ -32,18 +32,13 @@ export default function MobileBottomNav({
     setTrackedOrder(null);
 
     try {
-      const res = await fetch(getApiUrl('/api/orders'));
-      const allOrders = await res.json();
-      const found = allOrders.find(o => 
-        o.order_number?.toLowerCase() === trackInput.trim().toLowerCase() ||
-        o.customer_phone?.includes(trackInput.trim()) ||
-        o.id?.toString() === trackInput.trim()
-      );
-
-      if (found) {
-        setTrackedOrder(found);
+      const res = await fetch(getApiUrl(`/api/orders/track?q=${encodeURIComponent(trackInput.trim())}`));
+      if (res.ok) {
+        const order = await res.json();
+        setTrackedOrder(order);
       } else {
-        setTrackError(`No order found matching "${trackInput}". Please check your order number (e.g. OB-2026-1026).`);
+        const data = await res.json().catch(() => ({}));
+        setTrackError(data.error || `No order found matching "${trackInput}". Please check your order number (e.g. OB-2026-1026).`);
       }
     } catch (err) {
       setTrackError('Error tracking order. Please try again.');
