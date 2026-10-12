@@ -19,6 +19,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
   // Content & media
   const [pages, setPages] = useState([]);
+  const [blogs, setBlogs] = useState([]);
   const [mediaFiles, setMediaFiles] = useState([]);
   const [filterGroups, setFilterGroups] = useState([]);
   const [heroSlides, setHeroSlides] = useState([]);
@@ -42,14 +43,15 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
   const fetchAdminData = async () => {
     try {
-      const [prods, cats, cols, ords, setts, revs, slides] = await Promise.all([
+      const [prods, cats, cols, ords, setts, revs, slides, blgs] = await Promise.all([
         sf('/api/products?includeDrafts=true'),
         sf('/api/categories'),
         sf('/api/collections'),
         sf('/api/admin/orders'),
         sf('/api/settings'),
         sf('/api/reviews'),
-        sf('/api/admin/hero-slides')
+        sf('/api/admin/hero-slides'),
+        sf('/api/admin/blogs')
       ]);
       if (prods) setProducts(prods);
       if (cats) setCategories(cats);
@@ -58,6 +60,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
       if (setts) setSettings(setts);
       if (revs) setReviews(revs);
       if (slides && Array.isArray(slides)) setHeroSlides(slides);
+      if (blgs && Array.isArray(blgs)) setBlogs(blgs);
     } catch (err) {
       console.error('fetchAdminData error:', err);
     }
@@ -104,6 +107,11 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
           if (p) setPages(p);
           break;
         }
+        case 'blogs': {
+          const b = await sf('/api/admin/blogs');
+          if (b) setBlogs(b);
+          break;
+        }
         case 'filters': {
           const f = await sf('/api/filter-groups');
           if (f && Array.isArray(f)) setFilterGroups(f);
@@ -141,6 +149,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
     users, setUsers,
     settings, setSettings,
     pages, setPages,
+    blogs, setBlogs,
     mediaFiles, setMediaFiles,
     filterGroups, setFilterGroups,
     heroSlides, setHeroSlides,

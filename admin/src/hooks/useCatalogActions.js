@@ -9,10 +9,10 @@ import { safeFetchJson } from '../utils/adminApi';
 export default function useCatalogActions({
   adminFetch, fetchAdminData, showToast, askConfirmation,
   // Entity setters
-  setProducts, setCategories, setCollections, setBanners, setCoupons, setPages, setFilterGroups,
+  setProducts, setCategories, setCollections, setBanners, setCoupons, setPages, setBlogs, setFilterGroups,
   // Modal setters
-  setShowCategoryModal, setShowCollectionModal, setShowSubcategoryModal, setShowBannerModal, setShowCouponModal, setShowPageModal,
-  setEditingCategory, setEditingCollection, setEditingPage,
+  setShowCategoryModal, setShowCollectionModal, setShowSubcategoryModal, setShowBannerModal, setShowCouponModal, setShowPageModal, setShowBlogModal,
+  setEditingCategory, setEditingCollection, setEditingPage, setEditingBlog,
   setDeleteConfirmCategory, setDeletingCategoryId,
   // Product variants
   selectedProductForVariants, setSelectedProductForVariants,
@@ -30,6 +30,22 @@ export default function useCatalogActions({
   const [editingCouponId, setEditingCouponId] = useState(null);
   const [variantForm, setVariantForm] = useState({ variant_name: '', price_inr: 149, price_usd: 4, discount_inr: 99, discount_usd: 3, stock: 50 });
   const [pageForm, setPageForm] = useState({ title: '', slug: '', content: '', seo_title: '', seo_description: '', status: 'published' });
+  const [blogForm, setBlogForm] = useState({
+    title: '',
+    slug: '',
+    category: 'General Wellness',
+    excerpt: '',
+    content: '',
+    featured_image: '',
+    author_name: 'ValueLife Editorial',
+    author_avatar: '',
+    author_role: 'Ayurvedic Specialist',
+    read_time: '5 min read',
+    tags: 'Organic, Wellness, Ayurveda',
+    is_published: 1,
+    is_featured: 0,
+    sort_order: 0
+  });
 
   // Filter groups
   const [newGroupForm, setNewGroupForm] = useState({ name: '', filter_key: '' });
@@ -451,6 +467,95 @@ export default function useCatalogActions({
     });
   };
 
+  // ------ Blogs ------
+  const handleBlogSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const editingBlog = blogForm._editing;
+      const isEdit = !!editingBlog;
+      const url = isEdit ? getApiUrl(`/api/admin/blogs/${editingBlog.id}`) : getApiUrl('/api/admin/blogs');
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const { _editing, ...formData } = blogForm;
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setShowBlogModal(false);
+        setEditingBlog(null);
+        fetchAdminData();
+        const freshBlogs = await sf('/api/admin/blogs');
+        if (freshBlogs) setBlogs(freshBlogs);
+        if (showToast) showToast('success', 'Blog Saved', isEdit ? 'Article updated successfully!' : 'New article published!');
+      } else {
+        if (showToast) showToast('error', 'Blog Error', resData.error || 'Failed to save blog post');
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Blog Error', err.message);
+    }
+  };
+
+  const handleDeleteBlog = async (id, title) => {
+    askConfirmation({
+      title: 'Delete Blog Article?',
+      message: `Are you sure you want to permanently delete article "${title || 'Post #' + id}"? This action cannot be undone.`,
+      confirmText: 'Delete Article',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await adminFetch(`/api/admin/blogs/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            setBlogs(prev => prev.filter(b => b.id !== id));
+            if (showToast) showToast('info', 'Article Deleted', 'Blog article permanently deleted.');
+          } else {
+            const data = await res.json().catch(() => ({}));
+            if (showToast) showToast('error', 'Delete Failed', data.error || 'Could not delete article.');
+          }
+        } catch (err) {
+          if (showToast) showToast('error', 'Delete Error', err.message);
+        }
+      }
+    });
+  };
+
+  const handleToggleBlogPublish = async (blog) => {
+    const newStatus = blog.is_published ? 0 : 1;
+    try {
+      const res = await adminFetch(`/api/admin/blogs/${blog.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: newStatus })
+      });
+      if (res.ok) {
+        setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, is_published: newStatus } : b));
+        if (showToast) showToast('success', newStatus ? 'Article Published' : 'Article Hidden', `"${blog.title}" is now ${newStatus ? 'live' : 'draft'}.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Status Update Failed', err.message);
+    }
+  };
+
+  const handleToggleBlogFeatured = async (blog) => {
+    const newFeatured = blog.is_featured ? 0 : 1;
+    try {
+      const res = await adminFetch(`/api/admin/blogs/${blog.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_featured: newFeatured })
+      });
+      if (res.ok) {
+        setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, is_featured: newFeatured } : b));
+        if (showToast) showToast('success', newFeatured ? 'Marked as Featured' : 'Removed from Featured', `"${blog.title}" ${newFeatured ? 'is now spotlighted' : 'is standard'}.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Featured Update Failed', err.message);
+    }
+  };
+
   // ------ Filter Groups ------
   const handleAddFilterGroup = async (e) => {
     e.preventDefault();
@@ -538,6 +643,7 @@ export default function useCatalogActions({
     editingCouponId, setEditingCouponId,
     variantForm, setVariantForm,
     pageForm, setPageForm,
+    blogForm, setBlogForm,
     newGroupForm, setNewGroupForm,
     newOptionInputs, setNewOptionInputs,
     adminProfileForm, setAdminProfileForm,
@@ -582,6 +688,10 @@ export default function useCatalogActions({
     handleDownloadUsersCSV,
     handlePageSubmit,
     handleDeletePage,
+    handleBlogSubmit,
+    handleDeleteBlog,
+    handleToggleBlogPublish,
+    handleToggleBlogFeatured,
     handleAddFilterGroup,
     handleDeleteFilterGroup,
     handleAddFilterOption,

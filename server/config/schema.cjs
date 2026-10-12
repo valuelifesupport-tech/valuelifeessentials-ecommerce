@@ -244,6 +244,27 @@ function initDb(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS blog_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      category TEXT DEFAULT 'General Wellness',
+      excerpt TEXT,
+      content TEXT NOT NULL,
+      featured_image TEXT,
+      author_name TEXT DEFAULT 'ValueLife Editorial',
+      author_avatar TEXT DEFAULT '',
+      author_role TEXT DEFAULT 'Ayurvedic Specialist',
+      read_time TEXT DEFAULT '5 min read',
+      tags TEXT DEFAULT 'Organic, Wellness, Ayurveda',
+      views_count INTEGER DEFAULT 0,
+      is_published INTEGER DEFAULT 1,
+      is_featured INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Auto-migrate missing columns for users table if needed

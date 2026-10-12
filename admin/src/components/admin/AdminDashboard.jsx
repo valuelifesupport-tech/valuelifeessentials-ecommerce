@@ -30,6 +30,7 @@ import ReviewsTab from './tabs/ReviewsTab';
 import OrdersTab from './tabs/OrdersTab';
 import UsersTab from './tabs/UsersTab';
 import PagesTab from './tabs/PagesTab';
+import BlogsTab from './tabs/BlogsTab';
 import AnnouncementTab from './tabs/AnnouncementTab';
 import HeroTab from './tabs/HeroTab';
 import FiltersTab from './tabs/FiltersTab';
@@ -53,6 +54,7 @@ import CategoryModal from './modals/CategoryModal';
 import SubcategoryModal from './modals/SubcategoryModal';
 import BrowseModal from './modals/BrowseModal';
 import PageModal from './modals/PageModal';
+import BlogModal from './modals/BlogModal';
 import UserDossierModal from './modals/UserDossierModal';
 import ConfirmModals from './modals/ConfirmModals';
 
@@ -85,12 +87,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     askConfirmation: modals.askConfirmation,
     setProducts: data.setProducts, setCollections: data.setCollections,
     setBanners: data.setBanners, setCoupons: data.setCoupons,
-    setPages: data.setPages, setFilterGroups: data.setFilterGroups,
+    setPages: data.setPages, setBlogs: data.setBlogs, setFilterGroups: data.setFilterGroups,
     setShowCategoryModal: modals.setShowCategoryModal, setShowCollectionModal: modals.setShowCollectionModal,
     setShowSubcategoryModal: modals.setShowSubcategoryModal, setShowBannerModal: modals.setShowBannerModal,
     setShowCouponModal: modals.setShowCouponModal, setShowPageModal: modals.setShowPageModal,
+    setShowBlogModal: modals.setShowBlogModal,
     setEditingCategory: modals.setEditingCategory, setEditingCollection: modals.setEditingCollection,
-    setEditingPage: modals.setEditingPage,
+    setEditingPage: modals.setEditingPage, setEditingBlog: modals.setEditingBlog,
     setDeleteConfirmCategory: modals.setDeleteConfirmCategory, setDeletingCategoryId: modals.setDeletingCategoryId,
     selectedProductForVariants: modals.selectedProductForVariants,
     setSelectedProductForVariants: modals.setSelectedProductForVariants,
@@ -150,7 +153,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     banners: data.banners.length,
     coupons: data.coupons.length,
     reviews: data.reviews.length,
-    pages: data.pages.length
+    pages: data.pages.length,
+    blogs: (data.blogs || []).length
   };
 
   // --- Auth Gate ---
@@ -442,6 +446,18 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               setPageForm={catalogActions.setPageForm}
               setShowPageModal={modals.setShowPageModal}
               handleDeletePage={catalogActions.handleDeletePage}
+            />
+          )}
+
+          {activeTab === 'blogs' && (
+            <BlogsTab
+              blogs={data.blogs}
+              setEditingBlog={modals.setEditingBlog}
+              setBlogForm={catalogActions.setBlogForm}
+              setShowBlogModal={modals.setShowBlogModal}
+              handleDeleteBlog={catalogActions.handleDeleteBlog}
+              handleToggleBlogPublish={catalogActions.handleToggleBlogPublish}
+              handleToggleBlogFeatured={catalogActions.handleToggleBlogFeatured}
             />
           )}
 
@@ -784,6 +800,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         pageForm={catalogActions.pageForm}
         setPageForm={catalogActions.setPageForm}
         handlePageSubmit={catalogActions.handlePageSubmit}
+      />
+
+      <BlogModal
+        showBlogModal={modals.showBlogModal}
+        setShowBlogModal={modals.setShowBlogModal}
+        editingBlog={modals.editingBlog}
+        blogForm={catalogActions.blogForm}
+        setBlogForm={catalogActions.setBlogForm}
+        handleBlogSubmit={catalogActions.handleBlogSubmit}
       />
 
       <UserDossierModal
