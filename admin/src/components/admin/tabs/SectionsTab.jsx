@@ -193,8 +193,27 @@ export default function SectionsTab({
             />
 
             <SectionToggleCard
+              icon={<span className="p-2 bg-pink-950/60 border border-pink-800 text-pink-400 rounded-xl text-lg">📸</span>}
+              title="8. Instagram Feed (6-Grid Gallery)"
+              description="Visual social gallery showcase linked directly to your Instagram reels and posts."
+              configKey="show_instagram_feed"
+              value={sectionsConfig.show_instagram_feed}
+              onToggle={updateAndSaveSectionToggle}
+              extraActions={
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('instagram')}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-pink-400 font-extrabold text-xs rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
+                  data-reticle-target="admin-edit-instagram-link"
+                >
+                  📸 Manage Posts
+                </button>
+              }
+            />
+
+            <SectionToggleCard
               icon={<span className="p-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-lg">🦶</span>}
-              title="8. Storefront Footer & Legal Links"
+              title="9. Storefront Footer & Legal Links"
               description="Footer column navigation, payment logos, contact details and copyright line."
               configKey="show_footer"
               value={sectionsConfig.show_footer}

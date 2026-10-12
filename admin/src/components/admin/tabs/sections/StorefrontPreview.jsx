@@ -147,7 +147,28 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
               </div>
             )}
 
-            {/* SECTION 8: FOOTER */}
+            {/* SECTION 8: INSTAGRAM FEED */}
+            {sectionsConfig.show_instagram_feed === 1 ? (
+              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-black text-pink-400 font-['Outfit']">📸 Follow Us On Instagram</span>
+                  <span className="text-[9px] text-pink-300 font-mono">@valuelife_essentials</span>
+                </div>
+                <div className="grid grid-cols-6 gap-1">
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} className="aspect-square bg-slate-850 rounded border border-slate-700/60 flex items-center justify-center text-xs">
+                      📸
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
+                📸 8. Instagram Feed (6-Grid) (DISABLED)
+              </div>
+            )}
+
+            {/* SECTION 9: FOOTER */}
             {sectionsConfig.show_footer === 1 ? (
               <div className="bg-[#1b4332] text-white p-3 rounded-xl text-[10px] space-y-1 border border-emerald-900 shadow">
                 <span className="font-extrabold text-xs block">🌱 VALUELIFE ESSENTIALS Footer</span>
@@ -155,7 +176,7 @@ export default function StorefrontPreview({ sectionsConfig, heroConfig, banners,
               </div>
             ) : (
               <div className="p-2 rounded-lg border border-dashed border-slate-800 text-center text-[10px] text-slate-600 font-bold">
-                🦶 8. Storefront Footer & Links (DISABLED)
+                🦶 9. Storefront Footer & Links (DISABLED)
               </div>
             )}
           </div>

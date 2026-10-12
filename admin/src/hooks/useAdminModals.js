@@ -75,6 +75,10 @@ export default function useAdminModals() {
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState(null);
 
+  // Instagram modal
+  const [showInstagramModal, setShowInstagramModal] = useState(false);
+  const [editingInstagramPost, setEditingInstagramPost] = useState(null);
+
   // User dossier
   const [selectedUserDossier, setSelectedUserDossier] = useState(null);
   const [loadingUserDossier, setLoadingUserDossier] = useState(false);
@@ -156,6 +160,9 @@ export default function useAdminModals() {
     // Blog
     showBlogModal, setShowBlogModal,
     editingBlog, setEditingBlog,
+    // Instagram
+    showInstagramModal, setShowInstagramModal,
+    editingInstagramPost, setEditingInstagramPost,
     // User dossier
     selectedUserDossier, setSelectedUserDossier,
     loadingUserDossier, setLoadingUserDossier,

@@ -20,6 +20,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
   // Content & media
   const [pages, setPages] = useState([]);
   const [blogs, setBlogs] = useState([]);
+  const [instagramPosts, setInstagramPosts] = useState([]);
   const [mediaFiles, setMediaFiles] = useState([]);
   const [filterGroups, setFilterGroups] = useState([]);
   const [heroSlides, setHeroSlides] = useState([]);
@@ -43,7 +44,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
   const fetchAdminData = async () => {
     try {
-      const [prods, cats, cols, ords, setts, revs, slides, blgs] = await Promise.all([
+      const [prods, cats, cols, ords, setts, revs, slides, blgs, igs] = await Promise.all([
         sf('/api/products?includeDrafts=true'),
         sf('/api/categories'),
         sf('/api/collections'),
@@ -51,7 +52,8 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
         sf('/api/settings'),
         sf('/api/reviews'),
         sf('/api/admin/hero-slides'),
-        sf('/api/admin/blogs')
+        sf('/api/admin/blogs'),
+        sf('/api/admin/instagram-posts')
       ]);
       if (prods) setProducts(prods);
       if (cats) setCategories(cats);
@@ -61,6 +63,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
       if (revs) setReviews(revs);
       if (slides && Array.isArray(slides)) setHeroSlides(slides);
       if (blgs && Array.isArray(blgs)) setBlogs(blgs);
+      if (igs && Array.isArray(igs)) setInstagramPosts(igs);
     } catch (err) {
       console.error('fetchAdminData error:', err);
     }
@@ -112,6 +115,11 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
           if (b) setBlogs(b);
           break;
         }
+        case 'instagram': {
+          const ig = await sf('/api/admin/instagram-posts');
+          if (ig && Array.isArray(ig)) setInstagramPosts(ig);
+          break;
+        }
         case 'filters': {
           const f = await sf('/api/filter-groups');
           if (f && Array.isArray(f)) setFilterGroups(f);
@@ -150,6 +158,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
     settings, setSettings,
     pages, setPages,
     blogs, setBlogs,
+    instagramPosts, setInstagramPosts,
     mediaFiles, setMediaFiles,
     filterGroups, setFilterGroups,
     heroSlides, setHeroSlides,

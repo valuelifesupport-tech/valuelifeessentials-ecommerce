@@ -31,6 +31,7 @@ import OrdersTab from './tabs/OrdersTab';
 import UsersTab from './tabs/UsersTab';
 import PagesTab from './tabs/PagesTab';
 import BlogsTab from './tabs/BlogsTab';
+import InstagramTab from './tabs/InstagramTab';
 import AnnouncementTab from './tabs/AnnouncementTab';
 import HeroTab from './tabs/HeroTab';
 import FiltersTab from './tabs/FiltersTab';
@@ -55,6 +56,7 @@ import SubcategoryModal from './modals/SubcategoryModal';
 import BrowseModal from './modals/BrowseModal';
 import PageModal from './modals/PageModal';
 import BlogModal from './modals/BlogModal';
+import InstagramModal from './modals/InstagramModal';
 import UserDossierModal from './modals/UserDossierModal';
 import ConfirmModals from './modals/ConfirmModals';
 
@@ -87,13 +89,13 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     askConfirmation: modals.askConfirmation,
     setProducts: data.setProducts, setCollections: data.setCollections,
     setBanners: data.setBanners, setCoupons: data.setCoupons,
-    setPages: data.setPages, setBlogs: data.setBlogs, setFilterGroups: data.setFilterGroups,
+    setPages: data.setPages, setBlogs: data.setBlogs, setInstagramPosts: data.setInstagramPosts, setFilterGroups: data.setFilterGroups,
     setShowCategoryModal: modals.setShowCategoryModal, setShowCollectionModal: modals.setShowCollectionModal,
     setShowSubcategoryModal: modals.setShowSubcategoryModal, setShowBannerModal: modals.setShowBannerModal,
     setShowCouponModal: modals.setShowCouponModal, setShowPageModal: modals.setShowPageModal,
-    setShowBlogModal: modals.setShowBlogModal,
+    setShowBlogModal: modals.setShowBlogModal, setShowInstagramModal: modals.setShowInstagramModal,
     setEditingCategory: modals.setEditingCategory, setEditingCollection: modals.setEditingCollection,
-    setEditingPage: modals.setEditingPage, setEditingBlog: modals.setEditingBlog,
+    setEditingPage: modals.setEditingPage, setEditingBlog: modals.setEditingBlog, setEditingInstagramPost: modals.setEditingInstagramPost,
     setDeleteConfirmCategory: modals.setDeleteConfirmCategory, setDeletingCategoryId: modals.setDeletingCategoryId,
     selectedProductForVariants: modals.selectedProductForVariants,
     setSelectedProductForVariants: modals.setSelectedProductForVariants,
@@ -154,7 +156,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     coupons: data.coupons.length,
     reviews: data.reviews.length,
     pages: data.pages.length,
-    blogs: (data.blogs || []).length
+    blogs: (data.blogs || []).length,
+    instagramPosts: (data.instagramPosts || []).length
   };
 
   // --- Auth Gate ---
@@ -365,6 +368,23 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               setBanners={data.setBanners}
               setShowBannerModal={modals.setShowBannerModal}
               sectionsConfig={config.sectionsConfig}
+              adminFetch={auth.adminFetch}
+              showToast={showToast}
+            />
+          )}
+
+          {activeTab === 'instagram' && (
+            <InstagramTab
+              instagramPosts={data.instagramPosts}
+              setInstagramPosts={data.setInstagramPosts}
+              setShowInstagramModal={modals.setShowInstagramModal}
+              setEditingInstagramPost={modals.setEditingInstagramPost}
+              setInstagramForm={catalogActions.setInstagramForm}
+              handleDeleteInstagramPost={catalogActions.handleDeleteInstagramPost}
+              handleToggleInstagramActive={catalogActions.handleToggleInstagramActive}
+              sectionsConfig={config.sectionsConfig}
+              updateAndSaveSectionToggle={config.updateAndSaveSectionToggle}
+              settings={data.settings}
               adminFetch={auth.adminFetch}
               showToast={showToast}
             />
@@ -809,6 +829,15 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         blogForm={catalogActions.blogForm}
         setBlogForm={catalogActions.setBlogForm}
         handleBlogSubmit={catalogActions.handleBlogSubmit}
+      />
+
+      <InstagramModal
+        showInstagramModal={modals.showInstagramModal}
+        setShowInstagramModal={modals.setShowInstagramModal}
+        editingInstagramPost={modals.editingInstagramPost}
+        instagramForm={catalogActions.instagramForm}
+        setInstagramForm={catalogActions.setInstagramForm}
+        handleInstagramSubmit={catalogActions.handleInstagramSubmit}
       />
 
       <UserDossierModal

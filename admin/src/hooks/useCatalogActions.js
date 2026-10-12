@@ -9,10 +9,10 @@ import { safeFetchJson } from '../utils/adminApi';
 export default function useCatalogActions({
   adminFetch, fetchAdminData, showToast, askConfirmation,
   // Entity setters
-  setProducts, setCategories, setCollections, setBanners, setCoupons, setPages, setBlogs, setFilterGroups,
+  setProducts, setCategories, setCollections, setBanners, setCoupons, setPages, setBlogs, setInstagramPosts, setFilterGroups,
   // Modal setters
-  setShowCategoryModal, setShowCollectionModal, setShowSubcategoryModal, setShowBannerModal, setShowCouponModal, setShowPageModal, setShowBlogModal,
-  setEditingCategory, setEditingCollection, setEditingPage, setEditingBlog,
+  setShowCategoryModal, setShowCollectionModal, setShowSubcategoryModal, setShowBannerModal, setShowCouponModal, setShowPageModal, setShowBlogModal, setShowInstagramModal,
+  setEditingCategory, setEditingCollection, setEditingPage, setEditingBlog, setEditingInstagramPost,
   setDeleteConfirmCategory, setDeletingCategoryId,
   // Product variants
   selectedProductForVariants, setSelectedProductForVariants,
@@ -30,6 +30,13 @@ export default function useCatalogActions({
   const [editingCouponId, setEditingCouponId] = useState(null);
   const [variantForm, setVariantForm] = useState({ variant_name: '', price_inr: 149, price_usd: 4, discount_inr: 99, discount_usd: 3, stock: 50 });
   const [pageForm, setPageForm] = useState({ title: '', slug: '', content: '', seo_title: '', seo_description: '', status: 'published' });
+  const [instagramForm, setInstagramForm] = useState({
+    title: '',
+    image_url: '',
+    post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en',
+    sort_order: 1,
+    is_active: 1
+  });
   const [blogForm, setBlogForm] = useState({
     title: '',
     slug: '',
@@ -556,6 +563,90 @@ export default function useCatalogActions({
     }
   };
 
+  // ------ Instagram Posts CRUD ------
+  const handleInstagramSubmit = async (e, editingInstagramPost = null) => {
+    e.preventDefault();
+    try {
+      const isEdit = Boolean(editingInstagramPost);
+      const url = isEdit
+        ? `/api/admin/instagram-posts/${editingInstagramPost.id}`
+        : '/api/admin/instagram-posts';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(instagramForm)
+      });
+
+      if (res.ok) {
+        if (setShowInstagramModal) setShowInstagramModal(false);
+        if (setEditingInstagramPost) setEditingInstagramPost(null);
+        setInstagramForm({
+          title: '',
+          image_url: '',
+          post_url: 'https://www.instagram.com/valuelife_essentials/?hl=en',
+          sort_order: 1,
+          is_active: 1
+        });
+        const fresh = await sf('/api/admin/instagram-posts');
+        if (fresh && Array.isArray(fresh) && setInstagramPosts) setInstagramPosts(fresh);
+        if (showToast) showToast('success', isEdit ? 'Post Updated' : 'Post Published', `Instagram post "${instagramForm.title}" saved live!`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Failed to Save', errData.error || 'Server error occurred.');
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Error', err.message);
+    }
+  };
+
+  const handleDeleteInstagramPost = async (id, title) => {
+    askConfirmation({
+      title: 'Delete Instagram Post?',
+      message: `Are you sure you want to remove "${title || 'Post #' + id}" from your storefront Instagram gallery?`,
+      confirmText: 'Delete Post',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await adminFetch(`/api/admin/instagram-posts/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            if (setInstagramPosts) setInstagramPosts(prev => prev.filter(p => p.id !== id));
+            if (showToast) showToast('info', 'Post Deleted', 'Instagram post removed.');
+          } else {
+            const data = await res.json().catch(() => ({}));
+            if (showToast) showToast('error', 'Delete Failed', data.error || 'Could not delete post.');
+          }
+        } catch (err) {
+          if (showToast) showToast('error', 'Delete Error', err.message);
+        }
+      }
+    });
+  };
+
+  const handleToggleInstagramActive = async (post) => {
+    const updatedStatus = Number(post.is_active) === 1 ? 0 : 1;
+    try {
+      const res = await adminFetch(`/api/admin/instagram-posts/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: post.title,
+          image_url: post.image_url,
+          post_url: post.post_url,
+          sort_order: post.sort_order,
+          is_active: updatedStatus
+        })
+      });
+      if (res.ok) {
+        if (setInstagramPosts) setInstagramPosts(prev => prev.map(p => p.id === post.id ? { ...p, is_active: updatedStatus } : p));
+        if (showToast) showToast('success', updatedStatus ? 'Post Active' : 'Post Hidden', `"${post.title || 'Instagram Post'}" is now ${updatedStatus ? 'visible' : 'hidden'}.`);
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Status Update Failed', err.message);
+    }
+  };
+
   // ------ Filter Groups ------
   const handleAddFilterGroup = async (e) => {
     e.preventDefault();
@@ -644,6 +735,7 @@ export default function useCatalogActions({
     variantForm, setVariantForm,
     pageForm, setPageForm,
     blogForm, setBlogForm,
+    instagramForm, setInstagramForm,
     newGroupForm, setNewGroupForm,
     newOptionInputs, setNewOptionInputs,
     adminProfileForm, setAdminProfileForm,
@@ -692,6 +784,9 @@ export default function useCatalogActions({
     handleDeleteBlog,
     handleToggleBlogPublish,
     handleToggleBlogFeatured,
+    handleInstagramSubmit,
+    handleDeleteInstagramPost,
+    handleToggleInstagramActive,
     handleAddFilterGroup,
     handleDeleteFilterGroup,
     handleAddFilterOption,

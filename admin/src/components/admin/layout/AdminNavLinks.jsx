@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   BarChart2, Package, ShoppingBag, Layers, Sparkles, ImageIcon, 
   Filter, Grid, DollarSign, Users, Tag, ChevronDown, ChevronRight, 
-  Megaphone, Image, FileText, Star, Settings, BookOpen 
+  Megaphone, Image, FileText, Star, Settings, BookOpen, Instagram 
 } from 'lucide-react';
 
 export default function AdminNavLinks({
@@ -31,7 +31,8 @@ export default function AdminNavLinks({
     coupons = 0,
     reviews = 0,
     pages = 0,
-    blogs = 0
+    blogs = 0,
+    instagramPosts = 0
   } = counts;
 
   return (
@@ -265,6 +266,22 @@ export default function AdminNavLinks({
               </div>
               <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
                 {banners}
+              </span>
+            </button>
+
+            <button 
+              onClick={() => handleNavSelect('instagram')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                activeTab === 'instagram' ? 'bg-emerald-600 text-white shadow-md font-extrabold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`}
+              data-reticle-target="admin-nav-instagram"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Instagram size={16} className="text-pink-400 flex-shrink-0" /> 
+                <span className="truncate whitespace-nowrap text-xs font-bold">📸 Instagram Feed (6-Grid)</span>
+              </div>
+              <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md border border-slate-700 font-extrabold flex-shrink-0 whitespace-nowrap">
+                {instagramPosts}
               </span>
             </button>
 
