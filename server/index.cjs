@@ -92,7 +92,7 @@ app.use(require('./routes/categories.routes.cjs'));
 app.use(require('./routes/collections.routes.cjs'));
 app.use(require('./routes/banners.routes.cjs'));
 app.use(require('./routes/filters.routes.cjs'));
-app.use(require('./routes/cartWishlist.routes.cjs'));
+app.use(require('./routes/cart.routes.cjs'));
 app.use(require('./routes/settings.routes.cjs'));
 app.use(require('./routes/pages.routes.cjs'));
 app.use(require('./routes/blogs.routes.cjs'));
@@ -106,6 +106,16 @@ app.use(require('./routes/products.routes.cjs'));
 app.use(require('./routes/orders.routes.cjs'));
 app.use(require('./routes/shiprocket.routes.cjs'));
 app.use(require('./routes/newsletter.routes.cjs'));
+
+// 404 UNMATCHED ROUTE HANDLER
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint not found: ${req.method} ${req.originalUrl}`,
+    code: 'NOT_FOUND',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // CENTRAL ERROR HANDLER
 app.use(errorHandler);

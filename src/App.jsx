@@ -1,16 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { getApiUrl, resolveImgUrl } from './api/config';
-import { getProductPricing as getCalcProductPricing, resolveBaseVariant, resolveItemOptionLabel } from './utils/pricing';
+import React from 'react';
+
+// Providers & State Management
+import { ToastProvider, useToast } from './context/ToastContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ShopProvider, useShop } from './context/ShopContext';
+import { CartProvider, useCart } from './context/CartContext';
+import { WishlistProvider, useWishlist } from './context/WishlistContext';
+import { CheckoutProvider, useCheckout } from './context/CheckoutContext';
+import { useRouter } from './hooks/useRouter';
+import { useCatalog } from './hooks/useCatalog';
 
 // Layout & Common Components
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import MobileBottomNav from './components/layout/MobileBottomNav';
-import ToastNotification from './components/common/ToastNotification';
 import BrandLoader from './components/common/BrandLoader';
 import SectionErrorBoundary from './components/common/SectionErrorBoundary';
 
-// Views
+// Store Views
 import StoreHomeView from './components/sections/StoreHomeView';
 import CatalogView from './components/product/CatalogView';
 import ProductDetailPage from './components/product/ProductDetailPage';
@@ -28,651 +35,185 @@ import PaymentGatewayModal from './components/payment/PaymentGatewayModal';
 import CustomerAuthModal from './components/auth/CustomerAuthModal';
 import SelectVariantModal from './components/product/SelectVariantModal';
 
-export default function App() {
-  const getInitialRouteState = () => {
-    const path = window.location.pathname;
-    if (path.startsWith('/admin')) {
-      window.history.replaceState({}, '', '/');
-      return { view: 'store', slug: null, category: null, collection: null };
-    }
-    if (path.startsWith('/account') || path.startsWith('/profile')) return { view: 'account', slug: null, category: null, collection: null };
-    if (path.startsWith('/products/')) {
-      const slug = path.replace('/products/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
-      return { view: 'pdp', slug, category: null, collection: null };
-    }
-    if (path.startsWith('/product/')) {
-      const slug = path.replace('/product/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
-      return { view: 'pdp', slug, category: null, collection: null };
-    }
-    if (path === '/products') return { view: 'all_products', slug: null, category: null, collection: null };
-    if (path === '/offers') return { view: 'offers', slug: null, category: null, collection: null };
-    if (path === '/bestsellers') return { view: 'bestsellers', slug: null, category: null, collection: null };
-    if (path === '/blog' || path === '/pages/blog') return { view: 'blog', slug: null, category: null, collection: null };
-    if (path.startsWith('/blog/')) {
-      const slug = path.replace('/blog/', '');
-      return { view: 'blog_detail', slug, category: null, collection: null };
-    }
-    if (path === '/contact' || path === '/contact-us') return { view: 'page', slug: 'contact-us', category: null, collection: null };
-    if (path === '/about' || path === '/about-us') return { view: 'page', slug: 'about-us', category: null, collection: null };
-    if (path === '/faq') return { view: 'page', slug: 'faq', category: null, collection: null };
-    if (path === '/shipping-policy') return { view: 'page', slug: 'shipping-policy', category: null, collection: null };
-    if (path === '/returns-refund' || path === '/refund-policy') return { view: 'page', slug: 'refund-policy', category: null, collection: null };
-    if (path === '/privacy-policy') return { view: 'page', slug: 'privacy-policy', category: null, collection: null };
-    if (path === '/terms-of-service' || path === '/terms') return { view: 'page', slug: 'terms-of-service', category: null, collection: null };
-    if (path.startsWith('/pages/')) {
-      let slug = path.replace('/pages/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
-      if (slug === 'blog') return { view: 'blog', slug: null, category: null, collection: null };
-      if (slug === 'contact') slug = 'contact-us';
-      if (slug === 'about') slug = 'about-us';
-      if (slug === 'returns-refund') slug = 'refund-policy';
-      return { view: 'page', slug, category: null, collection: null };
-    }
-    if (path.startsWith('/category/')) {
-      const category = path.replace('/category/', '');
-      return { view: 'catalog', slug: null, category, collection: null };
-    }
-    if (path.startsWith('/collection/')) {
-      const collection = path.replace('/collection/', '');
-      return { view: 'catalog', slug: null, category: null, collection };
-    }
-    return { view: 'store', slug: null, category: null, collection: null };
-  };
+/**
+ * Inner Storefront Shell — consumes modular hooks and renders layout & active view
+ */
+function StorefrontLayout() {
+  const { route, navigateTo } = useRouter();
+  const { showToast } = useToast();
 
-  const [route, setRoute] = useState(getInitialRouteState());
-  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
-  const [isMaintenanceUnlocked, setIsMaintenanceUnlocked] = useState(() => {
-    return sessionStorage.getItem('maintenance_unlocked') === 'true';
-  });
+  const {
+    currentUser,
+    isAuthOpen,
+    closeAuthModal,
+    openAuthModal,
+    customerForm,
+    setCustomerForm,
+    login,
+    logout,
+    updateUser
+  } = useAuth();
 
-  const [currency, setCurrency] = useState('INR');
-  const [currencySymbol, setCurrencySymbol] = useState('₹');
-  const [banners, setBanners] = useState([]);
-  const [isAppLoading, setIsAppLoading] = useState(true);
-  const [categories, setCategories] = useState([]);
-  const [collections, setCollections] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [bestProducts, setBestProducts] = useState([]);
-  const [filterGroups, setFilterGroups] = useState([]);
-  const [selectedFilters, setSelectedFilters] = useState({});
-  const [activeFilterDropdown, setActiveFilterDropdown] = useState(null);
-  const [settings, setSettings] = useState({ enable_multi_currency: 0 });
-  const [heroConfig, setHeroConfig] = useState(null);
-  const [themeConfig, setThemeConfig] = useState({
-    active_preset: 'EMERALD',
-    card_style: 'VALUELIFE_ESSENTIALS'
-  });
-  const [sectionsConfig, setSectionsConfig] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const [mobileViewMode, setMobileViewMode] = useState('grid');
-  const [visibleCount, setVisibleCount] = useState(12);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const {
+    currency,
+    setCurrency,
+    currencySymbol,
+    isAppLoading,
+    isProductsLoading,
+    isMaintenanceActive,
+    isMaintenanceUnlocked,
+    unlockMaintenance,
+    settings,
+    filterGroups,
+    heroConfig,
+    themeConfig,
+    sectionsConfig,
+    banners,
+    categories,
+    collections,
+    products,
+    bestProducts,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    mobileViewMode,
+    setMobileViewMode,
+    visibleCount,
+    setVisibleCount,
+    isLoadingMore,
+    selectedFilters,
+    setSelectedFilters,
+    activeFilterDropdown,
+    setActiveFilterDropdown,
+    variantModalProduct,
+    openVariantModal,
+    closeVariantModal,
+    getProductPricing
+  } = useShop();
 
-  // Cart & Wishlist
-  const [cart, setCart] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('organic_cart')) || []; } catch (e) { return []; }
-  });
-  const [wishlist, setWishlist] = useState([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-  const [variantModalProduct, setVariantModalProduct] = useState(null);
-  const openVariantModal = (p) => setVariantModalProduct(p);
+  const {
+    cart,
+    cartCount,
+    isCartOpen,
+    openCart,
+    closeCart,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    clearCart
+  } = useCart();
 
-  useEffect(() => {
-    try { localStorage.setItem('organic_cart', JSON.stringify(cart)); } catch (e) {}
-  }, [cart]);
+  const {
+    wishlist,
+    wishlistCount,
+    isWishlistOpen,
+    openWishlist,
+    closeWishlist,
+    toggleWishlist,
+    removeFromWishlist,
+    isInWishlist
+  } = useWishlist();
 
-  // Auth & Checkout
-  const [currentUser, setCurrentUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('customerUser')) || null; } catch (e) { return null; }
-  });
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [checkoutData, setCheckoutData] = useState(null);
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [customerForm, setCustomerForm] = useState(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem('customerUser'));
-      const savedAddr = localStorage.getItem('user_last_shipping_address') || '';
-      return {
-        name: u?.name || '',
-        phone: u?.phone || '',
-        email: u?.email || '',
-        address: u?.address || savedAddr || '',
-        remark: ''
-      };
-    } catch (e) {
-      return { name: '', phone: '', email: '', address: '', remark: '' };
-    }
-  });
-  const [orderSuccess, setOrderSuccess] = useState(null);
-  const [selectedPaymentGateway, setSelectedPaymentGateway] = useState('razorpay');
-  const [availableGateways, setAvailableGateways] = useState(['razorpay', 'phonepe', 'cod']);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [pendingPaymentOrder, setPendingPaymentOrder] = useState(null);
-  const [paymentPayableAmount, setPaymentPayableAmount] = useState(0);
-  const [toast, setToast] = useState(null);
+  const {
+    showCheckoutModal,
+    setShowCheckoutModal,
+    checkoutData,
+    isSubmittingOrder,
+    orderSuccess,
+    setOrderSuccess,
+    selectedPaymentGateway,
+    setSelectedPaymentGateway,
+    availableGateways,
+    showPaymentModal,
+    setShowPaymentModal,
+    pendingPaymentOrder,
+    paymentPayableAmount,
+    proceedToCheckout,
+    submitOrder,
+    handlePaymentSuccess,
+    handlePaymentFailure
+  } = useCheckout();
 
-  const showToast = (type, title, message) => setToast({ type, title, message });
+  const { sortedProducts, handleClearFilters } = useCatalog();
 
-  // Keep customerForm automatically synced with logged in user
-  useEffect(() => {
-    if (currentUser) {
-      setCustomerForm(prev => ({
-        name: currentUser.name || prev.name || '',
-        phone: currentUser.phone || prev.phone || '',
-        email: currentUser.email || prev.email || '',
-        address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev.address || '',
-        remark: prev.remark || ''
-      }));
-
-      // If address is missing, fetch user profile & last order address
-      if (!currentUser.address && currentUser.email) {
-        fetch(getApiUrl(`/api/users/${encodeURIComponent(currentUser.email)}/profile`))
-          .then(res => res.ok ? res.json() : null)
-          .then(profile => {
-            if (profile?.address) {
-              const updated = { ...currentUser, address: profile.address };
-              setCurrentUser(updated);
-              try { localStorage.setItem('customerUser', JSON.stringify(updated)); } catch (e) {}
-              setCustomerForm(prev => ({ ...prev, address: profile.address }));
-            }
-          })
-          .catch(() => {});
-      }
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsAppLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const handlePopState = () => setRoute(getInitialRouteState());
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  useEffect(() => {
-    fetch(getApiUrl('/api/settings')).then(r => r.json()).then(d => d && setSettings(d)).catch(() => {});
-    fetch(getApiUrl('/api/filter-groups')).then(r => r.json()).then(d => d && setFilterGroups(d)).catch(() => {});
-    fetch(getApiUrl('/api/hero-config')).then(r => r.json()).then(d => d && setHeroConfig(d)).catch(() => {});
-    fetch(getApiUrl('/api/theme-config')).then(r => r.json()).then(d => d && setThemeConfig(d)).catch(() => {});
-    fetch(getApiUrl('/api/sections-config')).then(r => r.json()).then(d => d && setSectionsConfig(d)).catch(() => {});
-    fetch(getApiUrl('/api/maintenance/status'))
-      .then(r => r.json())
-      .then(d => {
-        const active = Boolean(d?.maintenance_mode || d?.mode);
-        setIsMaintenanceActive(active);
-        if (active && sessionStorage.getItem('maintenance_unlocked') !== 'true') {
-          setIsMaintenanceUnlocked(false);
-          localStorage.removeItem('maintenance_unlocked');
-        }
-      })
-      .catch(() => {});
-    fetch(getApiUrl('/api/currency/detect')).then(r => r.json()).then(d => { if (d.currency) { setCurrency(d.currency); setCurrencySymbol(d.symbol); } }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    setCurrencySymbol(currency === 'INR' ? '₹' : '$');
-  }, [currency]);
-
-  useEffect(() => {
-    fetch(getApiUrl('/api/banners')).then(r => r.json()).then(d => setBanners(d || [])).catch(() => {});
-    fetch(getApiUrl('/api/categories')).then(r => r.json()).then(d => setCategories(d || [])).catch(() => {});
-    fetch(getApiUrl('/api/collections')).then(r => r.json()).then(d => setCollections(d || [])).catch(() => {});
-    fetchProducts();
-  }, [route, searchQuery]);
-
-  useEffect(() => {
-    setVisibleCount(12);
-  }, [route, selectedFilters, searchQuery, sortBy]);
-
-  const navigateTo = (path, newRouteState) => {
-    window.history.pushState({}, '', path);
-    let state = newRouteState;
-    if (!state) {
-      state = getInitialRouteState();
-    } else {
-      if (state.view === 'product') {
-        state = { ...state, view: 'pdp' };
-      }
-    }
-    setRoute(state);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  };
-
-  const getProductPricing = (p, curr = currency) => getCalcProductPricing(p, curr);
-
-  const fetchProducts = async () => {
-    setIsProductsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (route.category) params.append('category', route.category);
-      if (route.collection) params.append('collection', route.collection);
-      if (searchQuery) params.append('search', searchQuery);
-      const url = getApiUrl('/api/products') + (params.toString() ? `?${params.toString()}` : '');
-      const res = await fetch(url);
-      const rawData = await res.json();
-      let data = Array.isArray(rawData) ? rawData : (rawData?.products || []);
-
-      if (route.view === 'offers') {
-        data = data.filter(p => getProductPricing(p).pct > 0);
-      } else if (route.view === 'bestsellers') {
-        data = data.filter(p => p && p.is_best_product === 1);
-      } else if (route.view === 'new_arrivals') {
-        data = [...data].sort((a, b) => (b.id || 0) - (a.id || 0));
-      }
-      setProducts(data);
-      setBestProducts(data.filter(p => p && p.is_best_product === 1));
-    } catch (err) {
-      setProducts([]);
-      setBestProducts([]);
-    } finally {
-      setIsProductsLoading(false);
-    }
-  };
-
-  const handleAddToCart = (productPayload) => {
-    const isINR = currency === 'INR';
-    const matchedProd = Array.isArray(products)
-      ? products.find(p => Number(p.id) === Number(productPayload.id) || (p.slug && productPayload.slug && p.slug === productPayload.slug))
-      : null;
-
-    const fullProduct = {
-      ...(matchedProd || {}),
-      ...productPayload,
-      variants: (Array.isArray(productPayload.variants) && productPayload.variants.length > 0)
-        ? productPayload.variants
-        : (matchedProd?.variants || [])
-    };
-
-    const explicitVariant = productPayload.variant || productPayload.selectedVariant || null;
-    const selectedVariant = explicitVariant || resolveBaseVariant(fullProduct, currency, productPayload.price || productPayload.discount_inr || productPayload.price_inr);
-
-    const qty = productPayload.quantity || 1;
-    const variantId = selectedVariant?.id || productPayload.variant_id || null;
-    const variantName =
-      selectedVariant?.variant_name ||
-      selectedVariant?.name ||
-      selectedVariant?.title ||
-      productPayload.variant_name ||
-      resolveItemOptionLabel(fullProduct, matchedProd, currency, productPayload.price) ||
-      null;
-
-    const rawVarPriceInr = Number(selectedVariant?.price_inr || selectedVariant?.price || fullProduct.price_inr || fullProduct.price || 0);
-    const rawVarDiscInr = Number(selectedVariant?.discount_inr || 0);
-    const itemPriceInr = (rawVarDiscInr > 0 && rawVarDiscInr < rawVarPriceInr)
-      ? rawVarDiscInr
-      : (rawVarPriceInr > 0 ? rawVarPriceInr : Number(productPayload.price || 0));
-
-    const itemPriceUsd = Number(selectedVariant?.price_usd || fullProduct.price_usd || Math.round(itemPriceInr / 40));
-    const activePrice = isINR ? itemPriceInr : itemPriceUsd;
-    const cartKey = variantId ? `${fullProduct.id}_var_${variantId}` : (variantName ? `${fullProduct.id}_opt_${variantName}` : `${fullProduct.id}`);
-    const itemThumbnail = selectedVariant?.image_url || fullProduct.thumbnail || fullProduct.image_url;
-
-    setCart(prev => {
-      const existingIndex = prev.findIndex(item => item.cartKey === cartKey || (item.id === fullProduct.id && item.variant_id === variantId && (item.variant_name || null) === (variantName || null)));
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          variant_id: variantId,
-          variant_name: variantName,
-          quantity: updated[existingIndex].quantity + qty,
-          price: activePrice
-        };
-        return updated;
-      }
-      return [
-        ...prev,
-        {
-          ...fullProduct,
-          cartKey,
-          id: fullProduct.id,
-          variant: selectedVariant,
-          variant_id: variantId,
-          variant_name: variantName,
-          thumbnail: itemThumbnail,
-          price: activePrice,
-          quantity: qty
-        }
-      ];
-    });
-
-    const displayTitle = variantName ? `${fullProduct.title} (${variantName})` : fullProduct.title;
-    showToast('success', 'Added to Cart', `Added "${displayTitle}" to cart!`);
-    setIsCartOpen(true);
-  };
-
-  const handleUpdateQuantity = (cartKey, newQty) => {
-    if (newQty <= 0) handleRemoveFromCart(cartKey);
-    else setCart(prev => prev.map(item => (item.cartKey === cartKey || item.id === cartKey) ? { ...item, quantity: newQty } : item));
-  };
-
-  const handleRemoveFromCart = (cartKey) => {
-    setCart(prev => prev.filter(item => !(item.cartKey === cartKey || item.id === cartKey)));
-  };
-
-  const handleToggleWishlist = (product, selectedVariant = null) => {
-    const isINR = currency === 'INR';
-    const variants = Array.isArray(product.variants) && product.variants.length > 0 ? product.variants : null;
-    const chosenVariant = selectedVariant || (variants ? variants[0] : null);
-    const variantId = chosenVariant?.id || null;
-    const variantName = chosenVariant?.variant_name || chosenVariant?.name || null;
-
-    let itemPriceInr = Number(chosenVariant?.price_inr || chosenVariant?.price || product.price_inr || product.price || 0);
-    let itemPriceUsd = Number(chosenVariant?.price_usd || product.price_usd || Math.round(itemPriceInr / 40));
-    const activePrice = isINR ? itemPriceInr : itemPriceUsd;
-    const itemThumbnail = chosenVariant?.image_url || product.thumbnail || product.image_url;
-
-    setWishlist(prev => {
-      const exists = prev.some(item => (variantId ? (item.id === product.id && item.variant_id === variantId) : item.id === product.id));
-      if (exists) {
-        showToast('info', 'Wishlist', `Removed "${product.title}" from wishlist.`);
-        return prev.filter(item => !(variantId ? (item.id === product.id && item.variant_id === variantId) : item.id === product.id));
-      }
-      const displayTitle = variantName ? `${product.title} (${variantName})` : product.title;
-      showToast('success', 'Wishlist', `Saved "${displayTitle}" to wishlist!`);
-      return [...prev, {
-        ...product,
-        variant_id: variantId,
-        variant_name: variantName,
-        variant: chosenVariant,
-        thumbnail: itemThumbnail,
-        price: activePrice
-      }];
-    });
-  };
-
-  const handleProceedToCheckout = (data) => {
-    if (!currentUser) {
-      showToast('info', 'Login Required', 'Please login to proceed with order placement.');
-      setIsAuthOpen(true);
-      return;
-    }
-    // Automatically populate form with logged-in user credentials and saved address
-    setCustomerForm(prev => ({
-      name: currentUser.name || prev?.name || '',
-      phone: currentUser.phone || prev?.phone || '',
-      email: currentUser.email || prev?.email || '',
-      address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
-      remark: prev?.remark || ''
-    }));
-    setCheckoutData(data);
-    setIsCartOpen(false);
-    setShowCheckoutModal(true);
-  };
-
-  const handleOrderSubmit = async (e) => {
-    e.preventDefault();
-    if (isSubmittingOrder) return;
-    if (!currentUser) {
-      showToast('error', 'Login Required', 'Please sign in to place order.');
-      setShowCheckoutModal(false);
-      setIsAuthOpen(true);
-      return;
-    }
-
-    const finalPhone = currentUser?.phone || customerForm.phone;
-    if (!finalPhone || !customerForm.address) {
-      showToast('error', 'Required Fields', 'Phone number and shipping address are required.');
-      return;
-    }
-
-    setIsSubmittingOrder(true);
-    try {
-      const isOnlinePay = checkoutData?.paymentMode === 'PREPAID' || checkoutData?.paymentMode === 'PARTIAL' || checkoutData?.paymentMode === 'FULL';
-      const payableAmount = checkoutData?.paymentMode === 'PARTIAL' ? checkoutData?.depositAmount : checkoutData?.finalTotal;
-
-      const orderRes = await fetch(getApiUrl('/api/orders'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: currentUser.id,
-          customer_name: currentUser.name || customerForm.name || 'Customer',
-          customer_email: currentUser.email || customerForm.email,
-          customer_phone: finalPhone,
-          shipping_address: customerForm.address,
-          order_notes: customerForm.remark || '',
-          country: currency === 'INR' ? 'India' : 'International',
-          currency,
-          total_amount: checkoutData?.finalTotal || 0,
-          paid_amount: isOnlinePay ? payableAmount : 0,
-          remaining_amount: isOnlinePay ? Math.max(0, (checkoutData?.finalTotal || 0) - payableAmount) : (checkoutData?.finalTotal || 0),
-          payment_mode: checkoutData?.paymentMode || 'COD',
-          payment_gateway: selectedPaymentGateway,
-          coupon_code: checkoutData?.appliedCoupon?.code || null,
-          items: cart.map(i => ({ product_id: i.id, variant_id: i.variant_id, quantity: i.quantity, price: i.price }))
-        })
-      });
-
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order');
-
-      // Save shipping address for future checkouts and update user profile
-      if (customerForm.address) {
-        try { localStorage.setItem('user_last_shipping_address', customerForm.address); } catch (e) {}
-      }
-      if (currentUser && customerForm.address) {
-        const updatedUser = {
-          ...currentUser,
-          name: customerForm.name || currentUser.name,
-          phone: finalPhone,
-          address: customerForm.address
-        };
-        setCurrentUser(updatedUser);
-        try { localStorage.setItem('customerUser', JSON.stringify(updatedUser)); } catch (e) {}
-      }
-
-      if (!isOnlinePay || currency !== 'INR') {
-        setShowCheckoutModal(false);
-        setOrderSuccess(orderData);
-        setCart([]);
-        showToast('success', 'Order Confirmed!', `Order #${orderData.orderNumber || orderData.order_number} confirmed!`);
-      } else {
-        setShowCheckoutModal(false);
-        setPendingPaymentOrder(orderData);
-        setPaymentPayableAmount(payableAmount);
-        setShowPaymentModal(true);
-      }
-    } catch (err) {
-      showToast('error', 'Order Error', err.message);
-    } finally {
-      setIsSubmittingOrder(false);
-    }
-  };
-
-  const handlePaymentSuccess = async (paymentResult) => {
-    setShowPaymentModal(false);
-    setOrderSuccess(pendingPaymentOrder);
-    setCart([]);
-    showToast('success', 'Payment Received!', 'Order successfully paid and confirmed.');
-  };
-
-  const handleClearFilters = () => {
-    setSearchQuery('');
-    setSortBy('default');
-    setSelectedFilters({});
-    navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null });
-  };
-
-  // Filter & Sort
-  const FILTER_MATCHERS = {
-    // 1. Form & Texture
-    'fine-powder': ['powder', 'churna', 'flour', 'atta', 'choornam', 'bhasma'],
-    'whole-seeds': ['seed', 'seeds', 'grain', 'grains', 'millet', 'millets', 'flax', 'chia', 'methi', 'mustard', 'sesame'],
-    'raw-roots-bark': ['root', 'roots', 'bark', 'stem', 'leaf', 'leaves', 'dry fruit', 'raw'],
-    'whole-split-pulses': ['dal', 'pulse', 'pulses', 'lentil', 'lentils', 'gram', 'urad', 'moong', 'chana', 'toor', 'rajma', 'beans'],
-    'crystals': ['salt', 'crystal', 'crystals', 'rock salt', 'sendha', 'kala namak', 'mineral'],
-    'tea-cut-leafs': ['leaf', 'leaves', 'tea', 'tisane', 'tulsi', 'moringa', 'senna'],
-    'stoneground-flour': ['flour', 'atta', 'ground', 'besan'],
-    'resins-gums': ['resin', 'gum', 'gond', 'hing', 'dhoop', 'sambrani', 'camphor'],
-
-    // 2. Organic Certification & Purity
-    '100-certified-organic': ['organic', 'certified', 'natural', 'pure', 'authentic'],
-    'naturally-grown-heirloom': ['heirloom', 'desi', 'traditional', 'native', 'natural', 'raw'],
-    'chemical-pesticide-free': ['chemical free', 'pesticide free', 'unpolished', 'raw', 'pure', 'preservative'],
-    'wild-harvested-himalayan': ['wild', 'himalayan', 'forest', 'natural', 'harvested', 'mountain'],
-
-    // 3. Pack Size
-    '100g': ['100g', '100 g', '100gm', '100 gm', '100gms'],
-    '250g': ['250g', '250 g', '250gm', '250 gm', '250gms', '200g', '200 g'],
-    '500g': ['500g', '500 g', '500gm', '500 gm', '500gms', '490g', '490 g', '400g'],
-    '1kg': ['1kg', '1 kg', '1000g', '990g', '900g', '1 kilo'],
-    '5kg-eco-pack': ['2kg', '2 kg', '3kg', '5kg', '5 kg', 'bulk', 'eco pack'],
-
-    // 4. Dietary & Health
-    'immunity-booster': ['immunity', 'immune', 'vitality', 'antioxidant', 'ayush', 'strength', 'ojas'],
-    'high-protein-fiber': ['protein', 'fiber', 'fibre', 'energy', 'superfood', 'nutrient'],
-    'diabetic-friendly': ['diabetic', 'diabetes', 'blood sugar', 'sugar control', 'karela', 'jamun', 'methi', 'fenugreek'],
-    'gluten-free': ['gluten free', 'gluten-free', 'millet', 'quinoa', 'ragi', 'jowar', 'bajra', 'flax'],
-    'digestive-care': ['digestive', 'digestion', 'gut', 'triphala', 'isabgol', 'constipation', 'gastric', 'acidity', 'ajwain', 'saunf', 'jeera']
-  };
-
-  const filteredProducts = products.filter(p => {
-    for (const [key, val] of Object.entries(selectedFilters)) {
-      if (!val) continue;
-      if (key === 'price_range') {
-        const { pPrice } = getProductPricing(p);
-        if (val === 'under_200' && pPrice >= 200) return false;
-        if (val === '200_500' && (pPrice < 200 || pPrice > 500)) return false;
-        if (val === '500_1000' && (pPrice < 500 || pPrice > 1000)) return false;
-        if (val === 'above_1000' && pPrice <= 1000) return false;
-        continue;
-      }
-      const vText = Array.isArray(p.variants) ? p.variants.map(v => `${v.variant_name || ''} ${v.sku || ''}`).join(' ') : '';
-      const fullText = `${p.title || ''} ${p.tags || ''} ${p.description || ''} ${vText}`.toLowerCase();
-
-      const matchKeywords = FILTER_MATCHERS[val];
-      if (matchKeywords && matchKeywords.length > 0) {
-        const matches = matchKeywords.some(kw => fullText.includes(kw.toLowerCase()));
-        if (!matches) return false;
-      } else {
-        const cleanVal = String(val).replace(/[-_]/g, ' ').toLowerCase();
-        if (!fullText.includes(cleanVal) && !fullText.includes(String(val).toLowerCase())) return false;
-      }
-    }
-    return true;
-  });
-
-  const parseWeightGrams = (str) => {
-    if (!str) return 0;
-    const s = String(str);
-    const kg = s.match(/(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilo|kilogram)/i);
-    if (kg) return parseFloat(kg[1]) * 1000;
-    const gm = s.match(/(\d+(?:\.\d+)?)\s*(?:g|gm|gms|gram|grams)/i);
-    if (gm) return parseFloat(gm[1]);
-    const ltr = s.match(/(\d+(?:\.\d+)?)\s*(?:l|ltr|litre|liter)/i);
-    if (ltr) return parseFloat(ltr[1]) * 1000;
-    const ml = s.match(/(\d+(?:\.\d+)?)\s*(?:ml|milliliter)/i);
-    if (ml) return parseFloat(ml[1]);
-    return 0;
-  };
-
-  const getProductWeight = (p) => {
-    if (Array.isArray(p.variants) && p.variants.length > 0) {
-      const list = p.variants.map(v => parseWeightGrams(v.variant_name || v.title || v.sku)).filter(w => w > 0);
-      if (list.length > 0) return Math.min(...list);
-    }
-    return parseWeightGrams(p.title || p.name || '');
-  };
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const priceA = getProductPricing(a).pPrice;
-    const priceB = getProductPricing(b).pPrice;
-    if (sortBy === 'low_high') return priceA - priceB;
-    if (sortBy === 'high_low') return priceB - priceA;
-    if (sortBy === 'weight_low_high') return getProductWeight(a) - getProductWeight(b);
-    if (sortBy === 'weight_high_low') return getProductWeight(b) - getProductWeight(a);
-    if (sortBy === 'name_az') return (a.title || a.name || '').localeCompare(b.title || b.name || '');
-    if (sortBy === 'name_za') return (b.title || b.name || '').localeCompare(a.title || a.name || '');
-    return 0;
-  });
-
-  // Infinite scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      if (isLoadingMore || visibleCount >= sortedProducts.length) return;
-      if (window.innerHeight + window.scrollY >= document.documentElement.offsetHeight - 500) {
-        setIsLoadingMore(true);
-        setTimeout(() => {
-          setVisibleCount(prev => Math.min(prev + 12, sortedProducts.length));
-          setIsLoadingMore(false);
-        }, 400);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [visibleCount, sortedProducts.length, isLoadingMore]);
-
-  if (isAppLoading) return <BrandLoader text="Loading ValueLife Essentials..." fullScreen={true} />;
-
-  if (isMaintenanceActive && !isMaintenanceUnlocked) {
-    return <MaintenancePage onUnlock={() => { setIsMaintenanceUnlocked(true); sessionStorage.setItem('maintenance_unlocked', 'true'); }} />;
+  // 1. Initial Brand Loader
+  if (isAppLoading) {
+    return <BrandLoader text="Loading ValueLife Essentials..." fullScreen={true} />;
   }
 
-  const isCatalog = route.view === 'catalog' || route.view === 'all_products' || route.view === 'offers' || route.view === 'bestsellers' || route.view === 'new_arrivals' || !!searchQuery;
+  // 2. Maintenance Gatekeeper
+  if (isMaintenanceActive && !isMaintenanceUnlocked) {
+    return <MaintenancePage onUnlock={unlockMaintenance} />;
+  }
+
+  const isCatalog = route.view === 'catalog' ||
+    route.view === 'all_products' ||
+    route.view === 'offers' ||
+    route.view === 'bestsellers' ||
+    route.view === 'new_arrivals' ||
+    Boolean(searchQuery);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9fa]" data-reticle-target="user-app-root">
-      <ToastNotification toast={toast} onClose={() => setToast(null)} />
-
-      <Header 
+      {/* HEADER */}
+      <Header
         currency={currency}
         setCurrency={setCurrency}
         currencySymbol={currencySymbol}
-        cartCount={cart.reduce((a, b) => a + b.quantity, 0)}
-        wishlistCount={wishlist.length}
-        onOpenCart={() => setIsCartOpen(true)}
-        onOpenWishlist={() => setIsWishlistOpen(true)}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onOpenCart={openCart}
+        onOpenWishlist={openWishlist}
         currentUser={currentUser}
-        onOpenAuth={() => currentUser ? navigateTo('/account', { view: 'account', slug: null, category: null, collection: null }) : setIsAuthOpen(true)}
+        onOpenAuth={() => currentUser ? navigateTo('/account', { view: 'account' }) : openAuthModal()}
         categories={categories}
         collections={collections}
         products={products}
         onSelectCategory={(cat) => navigateTo(`/category/${cat}`, { view: 'catalog', slug: null, category: cat, collection: null })}
         onSelectCollection={(coll) => navigateTo(`/collection/${coll}`, { view: 'catalog', slug: null, category: null, collection: coll })}
-        onSelectAllProducts={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
-        onSelectOffers={() => navigateTo('/offers', { view: 'offers', slug: null, category: null, collection: null })}
-        onSelectBestSellers={() => navigateTo('/bestsellers', { view: 'bestsellers', slug: null, category: null, collection: null })}
-        onSelectNewArrivals={() => navigateTo('/new-arrivals', { view: 'new_arrivals', slug: null, category: null, collection: null })}
+        onSelectAllProducts={() => navigateTo('/products', { view: 'all_products' })}
+        onSelectOffers={() => navigateTo('/offers', { view: 'offers' })}
+        onSelectBestSellers={() => navigateTo('/bestsellers', { view: 'bestsellers' })}
+        onSelectNewArrivals={() => navigateTo('/new-arrivals', { view: 'new_arrivals' })}
         navigateTo={navigateTo}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onSearchSubmit={() => navigateTo('/search', { view: 'catalog', slug: null, category: null, collection: null })}
-        onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-        onOpenPage={(slug) => slug === 'blog' ? navigateTo('/blog', { view: 'blog', slug: null }) : navigateTo(`/pages/${slug}`, { view: 'page', slug, category: null, collection: null })}
+        onSearchSubmit={() => navigateTo('/search', { view: 'catalog' })}
+        onGoHome={() => navigateTo('/', { view: 'store' })}
+        onOpenPage={(slug) => slug === 'blog' ? navigateTo('/blog', { view: 'blog' }) : navigateTo(`/pages/${slug}`, { view: 'page', slug })}
         settings={settings}
         sectionsConfig={sectionsConfig}
         showToast={showToast}
       />
 
+      {/* DYNAMIC VIEW ROUTING */}
       {route.view === 'account' || route.view === 'profile' ? (
         <SectionErrorBoundary name="Customer Profile">
-          <CustomerProfilePage 
+          <CustomerProfilePage
             currentUser={currentUser}
-            onLogout={() => { setCurrentUser(null); localStorage.removeItem('customerUser'); navigateTo('/', { view: 'store', slug: null, category: null, collection: null }); }}
-            onUpdateUser={(updated) => { setCurrentUser(updated); localStorage.setItem('customerUser', JSON.stringify(updated)); }}
+            onLogout={() => {
+              logout();
+              navigateTo('/', { view: 'store' });
+            }}
+            onUpdateUser={updateUser}
             showToast={showToast}
-            onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-            onSelectProduct={(slug, pObj) => navigateTo(`/products/${slug || pObj?.slug}`, { view: 'pdp', slug: slug || pObj?.slug, id: pObj?.id, category: null, collection: null })}
+            onGoHome={() => navigateTo('/', { view: 'store' })}
+            onSelectProduct={(slug, pObj) => navigateTo(`/products/${slug || pObj?.slug}`, { view: 'pdp', slug: slug || pObj?.slug, id: pObj?.id })}
           />
         </SectionErrorBoundary>
       ) : (route.view === 'pdp' || route.view === 'product') && route.slug ? (
         <SectionErrorBoundary name="Product Details Page">
-          <ProductDetailPage 
+          <ProductDetailPage
             productSlug={route.slug}
             productId={route.id}
             currency={currency}
             currencySymbol={currencySymbol}
             wishlist={wishlist}
-            onAddToCart={handleAddToCart}
-            onAddToWishlist={handleToggleWishlist}
-            onBack={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
-            onSelectProduct={(slug) => navigateTo(`/product/${slug}`, { view: 'pdp', slug, category: null, collection: null })}
+            onAddToCart={addToCart}
+            onAddToWishlist={toggleWishlist}
+            onBack={() => navigateTo('/products', { view: 'all_products' })}
+            onSelectProduct={(slug) => navigateTo(`/product/${slug}`, { view: 'pdp', slug })}
             showToast={showToast}
           />
         </SectionErrorBoundary>
@@ -686,11 +227,11 @@ export default function App() {
         </SectionErrorBoundary>
       ) : route.view === 'page' && route.slug ? (
         <SectionErrorBoundary name="Custom Page">
-          <PageView slug={route.slug} onGoHome={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })} showToast={showToast} />
+          <PageView slug={route.slug} onGoHome={() => navigateTo('/', { view: 'store' })} showToast={showToast} />
         </SectionErrorBoundary>
       ) : isCatalog ? (
         <main className="flex-1">
-          <CatalogView 
+          <CatalogView
             route={route}
             categories={categories}
             collections={collections}
@@ -713,8 +254,8 @@ export default function App() {
             themeConfig={themeConfig}
             searchQuery={searchQuery}
             navigateTo={navigateTo}
-            handleAddToCart={handleAddToCart}
-            handleToggleWishlist={handleToggleWishlist}
+            handleAddToCart={addToCart}
+            handleToggleWishlist={toggleWishlist}
             handleClearFilters={handleClearFilters}
             getProductPricing={getProductPricing}
             openVariantModal={openVariantModal}
@@ -722,7 +263,7 @@ export default function App() {
         </main>
       ) : (
         <main className="flex-1 space-y-12 pb-28 sm:pb-20">
-          <StoreHomeView 
+          <StoreHomeView
             heroConfig={heroConfig}
             sectionsConfig={sectionsConfig}
             settings={settings}
@@ -734,53 +275,58 @@ export default function App() {
             currencySymbol={currencySymbol}
             themeConfig={themeConfig}
             navigateTo={navigateTo}
-            handleAddToCart={handleAddToCart}
-            handleToggleWishlist={handleToggleWishlist}
+            handleAddToCart={addToCart}
+            handleToggleWishlist={toggleWishlist}
             getProductPricing={getProductPricing}
             openVariantModal={openVariantModal}
           />
         </main>
       )}
 
+      {/* FOOTER */}
       <Footer settings={settings} categories={categories} navigateTo={navigateTo} />
 
-      <CartDrawer 
+      {/* CART DRAWER */}
+      <CartDrawer
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={closeCart}
         cartItems={cart}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveFromCart}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeFromCart}
         currency={currency}
         currencySymbol={currencySymbol}
-        onProceedToCheckout={handleProceedToCheckout}
+        onProceedToCheckout={proceedToCheckout}
         settings={settings}
-        onAddToCart={handleAddToCart}
+        onAddToCart={addToCart}
         allProducts={products}
       />
 
-      <WishlistDrawer 
+      {/* WISHLIST DRAWER */}
+      <WishlistDrawer
         isOpen={isWishlistOpen}
-        onClose={() => setIsWishlistOpen(false)}
+        onClose={closeWishlist}
         wishlistItems={wishlist}
-        onRemoveItem={(id) => setWishlist(prev => prev.filter(w => w.id !== id))}
-        onAddToCart={handleAddToCart}
+        onRemoveItem={removeFromWishlist}
+        onAddToCart={addToCart}
         currency={currency}
         currencySymbol={currencySymbol}
       />
 
+      {/* SELECT VARIANT MODAL */}
       <SelectVariantModal
         isOpen={Boolean(variantModalProduct)}
-        onClose={() => setVariantModalProduct(null)}
+        onClose={closeVariantModal}
         product={variantModalProduct}
         currency={currency}
         currencySymbol={currencySymbol}
-        onAddToCart={handleAddToCart}
-        onAddToWishlist={handleToggleWishlist}
+        onAddToCart={addToCart}
+        onAddToWishlist={toggleWishlist}
         navigateTo={navigateTo}
-        isWishlisted={wishlist.some(w => w.id === variantModalProduct?.id)}
+        isWishlisted={isInWishlist(variantModalProduct?.id)}
       />
 
-      <CheckoutModal 
+      {/* CHECKOUT MODAL */}
+      <CheckoutModal
         isOpen={showCheckoutModal}
         onClose={() => setShowCheckoutModal(false)}
         checkoutData={checkoutData}
@@ -789,7 +335,7 @@ export default function App() {
         customerForm={customerForm}
         setCustomerForm={setCustomerForm}
         currentUser={currentUser}
-        handleOrderSubmit={handleOrderSubmit}
+        handleOrderSubmit={submitOrder}
         isSubmittingOrder={isSubmittingOrder}
         selectedPaymentGateway={selectedPaymentGateway}
         setSelectedPaymentGateway={setSelectedPaymentGateway}
@@ -798,52 +344,63 @@ export default function App() {
         navigateTo={navigateTo}
       />
 
-      <PaymentGatewayModal 
+      {/* PAYMENT GATEWAY MODAL */}
+      <PaymentGatewayModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         orderData={pendingPaymentOrder}
         payableAmount={paymentPayableAmount}
         currency={currency}
         currencySymbol={currencySymbol}
-        customerInfo={{ name: currentUser?.name || customerForm.name, email: currentUser?.email || customerForm.email, phone: currentUser?.phone || customerForm.phone }}
+        customerInfo={{
+          name: currentUser?.name || customerForm.name,
+          email: currentUser?.email || customerForm.email,
+          phone: currentUser?.phone || customerForm.phone
+        }}
         activeGateway={selectedPaymentGateway}
         availableGateways={availableGateways}
         onPaymentSuccess={handlePaymentSuccess}
-        onPaymentFailure={(err) => showToast('error', 'Payment Failed', err?.error || 'Payment declined.')}
+        onPaymentFailure={handlePaymentFailure}
       />
 
-      <CustomerAuthModal 
+      {/* CUSTOMER AUTH MODAL */}
+      <CustomerAuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        onClose={closeAuthModal}
         currentUser={currentUser}
-        onLoginSuccess={(u) => {
-          setCurrentUser(u);
-          try { localStorage.setItem('customerUser', JSON.stringify(u)); } catch (e) {}
-          setCustomerForm(prev => ({
-            name: u.name || prev?.name || '',
-            phone: u.phone || prev?.phone || '',
-            email: u.email || prev?.email || '',
-            address: u.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
-            remark: prev?.remark || ''
-          }));
-          setIsAuthOpen(false);
-          showToast('success', 'Signed In', `Welcome back, ${u.name || u.phone}!`);
-        }}
-        onLogout={() => {
-          setCurrentUser(null);
-          try { localStorage.removeItem('customerUser'); } catch (e) {}
-          setCustomerForm({ name: '', phone: '', email: '', address: '', remark: '' });
-          showToast('info', 'Signed Out', 'Signed out successfully.');
-        }}
+        onLoginSuccess={login}
+        onLogout={logout}
       />
 
-      <MobileBottomNav 
-        cartCount={cart.length} 
-        navigateTo={navigateTo} 
-        onOpenCart={() => setIsCartOpen(true)}
+      {/* MOBILE BOTTOM NAV */}
+      <MobileBottomNav
+        cartCount={cartCount}
+        navigateTo={navigateTo}
+        onOpenCart={openCart}
         currentUser={currentUser}
-        onOpenAuth={() => currentUser ? navigateTo('/account', { view: 'account', slug: null, category: null, collection: null }) : setIsAuthOpen(true)}
+        onOpenAuth={() => currentUser ? navigateTo('/account', { view: 'account' }) : openAuthModal()}
       />
     </div>
+  );
+}
+
+/**
+ * Root Application Component with Composed Provider Architecture
+ */
+export default function App() {
+  return (
+    <ToastProvider>
+      <AuthProvider>
+        <ShopProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <CheckoutProvider>
+                <StorefrontLayout />
+              </CheckoutProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </ShopProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
