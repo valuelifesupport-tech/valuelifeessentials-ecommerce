@@ -1,14 +1,6 @@
-// Dynamic API Base URL resolver for Standalone Admin Portal
-const isServer = typeof window === 'undefined';
+import { ADMIN_ENV } from '../config/env';
 
-function getBaseUrl() {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.trim().replace(/\/$/, '');
-  }
-  return '';
-}
-
-export const API_BASE = getBaseUrl();
+export const API_BASE = ADMIN_ENV.API_BASE_URL;
 
 export function getApiUrl(path = '') {
   if (!path) return API_BASE;
