@@ -109,7 +109,12 @@ export default function PageView({ slug, onGoHome, showToast }) {
             const isHtml = /<[a-z][\s\S]*>/i.test(rawContent);
 
             if (isHtml) {
-              return <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed space-y-4" dangerouslySetInnerHTML={{ __html: rawContent }} />;
+              const sanitized = String(rawContent)
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+                .replace(/on\w+\s*=\s*[^>\s]+/gi, '')
+                .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
+              return <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed space-y-4" dangerouslySetInnerHTML={{ __html: sanitized }} />;
             }
 
             return (
