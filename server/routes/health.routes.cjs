@@ -4,6 +4,9 @@ const { MAINTENANCE_PASSWORD } = require('../config/constants.cjs');
 const { executeMySQL, db } = require('../config/database.cjs');
 const { requireAdminAuth } = require('../middleware/auth.cjs');
 
+const path = require('path');
+const fs = require('fs');
+
 // Canonical Health & Root check
 router.get(['/', '/health', '/api/health'], (req, res) => {
   res.json({
@@ -12,6 +15,46 @@ router.get(['/', '/health', '/api/health'], (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
+});
+
+// Admin Diagnostic: Find uploads across server disk
+router.get('/api/admin/diagnostic/find-uploads', requireAdminAuth, (req, res) => {
+  const found = [];
+  const searchRoots = [
+    '/home/u439830852/domains/backend.valuelifeessentials.com/hbuilds/versions',
+    '/home/u439830852/domains/backend.valuelifeessentials.com',
+    '/home/u439830852/public_html',
+    '/home/u439830852'
+  ];
+
+  function search(dir, depth = 0) {
+    if (depth > 5) return;
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const ent of entries) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          if (!ent.name.includes('node_modules') && !ent.name.startsWith('.') && ent.name !== 'cache') {
+            search(full, depth + 1);
+          }
+        } else if (ent.isFile()) {
+          if (ent.name.includes('ff0fde21') || ent.name.includes('1791620') || ent.name.includes('3bcac7ab') || ent.name.includes('4ebbaddc')) {
+            found.push({ name: ent.name, path: full, size: fs.statSync(full).size });
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  const scannedRoots = [];
+  for (const r of searchRoots) {
+    if (!scannedRoots.includes(r) && fs.existsSync(r)) {
+      scannedRoots.push(r);
+      search(r, 0);
+    }
+  }
+
+  res.json({ cwd: process.cwd(), scannedRoots, foundCount: found.length, found });
 });
 
 // Maintenance Status

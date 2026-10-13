@@ -2,10 +2,32 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
 
+const DEFAULT_CATEGORY_IMAGES = {
+  'Herbs & Teas': 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80',
+  'Cereals & Grains': 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80',
+  'Herbal Supplements': 'https://images.unsplash.com/photo-1617957743097-0d20ab242224?auto=format&fit=crop&w=600&q=80',
+  'Legumes & Pulses': 'https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?auto=format&fit=crop&w=600&q=80',
+  'Nuts & Seeds': 'https://images.unsplash.com/photo-1508736793122-f516e3ba5569?auto=format&fit=crop&w=600&q=80',
+  'Spices & Seasoning': 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=600&q=80',
+  'Flours & Starches': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80',
+  'Fruits & Snacks': 'https://images.unsplash.com/photo-1546548970-71785318a17b?auto=format&fit=crop&w=600&q=80',
+  'Grocery & Food': 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80',
+  'Health & Personal Care': 'https://images.unsplash.com/photo-1608248597262-838198f12c1c?auto=format&fit=crop&w=600&q=80',
+  'Skin & Body Care': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=80',
+  'Home & Garden': 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'
+};
+
 export default function CategorySlider({ categories = [], navigateTo, sectionTitle, sectionsConfig }) {
   const scrollRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
   const resumeTimeoutRef = useRef(null);
+
+  const getCatImgUrl = (cat) => {
+    if (cat.image_url && !cat.image_url.includes('1791620')) {
+      return resolveImgUrl(cat.image_url);
+    }
+    return DEFAULT_CATEGORY_IMAGES[cat.name] || (cat.image_url ? resolveImgUrl(cat.image_url) : null);
+  };
 
   // Real database categories only
   const displayCategories = categories || [];
@@ -110,19 +132,25 @@ export default function CategorySlider({ categories = [], navigateTo, sectionTit
               className="group min-w-[170px] sm:min-w-[190px] max-w-[190px] bg-white border border-gray-200/70 hover:border-emerald-500/50 rounded-2xl p-4 text-center cursor-pointer shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-between shrink-0"
             >
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#f4efe8] flex items-center justify-center mb-3 overflow-hidden group-hover:scale-105 transition-transform duration-300 relative">
-                {cat.image_url ? (
+                {getCatImgUrl(cat) ? (
                   <img 
-                    src={resolveImgUrl(cat.image_url)} 
+                    src={getCatImgUrl(cat)} 
                     alt={cat.name} 
                     className="w-full h-full object-cover"
+                    loading="lazy"
                     onError={(e) => {
+                      const defImg = DEFAULT_CATEGORY_IMAGES[cat.name];
+                      if (defImg && e.currentTarget.src !== defImg) {
+                        e.currentTarget.src = defImg;
+                        return;
+                      }
                       e.currentTarget.style.display = 'none';
                       const fallback = e.currentTarget.parentElement?.querySelector('.cat-emoji-fallback');
                       if (fallback) fallback.classList.remove('hidden');
                     }}
                   />
                 ) : null}
-                <span className={`cat-emoji-fallback text-3xl sm:text-4xl ${cat.image_url ? 'hidden' : 'flex'} items-center justify-center select-none`}>
+                <span className={`cat-emoji-fallback text-3xl sm:text-4xl ${getCatImgUrl(cat) ? 'hidden' : 'flex'} items-center justify-center select-none`}>
                   {cat.icon || '🌿'}
                 </span>
               </div>
