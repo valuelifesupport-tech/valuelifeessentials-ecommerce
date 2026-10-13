@@ -35,16 +35,14 @@ export default function MaintenancePage({ onUnlock }) {
           onUnlock();
           return;
         }
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || 'Invalid access password. Please try again.');
+        setIsSubmitting(false);
+        return;
       }
     } catch (err) {
-      console.warn('Backend maintenance endpoint offline, using client fallback check');
-    }
-
-    // 2. Client-side Fallback check if offline
-    if (password.trim() === 'valuelife2026' || password.trim() === 'admin123') {
-      localStorage.setItem('maintenance_unlocked', 'true');
+      setError('Could not verify password with server. Please try again later.');
       setIsSubmitting(false);
-      onUnlock();
       return;
     }
 
