@@ -20,8 +20,6 @@ import BlogDetailView from './components/blog/BlogDetailView';
 import CustomerProfilePage from './components/auth/CustomerProfilePage';
 import MaintenancePage from './components/sections/MaintenancePage';
 
-const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
-
 // Modals & Drawers
 import CartDrawer from './components/cart/CartDrawer';
 import WishlistDrawer from './components/cart/WishlistDrawer';
@@ -33,7 +31,10 @@ import SelectVariantModal from './components/product/SelectVariantModal';
 export default function App() {
   const getInitialRouteState = () => {
     const path = window.location.pathname;
-    if (path.startsWith('/admin')) return { view: 'admin', slug: null, category: null, collection: null };
+    if (path.startsWith('/admin')) {
+      window.history.replaceState({}, '', '/');
+      return { view: 'store', slug: null, category: null, collection: null };
+    }
     if (path.startsWith('/account') || path.startsWith('/profile')) return { view: 'account', slug: null, category: null, collection: null };
     if (path.startsWith('/products/')) {
       const slug = path.replace('/products/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
@@ -219,12 +220,10 @@ export default function App() {
   }, [currency]);
 
   useEffect(() => {
-    if (route.view !== 'admin') {
-      fetch(getApiUrl('/api/banners')).then(r => r.json()).then(d => setBanners(d || [])).catch(() => {});
-      fetch(getApiUrl('/api/categories')).then(r => r.json()).then(d => setCategories(d || [])).catch(() => {});
-      fetch(getApiUrl('/api/collections')).then(r => r.json()).then(d => setCollections(d || [])).catch(() => {});
-      fetchProducts();
-    }
+    fetch(getApiUrl('/api/banners')).then(r => r.json()).then(d => setBanners(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/categories')).then(r => r.json()).then(d => setCategories(d || [])).catch(() => {});
+    fetch(getApiUrl('/api/collections')).then(r => r.json()).then(d => setCollections(d || [])).catch(() => {});
+    fetchProducts();
   }, [route, searchQuery]);
 
   useEffect(() => {
@@ -611,22 +610,7 @@ export default function App() {
 
   if (isAppLoading) return <BrandLoader text="Loading ValueLife Essentials..." fullScreen={true} />;
 
-  if (route.view === 'admin') {
-    return (
-      <React.Suspense fallback={<BrandLoader text="Loading Admin Control Center..." fullScreen={true} />}>
-        <AdminDashboard 
-          onExitAdmin={() => navigateTo('/', { view: 'store', slug: null, category: null, collection: null })}
-          showToast={showToast}
-          sectionsConfig={sectionsConfig}
-          onUpdateSectionsConfig={setSectionsConfig}
-          settings={settings}
-          onUpdateSettings={setSettings}
-        />
-      </React.Suspense>
-    );
-  }
-
-  if (isMaintenanceActive && !isMaintenanceUnlocked && route.view !== 'admin') {
+  if (isMaintenanceActive && !isMaintenanceUnlocked) {
     return <MaintenancePage onUnlock={() => { setIsMaintenanceUnlocked(true); sessionStorage.setItem('maintenance_unlocked', 'true'); }} />;
   }
 

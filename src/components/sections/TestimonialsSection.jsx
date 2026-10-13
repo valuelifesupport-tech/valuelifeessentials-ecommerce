@@ -8,7 +8,7 @@ export default function TestimonialsSection({ sectionsConfig }) {
 
   useEffect(() => {
     // Fetch live approved customer reviews from database
-    fetch(getApiUrl('/api/admin/reviews'))
+    fetch(getApiUrl('/api/reviews'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
