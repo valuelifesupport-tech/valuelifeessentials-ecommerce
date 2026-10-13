@@ -109,12 +109,22 @@ export default function CategorySlider({ categories = [], navigateTo, sectionTit
               onClick={() => navigateTo && navigateTo(`/category/${cat.slug || cat.id}`, { view: 'catalog', category: cat.slug || cat.id })}
               className="group min-w-[170px] sm:min-w-[190px] max-w-[190px] bg-white border border-gray-200/70 hover:border-emerald-500/50 rounded-2xl p-4 text-center cursor-pointer shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-between shrink-0"
             >
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#f4efe8] flex items-center justify-center mb-3 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#f4efe8] flex items-center justify-center mb-3 overflow-hidden group-hover:scale-105 transition-transform duration-300 relative">
                 {cat.image_url ? (
-                  <img src={resolveImgUrl(cat.image_url)} alt={cat.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-3xl">{cat.icon || '🌿'}</span>
-                )}
+                  <img 
+                    src={resolveImgUrl(cat.image_url)} 
+                    alt={cat.name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.parentElement?.querySelector('.cat-emoji-fallback');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <span className={`cat-emoji-fallback text-3xl sm:text-4xl ${cat.image_url ? 'hidden' : 'flex'} items-center justify-center select-none`}>
+                  {cat.icon || '🌿'}
+                </span>
               </div>
 
               <div>
