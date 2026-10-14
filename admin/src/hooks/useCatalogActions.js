@@ -204,10 +204,15 @@ export default function useCatalogActions({
       if (res.ok) {
         setShowSubcategoryModal(false);
         setSubcategoryName('');
-        fetchAdminData();
-        if (showToast) showToast('success', editingSubcategory ? 'Subcategory Updated' : 'Subcategory Created', editingSubcategory ? 'Subcategory updated successfully.' : `Added subcategory to ${selectedCatForSubcat.name}`);
+        if (typeof fetchAdminData === 'function') fetchAdminData();
+        if (showToast) showToast('success', editingSubcategory ? 'Subcategory Updated' : 'Subcategory Created', editingSubcategory ? 'Subcategory updated successfully.' : `Added subcategory to ${selectedCatForSubcat?.name || 'Category'}`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Subcategory Save Failed', errData.error || `Server error (${res.status})`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Subcategory Save Failed', err.message);
+    }
   };
 
   // ------ Banner ------
@@ -228,8 +233,13 @@ export default function useCatalogActions({
         if (fresh && typeof setBanners === 'function') setBanners(fresh);
         if (typeof fetchAdminData === 'function') fetchAdminData();
         if (showToast) showToast('success', 'Banner Saved', editingBanner ? 'Banner updated.' : 'New banner created.');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Banner Save Failed', errData.error || `Server error (${res.status})`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Banner Save Failed', err.message);
+    }
   };
 
   // ------ Coupon ------
@@ -281,9 +291,11 @@ export default function useCatalogActions({
         setCouponForm({ code: '', discount_type: 'PERCENT', discount_value: 15, min_spend_inr: 300, min_spend_usd: 10, max_uses: 0, one_per_customer: 0, start_date: '', end_date: '', description: '', buy_qty: 1, get_qty: 1, get_discount_type: 'FREE' });
       } else {
         const errData = await res.json().catch(() => ({}));
-        if (showToast) showToast('error', 'Error', errData.error || 'Failed to save coupon');
+        if (showToast) showToast('error', 'Coupon Save Failed', errData.error || `Server error (${res.status})`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Coupon Save Failed', err.message);
+    }
   };
 
   // ------ Variants & Stock ------
@@ -300,13 +312,18 @@ export default function useCatalogActions({
         setVariantForm({ variant_name: '', price_inr: 149, price_usd: 4, discount_inr: 99, discount_usd: 3, stock: 50 });
         const updatedProds = await sf('/api/products?includeDrafts=true');
         if (updatedProds) {
-          setProducts(updatedProds);
+          if (typeof setProducts === 'function') setProducts(updatedProds);
           const found = updatedProds.find(p => p.id === selectedProductForVariants.id);
           if (found) setSelectedProductForVariants(found);
         }
         if (showToast) showToast('success', 'Variant Created', 'Added new variant pill.');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Variant Creation Failed', errData.error || `Server error (${res.status})`);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (showToast) showToast('error', 'Variant Creation Failed', err.message);
+    }
   };
 
   const handleUpdateProductStock = async (productId, newStock) => {

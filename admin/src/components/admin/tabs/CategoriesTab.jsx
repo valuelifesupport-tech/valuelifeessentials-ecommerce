@@ -10,7 +10,8 @@ export default function CategoriesTab({
   setShowSubcategoryModal,
   setDeleteConfirmCategory,
   adminFetch,
-  fetchAdminData
+  fetchAdminData,
+  showToast
 }) {
   return (
     <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-md space-y-6" data-reticle-target="admin-categories-tab">
@@ -90,11 +91,24 @@ export default function CategoriesTab({
                   <span key={sub.id} className="bg-slate-800 text-slate-300 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1 border border-slate-700">
                     {sub.name}
                     <button 
+                      type="button"
                       onClick={async () => { 
-                        await adminFetch(`/api/subcategories/${sub.id}`, { method: 'DELETE' }); 
-                        fetchAdminData(); 
+                        if (window.confirm(`Delete subcategory "${sub.name}"?`)) {
+                          try {
+                            const res = await adminFetch(`/api/subcategories/${sub.id}`, { method: 'DELETE' }); 
+                            if (res.ok) {
+                              if (typeof fetchAdminData === 'function') fetchAdminData(); 
+                              if (showToast) showToast('info', 'Subcategory Deleted', `"${sub.name}" was deleted.`);
+                            } else {
+                              if (showToast) showToast('error', 'Delete Failed', 'Could not delete subcategory.');
+                            }
+                          } catch (err) {
+                            if (showToast) showToast('error', 'Delete Error', err.message);
+                          }
+                        }
                       }} 
-                      className="text-red-400 hover:text-red-300 ml-1 cursor-pointer"
+                      className="text-red-400 hover:text-red-300 ml-1 cursor-pointer font-bold"
+                      title={`Delete subcategory "${sub.name}"`}
                     >
                       ×
                     </button>

@@ -333,6 +333,7 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
               setDeleteConfirmCategory={modals.setDeleteConfirmCategory}
               adminFetch={auth.adminFetch}
               fetchAdminData={data.fetchAdminData}
+              showToast={showToast}
             />
           )}
 
