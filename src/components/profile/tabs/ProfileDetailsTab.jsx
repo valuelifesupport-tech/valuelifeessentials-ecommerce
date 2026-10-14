@@ -31,6 +31,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">Full Name *</label>
           <input 
             type="text" required
+            placeholder="Enter your full name"
             value={profileForm.name}
             onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
@@ -42,7 +43,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">Phone Number *</label>
           <input 
             type="text" required
-            placeholder="+91 98765 43210"
+            placeholder="Enter 10-digit mobile number"
             value={profileForm.phone}
             onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
@@ -54,6 +55,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">Email Address (Account ID)</label>
           <input 
             type="email" disabled
+            placeholder="Enter your email address"
             value={profileForm.email}
             className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl font-bold text-gray-500 cursor-not-allowed"
             data-reticle-target="user-profile-email-disabled"
@@ -64,7 +66,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">Complete Street / Flat Address *</label>
           <textarea 
             rows={2} required
-            placeholder="House No, Apartment/Building, Street Name, Landmark"
+            placeholder="Enter complete house no., building, street name, area, landmark"
             value={profileForm.address}
             onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
@@ -76,7 +78,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">City *</label>
           <input 
             type="text" required
-            placeholder="e.g. Mumbai / Delhi / Bengaluru"
+            placeholder="Enter city (e.g. Indore, Delhi, Mumbai)"
             value={profileForm.city}
             onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
@@ -88,7 +90,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">Pincode *</label>
           <input 
             type="text" required maxLength={6}
-            placeholder="6-digit Pincode"
+            placeholder="Enter 6-digit pincode"
             value={profileForm.pincode}
             onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-mono font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"

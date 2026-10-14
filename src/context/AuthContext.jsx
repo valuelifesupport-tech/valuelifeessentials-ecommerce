@@ -44,16 +44,33 @@ export function AuthProvider({ children }) {
         remark: prev?.remark || ''
       }));
 
-      // Fetch user profile if address is missing
-      if (!currentUser.address && currentUser.email) {
+      // Fetch user profile if details are missing
+      const needsProfileFetch = currentUser.email && (!currentUser.phone || !currentUser.address || !currentUser.city || !currentUser.pincode);
+      if (needsProfileFetch) {
         fetch(getApiUrl(`/api/users/${encodeURIComponent(currentUser.email)}/profile`))
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
-            if (profile?.address) {
-              const updated = { ...currentUser, address: profile.address };
+            if (profile) {
+              const updated = {
+                ...currentUser,
+                name: profile.name || currentUser.name,
+                phone: profile.phone || currentUser.phone,
+                address: profile.address || currentUser.address,
+                city: profile.city || currentUser.city,
+                state: profile.state || currentUser.state,
+                pincode: profile.pincode || currentUser.pincode,
+                gstin_number: profile.gstin_number || currentUser.gstin_number,
+                business_name: profile.business_name || currentUser.business_name
+              };
               setCurrentUser(updated);
               try { localStorage.setItem('customerUser', JSON.stringify(updated)); } catch (e) {}
-              setCustomerForm(prev => ({ ...prev, address: profile.address }));
+              setCustomerForm(prev => ({
+                name: updated.name || prev.name,
+                phone: updated.phone || prev.phone,
+                email: updated.email || prev.email,
+                address: updated.address || prev.address,
+                remark: prev.remark || ''
+              }));
             }
           })
           .catch(() => {});

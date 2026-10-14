@@ -23,17 +23,24 @@ export default function CustomerProfilePage({
   const [customerOrderPage, setCustomerOrderPage] = useState(1);
   const ordersPerPage = 10;
 
-  // Profile Form State
-  const [profileForm, setProfileForm] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    city: '',
-    state: 'Maharashtra',
-    pincode: '',
-    gstin_number: '',
-    business_name: ''
+  // Profile Form State - Auto-populated from logged in user
+  const [profileForm, setProfileForm] = useState(() => {
+    let savedAddr = '';
+    try { savedAddr = localStorage.getItem('user_last_shipping_address') || ''; } catch (e) {}
+    let storedUser = null;
+    try { storedUser = JSON.parse(localStorage.getItem('customerUser')) || null; } catch (e) {}
+    const u = currentUser || storedUser;
+    return {
+      name: u?.name || '',
+      phone: u?.phone || '',
+      email: u?.email || '',
+      address: u?.address || savedAddr || '',
+      city: u?.city || '',
+      state: u?.state || 'Madhya Pradesh',
+      pincode: u?.pincode || '',
+      gstin_number: u?.gstin_number || '',
+      business_name: u?.business_name || ''
+    };
   });
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -53,12 +60,26 @@ export default function CustomerProfilePage({
 
   useEffect(() => {
     if (currentUser) {
+      let savedAddr = '';
+      try { savedAddr = localStorage.getItem('user_last_shipping_address') || ''; } catch (e) {}
+      setProfileForm(prev => ({
+        ...prev,
+        name: currentUser.name || prev.name || '',
+        phone: currentUser.phone || prev.phone || '',
+        email: currentUser.email || prev.email || '',
+        address: currentUser.address || prev.address || savedAddr || '',
+        city: currentUser.city || prev.city || '',
+        state: currentUser.state || prev.state || 'Madhya Pradesh',
+        pincode: currentUser.pincode || prev.pincode || '',
+        gstin_number: currentUser.gstin_number || prev.gstin_number || '',
+        business_name: currentUser.business_name || prev.business_name || ''
+      }));
       fetchOrders();
       fetchProfile();
     } else {
       setLoadingOrders(false);
     }
-  }, [currentUser?.email, currentUser?.phone]);
+  }, [currentUser]);
 
   const fetchOrders = async () => {
     setLoadingOrders(true);
@@ -105,17 +126,30 @@ export default function CustomerProfilePage({
       const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/profile`));
       if (res.ok) {
         const data = await res.json();
-        setProfileForm({
-          name: data.name || currentUser?.name || '',
-          email: data.email || currentUser?.email || '',
-          phone: data.phone || currentUser?.phone || '',
-          address: data.address || '',
-          city: data.city || '',
-          state: data.state || 'Maharashtra',
-          pincode: data.pincode || '',
-          gstin_number: data.gstin_number || '',
-          business_name: data.business_name || ''
-        });
+        setProfileForm(prev => ({
+          name: data.name || currentUser?.name || prev.name || '',
+          email: data.email || currentUser?.email || prev.email || '',
+          phone: data.phone || currentUser?.phone || prev.phone || '',
+          address: data.address || currentUser?.address || prev.address || '',
+          city: data.city || currentUser?.city || prev.city || '',
+          state: data.state || currentUser?.state || prev.state || 'Madhya Pradesh',
+          pincode: data.pincode || currentUser?.pincode || prev.pincode || '',
+          gstin_number: data.gstin_number || currentUser?.gstin_number || prev.gstin_number || '',
+          business_name: data.business_name || currentUser?.business_name || prev.business_name || ''
+        }));
+
+        if (typeof onUpdateUser === 'function' && data) {
+          onUpdateUser({
+            name: data.name || currentUser?.name,
+            phone: data.phone || currentUser?.phone,
+            address: data.address || currentUser?.address,
+            city: data.city || currentUser?.city,
+            state: data.state || currentUser?.state,
+            pincode: data.pincode || currentUser?.pincode,
+            gstin_number: data.gstin_number || currentUser?.gstin_number,
+            business_name: data.business_name || currentUser?.business_name
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err);

@@ -21,7 +21,7 @@ export default function ProfileGstinTab({
           <label className="block text-gray-700 font-extrabold mb-1">Registered Business / Legal Name</label>
           <input 
             type="text"
-            placeholder="e.g. VALUELIFE ESSENTIALS Retail Pvt Ltd"
+            placeholder="Enter your registered business / company name"
             value={profileForm.business_name}
             onChange={(e) => setProfileForm({ ...profileForm, business_name: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14]"
@@ -33,7 +33,7 @@ export default function ProfileGstinTab({
           <label className="block text-gray-700 font-extrabold mb-1">GSTIN Identification Number</label>
           <input 
             type="text"
-            placeholder="e.g. 27AAAAA0000A1Z5"
+            placeholder="Enter your 15-digit GSTIN (e.g. 27AAAAA0000A1Z5)"
             value={profileForm.gstin_number}
             onChange={(e) => setProfileForm({ ...profileForm, gstin_number: e.target.value.toUpperCase() })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-mono font-bold text-[#3b6e14] focus:bg-white focus:border-[#3b6e14]"
