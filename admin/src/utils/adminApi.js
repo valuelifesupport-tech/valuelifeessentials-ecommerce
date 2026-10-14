@@ -10,6 +10,7 @@ export function createAdminFetch({ setAdminToken, setIsAuthLocked, showToast }) 
     const targetUrl = typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://')) ? url : getApiUrl(url);
     const headers = {
       'x-admin-token': token,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {})
     };
     return window.fetch(targetUrl, { cache: 'no-store', ...options, headers }).then(res => {

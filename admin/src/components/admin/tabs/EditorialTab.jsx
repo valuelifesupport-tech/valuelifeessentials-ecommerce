@@ -60,16 +60,21 @@ export default function EditorialTab({
       .catch(() => {});
 
     return () => { isMounted = false; };
-  }, [adminFetch]);
+  }, []);
 
   const handleSavePromo = async (e) => {
     e.preventDefault();
     setSavingPromo(true);
     try {
       const fetcher = adminFetch || fetch;
+      const token = localStorage.getItem('admin_session_token') || '';
       const res = await fetcher('/api/editorial-promo', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-token': token,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(promoForm)
       });
       if (res.ok) {
@@ -90,9 +95,14 @@ export default function EditorialTab({
     setSavingStory(true);
     try {
       const fetcher = adminFetch || fetch;
+      const token = localStorage.getItem('admin_session_token') || '';
       const res = await fetcher('/api/brand-story', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-token': token,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(storyForm)
       });
       if (res.ok) {
