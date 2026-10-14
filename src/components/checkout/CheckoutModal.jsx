@@ -53,21 +53,6 @@ export default function CheckoutModal({
               </button>
             </div>
 
-            {/* AUTO-FILLED USER BANNER */}
-            {currentUser && (
-              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200/80 px-3.5 py-2 rounded-xl text-xs">
-                <div className="flex items-center gap-2 text-emerald-950 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>
-                    Logged in as: <strong className="font-bold text-emerald-900">{currentUser.name || currentUser.phone || currentUser.email}</strong>
-                  </span>
-                </div>
-                <span className="text-[10px] bg-emerald-200/80 text-emerald-900 font-black uppercase px-2 py-0.5 rounded-md tracking-wider">
-                  Details Auto-Filled
-                </span>
-              </div>
-            )}
-
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-xs space-y-1.5">
               <div className="flex justify-between font-bold text-gray-700 pb-1 border-b border-emerald-200/60">
                 <span>Items Subtotal ({cart.length} items):</span>
@@ -126,42 +111,6 @@ export default function CheckoutModal({
                 <div className="flex justify-between font-extrabold text-amber-950 pt-1 border-t border-amber-300">
                   <span>Pay Online Now:</span>
                   <span className="text-emerald-700 font-black">{currencySymbol}0 (Pay full cash on delivery)</span>
-                </div>
-              )}
-
-              {/* PAYMENT GATEWAY SELECTION FOR ONLINE PAYMENTS */}
-              {checkoutData.paymentMode !== 'COD' && (
-                <div className="pt-2 border-t border-emerald-300/80 space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-extrabold text-emerald-900 flex items-center gap-1">
-                      <span>⚡</span> Gateway Provider:
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-bold uppercase">
-                      {selectedPaymentGateway} (Test Mode)
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: 'razorpay', label: 'Razorpay', badge: 'Active' },
-                      { id: 'phonepe', label: 'PhonePe', badge: 'Ready' },
-                      { id: 'paytm', label: 'Paytm', badge: 'Ready' }
-                    ].map(gw => (
-                      <button
-                        key={gw.id}
-                        type="button"
-                        onClick={() => setSelectedPaymentGateway(gw.id)}
-                        className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
-                          selectedPaymentGateway === gw.id
-                            ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm ring-1 ring-emerald-600'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50'
-                        }`}
-                        data-reticle-target={`checkout-gw-${gw.id}`}
-                      >
-                        <div className="font-extrabold text-[11px] leading-tight">{gw.label}</div>
-                        <div className={`text-[8px] font-bold ${selectedPaymentGateway === gw.id ? 'text-emerald-200' : 'text-gray-400'}`}>{gw.badge}</div>
-                      </button>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
