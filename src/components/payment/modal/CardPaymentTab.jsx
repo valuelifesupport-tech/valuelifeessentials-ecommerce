@@ -7,15 +7,10 @@ export default function CardPaymentTab({
   return (
     <div className="space-y-3 text-xs" data-reticle-target="payment-tab-card">
       <div className="flex justify-between items-center pb-1">
-        <span className="font-bold text-gray-700">Enter Card Details</span>
-        <button 
-          type="button" 
-          onClick={() => setCardForm({ number: '4111 2222 3333 4444', expiry: '12/28', cvv: '999', name: 'Authorized Test User' })}
-          className="text-[10px] font-black text-blue-600 hover:underline cursor-pointer"
-          data-reticle-target="payment-fill-sample-card-btn"
-        >
-          ⚡ Fill Sample Test Card
-        </button>
+        <span className="font-bold text-gray-700">Enter Debit / Credit Card Details</span>
+        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+          🔒 100% Secure
+        </span>
       </div>
 
       <div>

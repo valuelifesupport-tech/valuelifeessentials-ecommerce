@@ -35,24 +35,14 @@ export default function UpiPaymentTab({
 
       <div>
         <label className="block font-bold text-gray-700 mb-1">Enter Virtual Payment Address (VPA / UPI ID)</label>
-        <div className="flex gap-2">
-          <input 
-            type="text" 
-            value={upiId} 
-            onChange={(e) => setUpiId(e.target.value)}
-            placeholder="mobile@upi or username@okhdfcbank"
-            className="flex-1 p-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-xs focus:outline-none focus:border-blue-600"
-            data-reticle-target="payment-upi-vpa-input"
-          />
-          <button 
-            type="button"
-            onClick={() => setUpiId('success@razorpay')}
-            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-[11px] cursor-pointer"
-            data-reticle-target="payment-upi-sample-btn"
-          >
-            Use Sample VPA
-          </button>
-        </div>
+        <input 
+          type="text" 
+          value={upiId} 
+          onChange={(e) => setUpiId(e.target.value)}
+          placeholder="e.g. mobile@upi or username@okhdfcbank"
+          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-xs focus:outline-none focus:border-blue-600"
+          data-reticle-target="payment-upi-vpa-input"
+        />
       </div>
 
       {/* SIMULATED QR CODE SECTION */}

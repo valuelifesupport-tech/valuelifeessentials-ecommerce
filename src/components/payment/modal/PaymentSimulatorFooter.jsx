@@ -37,25 +37,15 @@ export default function PaymentSimulatorFooter({
             <ArrowRight size={16} />
           </button>
 
-          {/* DUAL SECONDARY ACTIONS: SIMULATE FAILURE & CANCEL */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => onSimulatePayment(false)}
-              className="flex-1 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold text-[11px] cursor-pointer transition-colors"
-              title="Test how your system handles bank failure"
-              data-reticle-target="payment-modal-simulate-failure-btn"
-            >
-              ⚠️ Simulate Failed Payment
-            </button>
-
+          {/* CANCEL TRANSACTION BUTTON */}
+          <div className="flex justify-end pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl font-bold text-[11px] cursor-pointer transition-colors"
+              className="w-full py-2.5 bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 rounded-xl font-bold text-xs cursor-pointer transition-colors text-center"
               data-reticle-target="payment-modal-cancel-btn"
             >
-              Cancel
+              Cancel & Return to Cart
             </button>
           </div>
         </>

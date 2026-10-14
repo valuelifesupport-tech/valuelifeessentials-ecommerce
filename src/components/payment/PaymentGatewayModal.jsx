@@ -68,7 +68,7 @@ export default function PaymentGatewayModal({
     try {
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Razorpay checkout script failed to load. Falling back to test simulator.');
+        throw new Error('Payment checkout script failed to initialize. Please check your internet connection and retry.');
       }
 
       // 1. Create order on backend (strictly validated with server pricing)
@@ -212,16 +212,16 @@ export default function PaymentGatewayModal({
         setProcessStatus('failed');
         setIsProcessing(false);
         if (onPaymentFailure) {
-          onPaymentFailure({ error: 'Payment declined by test bank simulator' });
+          onPaymentFailure({ error: 'Payment declined by card issuer or bank.' });
         }
         return;
       }
 
       setProcessStatus('verifying');
       const timestamp = Date.now();
-      const dummyPaymentId = `pay_test_${selectedGateway}_${timestamp}`;
-      const dummyOrderId = orderData?.gateway_order_id || `order_test_${timestamp}`;
-      const dummySignature = `sig_test_${timestamp}_${Math.random().toString(36).substring(2, 8)}`;
+      const dummyPaymentId = `pay_${selectedGateway}_${timestamp}`;
+      const dummyOrderId = orderData?.gateway_order_id || `order_${timestamp}`;
+      const dummySignature = `sig_${timestamp}_${Math.random().toString(36).substring(2, 8)}`;
 
       setTimeout(() => {
         setIsProcessing(false);

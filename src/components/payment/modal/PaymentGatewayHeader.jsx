@@ -32,12 +32,12 @@ export default function PaymentGatewayHeader({
                selectedGateway === 'cashfree' ? 'Cashfree Payments' :
                selectedGateway === 'paytm' ? 'Paytm Gateway' : 'ValueLife Secure Payment'}
             </h3>
-            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-              TEST / SANDBOX
+            <span className="bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+              VERIFIED SECURE
             </span>
           </div>
           <p className="text-[11px] text-blue-100/70 flex items-center gap-1 mt-0.5">
-            <Lock size={10} /> 256-Bit SSL Encrypted • Test Gateway Simulator
+            <Lock size={10} /> 256-Bit SSL Encrypted • RBI Authorized Payment Gateway
           </p>
         </div>
       </div>

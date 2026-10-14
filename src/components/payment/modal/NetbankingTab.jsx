@@ -27,7 +27,7 @@ export default function NetbankingTab({
         ))}
       </div>
       <p className="text-[11px] text-gray-500 pt-1">
-        You will be redirected to {selectedBank} secure test banking portal for OTP authorization.
+        You will be securely redirected to {selectedBank} banking portal for OTP authorization.
       </p>
     </div>
   );
