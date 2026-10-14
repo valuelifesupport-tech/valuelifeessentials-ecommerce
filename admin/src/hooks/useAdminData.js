@@ -57,7 +57,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
         sf('/api/collections'),
         sf('/api/admin/orders'),
         sf('/api/settings'),
-        sf('/api/reviews'),
+        sf('/api/admin/reviews'),
         sf('/api/admin/hero-slides'),
         sf('/api/admin/blogs'),
         sf('/api/admin/instagram-posts'),
@@ -110,7 +110,7 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
           break;
         }
         case 'reviews': {
-          const r = await sf('/api/reviews');
+          const r = await sf('/api/admin/reviews');
           if (r) setReviews(r);
           break;
         }

@@ -2,6 +2,7 @@ import { getApiUrl, resolveImgUrl } from '../../api/config';
 import { resolveBaseVariant } from '../../utils/pricing';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, ChevronRight, ChevronLeft, Heart, ShoppingBag, Sparkles } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import BrandLoader from '../common/BrandLoader';
 import ProductGallery from './ProductGallery';
 import ProductPricingBox from './ProductPricingBox';
@@ -19,6 +20,7 @@ export default function ProductDetailPage({
   onSelectProduct,
   showToast
 }) {
+  const { currentUser } = useAuth();
   const [productData, setProductData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState('');
@@ -129,23 +131,59 @@ export default function ProductDetailPage({
     if (carouselRef.current) carouselRef.current.scrollBy({ left: 280, behavior: 'smooth' });
   };
 
+  // Auto-sync review form with logged-in user credentials
+  useEffect(() => {
+    if (currentUser) {
+      setReviewForm(prev => ({
+        ...prev,
+        user_name: currentUser.name || (currentUser.phone ? `Customer ${currentUser.phone.slice(-4)}` : prev.user_name || ''),
+        user_email: currentUser.email || prev.user_email || ''
+      }));
+    }
+  }, [currentUser]);
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    if (!reviewForm.user_name || !reviewForm.comment) {
-      if (showToast) showToast('error', 'Missing Information', 'Please fill in your name and comment.');
+    const finalName = (currentUser?.name || reviewForm.user_name || (currentUser?.phone ? `Customer ${currentUser.phone.slice(-4)}` : '')).trim();
+    const finalEmail = (currentUser?.email || reviewForm.user_email || '').trim();
+
+    if (!finalName) {
+      if (showToast) showToast('error', 'Name Required', 'Please enter your name.');
       return;
     }
+    if (!reviewForm.comment || !reviewForm.comment.trim()) {
+      if (showToast) showToast('error', 'Comment Required', 'Please write a review comment.');
+      return;
+    }
+
     try {
       const res = await fetch(getApiUrl('/api/reviews'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...reviewForm, product_id: productData.id })
+        body: JSON.stringify({
+          ...reviewForm,
+          user_name: finalName,
+          customer_name: finalName,
+          user_email: finalEmail,
+          customer_email: finalEmail,
+          product_id: productData.id
+        })
       });
       if (res.ok) {
         setShowReviewModal(false);
-        setReviewForm({ user_name: '', user_email: '', rating: 5, title: '', comment: '', images: [] });
+        setReviewForm({
+          user_name: currentUser?.name || '',
+          user_email: currentUser?.email || '',
+          rating: 5,
+          title: '',
+          comment: '',
+          images: []
+        });
         fetchProductDetail();
         if (showToast) showToast('success', 'Review Submitted for Moderation!', 'Thank you! Your review was submitted for admin verification and will be published once approved.');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (showToast) showToast('error', 'Review Error', errData.error || 'Failed to submit review');
       }
     } catch (err) {
       if (showToast) showToast('error', 'Review Error', err.message);
@@ -292,6 +330,7 @@ export default function ProductDetailPage({
 
         {/* CUSTOMER REVIEWS */}
         <ProductReviews
+          currentUser={currentUser}
           productData={productData}
           showReviewModal={showReviewModal}
           setShowReviewModal={setShowReviewModal}

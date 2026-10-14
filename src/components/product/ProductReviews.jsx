@@ -3,6 +3,7 @@ import { Star, Upload, ThumbsUp } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
 
 export default function ProductReviews({
+  currentUser,
   productData,
   showReviewModal,
   setShowReviewModal,
@@ -164,15 +165,45 @@ export default function ProductReviews({
               <button onClick={() => setShowReviewModal(false)} className="text-gray-400 hover:text-gray-700 font-bold text-lg cursor-pointer">✕</button>
             </div>
             <form onSubmit={handleReviewSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Your Name *</label>
-                <input 
-                  type="text" required placeholder="e.g. Ramesh Kumar"
-                  value={reviewForm.user_name}
-                  onChange={(e) => setReviewForm({ ...reviewForm, user_name: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+              {currentUser ? (
+                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-black flex items-center justify-center text-sm uppercase shadow-sm">
+                    {(currentUser.name || currentUser.email || 'U').charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-extrabold text-gray-900 truncate text-xs">{currentUser.name || 'Verified Customer'}</span>
+                      <span className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-xs">
+                        ✓ Verified Buyer
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-gray-500 truncate block mt-0.5">
+                      {currentUser.email || (currentUser.phone ? `Phone: ${currentUser.phone}` : 'Account Active')}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Your Name *</label>
+                    <input 
+                      type="text" required placeholder="e.g. Ramesh Kumar"
+                      value={reviewForm.user_name}
+                      onChange={(e) => setReviewForm({ ...reviewForm, user_name: e.target.value })}
+                      className="w-full p-2.5 border rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Your Email (Gmail) *</label>
+                    <input 
+                      type="email" required placeholder="e.g. ramesh@gmail.com"
+                      value={reviewForm.user_email || ''}
+                      onChange={(e) => setReviewForm({ ...reviewForm, user_email: e.target.value })}
+                      className="w-full p-2.5 border rounded-xl"
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block font-bold text-gray-700 mb-1">Rating *</label>
                 <select 
