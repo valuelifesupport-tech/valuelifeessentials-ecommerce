@@ -39,9 +39,11 @@ const resolveApiBase = () => {
   return 'https://backend.valuelifeessentials.com';
 };
 
+export const API_BASE = resolveApiBase();
+
 export const ENV = {
   // Base URLs
-  API_BASE: resolveApiBase(),
+  API_BASE,
   STOREFRONT_URL: import.meta.env.VITE_STOREFRONT_URL || (isClient ? getHostUrl() : 'https://valuelifeessentials.com'),
   ADMIN_URL: import.meta.env.VITE_ADMIN_URL || 'https://admin.valuelifeessentials.com',
 

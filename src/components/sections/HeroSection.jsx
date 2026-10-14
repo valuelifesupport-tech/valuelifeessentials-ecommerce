@@ -138,10 +138,10 @@ export default function HeroSection({
       {isFullBanner ? (
         <div 
           onClick={() => currentSlide.cta_link && handleCta(currentSlide.cta_link)}
-          className={`relative w-full overflow-hidden group ${currentSlide.cta_link ? 'cursor-pointer' : ''}`}
+          className={`relative w-full overflow-hidden group bg-[#fbf9f5] ${currentSlide.cta_link ? 'cursor-pointer' : ''}`}
         >
-          <div className="relative w-full min-h-[300px] sm:min-h-[400px] lg:min-h-[480px] bg-slate-950 flex items-center justify-center overflow-hidden">
-            <picture className="w-full h-full block">
+          <div className="relative w-full flex items-center justify-center overflow-hidden bg-[#fbf9f5]">
+            <picture className="w-full block">
               {currentSlide.mobile_banner_img && (
                 <source 
                   media="(max-width: 640px)" 
@@ -151,7 +151,7 @@ export default function HeroSection({
               <img
                 src={resolveImgUrl(currentSlide.banner_img || currentSlide.packaging_img)}
                 alt={currentSlide.title_part1 || 'ValueLife Full Screen Promotional Banner'}
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out"
+                className="w-full h-auto block object-contain sm:object-cover sm:max-h-[520px] lg:max-h-[580px] group-hover:scale-[1.01] transition-transform duration-700 ease-out mx-auto"
               />
             </picture>
 
