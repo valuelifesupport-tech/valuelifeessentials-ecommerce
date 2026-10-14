@@ -83,6 +83,8 @@ export function CheckoutProvider({ children }) {
           payment_mode: checkoutData?.paymentMode || 'COD',
           payment_gateway: selectedPaymentGateway,
           coupon_code: checkoutData?.appliedCoupon?.code || null,
+          coupon_discount: checkoutData?.discountAmount || 0,
+          shipping_amount: checkoutData?.shippingAmount || 0,
           items: cart.map(i => ({ product_id: i.id, variant_id: i.variant_id, quantity: i.quantity, price: i.price }))
         })
       });

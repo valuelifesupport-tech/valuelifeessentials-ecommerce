@@ -74,6 +74,22 @@ export default function CheckoutModal({
                 <span>{currencySymbol}{checkoutData.rawSubtotal || checkoutData.finalTotal}</span>
               </div>
 
+              {Number(checkoutData.discountAmount || 0) > 0 && (
+                <div className="flex justify-between font-bold text-emerald-700">
+                  <span>Coupon Discount:</span>
+                  <span>-{currencySymbol}{checkoutData.discountAmount}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between font-bold text-gray-700">
+                <span>Delivery Charges:</span>
+                {Number(checkoutData.shippingAmount || 0) > 0 ? (
+                  <span>+{currencySymbol}{checkoutData.shippingAmount}</span>
+                ) : (
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-extrabold">FREE 🚚</span>
+                )}
+              </div>
+
               {!checkoutData.isTaxInclusive ? (
                 <div className="flex justify-between font-bold text-amber-800">
                   <span>GST Tax (Added at Checkout):</span>
@@ -156,7 +172,7 @@ export default function CheckoutModal({
                 <input 
                   type="text" required placeholder="e.g. Rajesh Gupta"
                   value={customerForm?.name || ''}
-                  onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
+                  onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), name: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
                   data-reticle-target="checkout-input-name"
                 />
@@ -168,7 +184,7 @@ export default function CheckoutModal({
                   <input 
                     type="tel" required placeholder="e.g. +91 98123 45678"
                     value={customerForm?.phone || ''}
-                    onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                    onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), phone: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
                     data-reticle-target="checkout-input-phone"
                   />
@@ -178,7 +194,7 @@ export default function CheckoutModal({
                   <input 
                     type="email" placeholder="e.g. rajesh@gmail.com (Optional)"
                     value={customerForm?.email || ''}
-                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                    onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), email: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
                     data-reticle-target="checkout-input-email"
                   />
@@ -190,7 +206,7 @@ export default function CheckoutModal({
                 <textarea 
                   rows={2} required placeholder="Flat No., Street, Area, City, Pincode"
                   value={customerForm?.address || ''}
-                  onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
+                  onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), address: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-address"
                 ></textarea>
@@ -203,8 +219,8 @@ export default function CheckoutModal({
                 <textarea 
                   rows={2}
                   placeholder="e.g. Please call before delivery, leave with security guard, pack in eco-friendly box..."
-                  value={customerForm.remark || ''}
-                  onChange={(e) => setCustomerForm({ ...customerForm, remark: e.target.value })}
+                  value={customerForm?.remark || ''}
+                  onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), remark: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-remark"
                 ></textarea>

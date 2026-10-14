@@ -11,6 +11,9 @@ export default function CartSummary({
   currencySymbol,
   rawSubtotal,
   discountAmount,
+  shippingAmount = 0,
+  isFreeShipping = false,
+  freeShippingThreshold = 499,
   isTaxInclusive,
   finalTaxAmount,
   finalTotal,
@@ -67,10 +70,10 @@ export default function CartSummary({
 
         <div className="flex justify-between">
           <span>Delivery Charges</span>
-          {rawSubtotal >= 499 || appliedCoupon?.free_shipping ? (
+          {isFreeShipping || rawSubtotal >= freeShippingThreshold || appliedCoupon?.free_shipping ? (
             <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-extrabold">FREE 🚚</span>
           ) : (
-            <span className="font-bold text-gray-900">{currencySymbol}49</span>
+            <span className="font-bold text-gray-900">{currencySymbol}{shippingAmount || 50}</span>
           )}
         </div>
 
@@ -98,6 +101,7 @@ export default function CartSummary({
           paymentMode, 
           rawSubtotal,
           discountAmount,
+          shippingAmount,
           taxAmount: finalTaxAmount,
           isTaxInclusive,
           finalTotal, 

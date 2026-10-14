@@ -56,13 +56,26 @@ export default function CartDrawer({
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const afterDiscountSubtotal = Math.max(0, rawSubtotal - discountAmount);
 
+  // Dynamic Shipping Fee Calculation matching backend priceSecurity logic
+  const freeShippingThreshold = Number(settings?.free_shipping_threshold) > 0 ? Number(settings.free_shipping_threshold) : 499;
+  const standardShippingFee = (settings?.shipping_fee !== undefined && settings?.shipping_fee !== null && settings?.shipping_fee !== '')
+    ? Number(settings.shipping_fee)
+    : 50;
+  const isFreeShippingEnabled = settings?.enable_free_shipping === undefined || Number(settings?.enable_free_shipping) === 1;
+
+  const isFreeShipping = Boolean(
+    appliedCoupon?.free_shipping || 
+    (isFreeShippingEnabled && afterDiscountSubtotal >= freeShippingThreshold)
+  );
+  const shippingAmount = isFreeShipping ? 0 : standardShippingFee;
+
   const finalTaxAmount = Math.round(calculatedGstTax * 100) / 100;
   const finalTotal = isTaxInclusive 
-    ? afterDiscountSubtotal 
-    : Math.round((afterDiscountSubtotal + finalTaxAmount) * 100) / 100;
+    ? Math.round((afterDiscountSubtotal + shippingAmount) * 100) / 100
+    : Math.round((afterDiscountSubtotal + finalTaxAmount + shippingAmount) * 100) / 100;
 
   const depositAmount = Math.round(finalTotal * (depositPercent / 100));
-  const remainingAmount = finalTotal - depositAmount;
+  const remainingAmount = Math.max(0, finalTotal - depositAmount);
 
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
@@ -169,6 +182,9 @@ export default function CartDrawer({
               currencySymbol={currencySymbol}
               rawSubtotal={rawSubtotal}
               discountAmount={discountAmount}
+              shippingAmount={shippingAmount}
+              isFreeShipping={isFreeShipping}
+              freeShippingThreshold={freeShippingThreshold}
               isTaxInclusive={isTaxInclusive}
               finalTaxAmount={finalTaxAmount}
               finalTotal={finalTotal}
