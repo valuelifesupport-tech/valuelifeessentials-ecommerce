@@ -108,7 +108,8 @@ export default function useCatalogActions({
         setEditingCategory(null);
         setCategoryForm({ name: '', description: '', image_url: '', icon: '' });
         const fresh = await sf('/api/categories');
-        if (fresh) setCategories(fresh);
+        if (fresh && typeof setCategories === 'function') setCategories(fresh);
+        if (typeof fetchAdminData === 'function') fetchAdminData();
         if (showToast) showToast('success', isEdit ? 'Category Updated' : 'Category Created', `Category "${formData.name}" saved successfully.`);
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -127,7 +128,8 @@ export default function useCatalogActions({
       if (res.ok) {
         if (showToast) showToast('success', 'Category Deleted 🗑️', `Category "${deleteConfirmCategory.name}" was deleted.`);
         const fresh = await sf('/api/categories');
-        if (fresh) setCategories(fresh);
+        if (fresh && typeof setCategories === 'function') setCategories(fresh);
+        if (typeof fetchAdminData === 'function') fetchAdminData();
       } else {
         if (showToast) showToast('error', 'Delete Failed', 'Could not delete category.');
       }
@@ -162,7 +164,7 @@ export default function useCatalogActions({
         setShowCollectionModal(false);
         setEditingCollection(null);
         setCollectionForm({ name: '', description: '', image_url: '', category_id: '', product_ids: [] });
-        if (savedCol && savedCol.id) {
+        if (savedCol && savedCol.id && typeof setCollections === 'function') {
           setCollections(prev => {
             const exists = prev.some(c => c.id === savedCol.id);
             if (exists) {
@@ -172,7 +174,8 @@ export default function useCatalogActions({
           });
         }
         const fresh = await sf('/api/collections');
-        if (fresh) setCollections(fresh);
+        if (fresh && typeof setCollections === 'function') setCollections(fresh);
+        if (typeof fetchAdminData === 'function') fetchAdminData();
         if (showToast) showToast('success', isEdit ? 'Collection Updated' : 'Collection Created', `Collection "${formData.name}" saved successfully.`);
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -222,7 +225,8 @@ export default function useCatalogActions({
         setShowBannerModal(false);
         setBannerForm({ title: '', subtitle: '', image_url: '', link_url: '/products' });
         const fresh = await sf('/api/banners');
-        if (fresh) setBanners(fresh);
+        if (fresh && typeof setBanners === 'function') setBanners(fresh);
+        if (typeof fetchAdminData === 'function') fetchAdminData();
         if (showToast) showToast('success', 'Banner Saved', editingBanner ? 'Banner updated.' : 'New banner created.');
       }
     } catch (err) {}
@@ -271,7 +275,8 @@ export default function useCatalogActions({
         setShowCouponModal(false);
         setEditingCouponId(null);
         const fresh = await sf('/api/coupons');
-        if (fresh) setCoupons(fresh);
+        if (fresh && typeof setCoupons === 'function') setCoupons(fresh);
+        if (typeof fetchAdminData === 'function') fetchAdminData();
         if (showToast) showToast('success', editingCouponId ? 'Coupon Updated' : 'Coupon Created', `Code ${couponForm.code} ${editingCouponId ? 'updated' : 'active'}.`);
         setCouponForm({ code: '', discount_type: 'PERCENT', discount_value: 15, min_spend_inr: 300, min_spend_usd: 10, max_uses: 0, one_per_customer: 0, start_date: '', end_date: '', description: '', buy_qty: 1, get_qty: 1, get_discount_type: 'FREE' });
       } else {
@@ -370,7 +375,7 @@ export default function useCatalogActions({
   // ------ Users ------
   const fetchUsersData = async () => {
     const u = await sf('/api/admin/users');
-    if (u) setUsers(u);
+    if (u && typeof setUsers === 'function') setUsers(u);
   };
 
   const handleViewUserDetails = async (user) => {
@@ -396,7 +401,7 @@ export default function useCatalogActions({
         body: JSON.stringify({ role: newRole })
       });
       if (res.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        if (typeof setUsers === 'function') setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
         if (showToast) showToast('success', 'Role Updated', `User role changed to ${newRole}.`);
       } else {
         if (showToast) showToast('error', 'Update Failed', 'Could not update user role.');
@@ -416,7 +421,7 @@ export default function useCatalogActions({
         try {
           const res = await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
           if (res.ok) {
-            setUsers(prev => prev.filter(u => u.id !== userId));
+            if (typeof setUsers === 'function') setUsers(prev => prev.filter(u => u.id !== userId));
             if (showToast) showToast('success', 'User Deleted', `User "${userName}" account deleted.`);
           } else {
             if (showToast) showToast('error', 'Delete Failed', 'Could not delete user.');
@@ -471,7 +476,7 @@ export default function useCatalogActions({
         setEditingPage(null);
         fetchAdminData();
         const freshPages = await sf('/api/pages');
-        if (freshPages) setPages(freshPages);
+        if (freshPages && typeof setPages === 'function') setPages(freshPages);
         if (showToast) showToast('success', 'Page Saved', isEdit ? 'Custom page updated!' : 'New custom page created!');
       }
     } catch (err) {}
@@ -485,7 +490,7 @@ export default function useCatalogActions({
       danger: true,
       onConfirm: async () => {
         await adminFetch(`/api/admin/pages/${id}`, { method: 'DELETE' });
-        setPages(prev => prev.filter(p => p.id !== id));
+        if (typeof setPages === 'function') setPages(prev => prev.filter(p => p.id !== id));
         if (showToast) showToast('info', 'Page Deleted', 'Custom page deleted.');
       }
     });
@@ -513,7 +518,7 @@ export default function useCatalogActions({
         setEditingBlog(null);
         fetchAdminData();
         const freshBlogs = await sf('/api/admin/blogs');
-        if (freshBlogs) setBlogs(freshBlogs);
+        if (freshBlogs && typeof setBlogs === 'function') setBlogs(freshBlogs);
         if (showToast) showToast('success', 'Blog Saved', isEdit ? 'Article updated successfully!' : 'New article published!');
       } else {
         if (showToast) showToast('error', 'Blog Error', resData.error || 'Failed to save blog post');
@@ -533,7 +538,7 @@ export default function useCatalogActions({
         try {
           const res = await adminFetch(`/api/admin/blogs/${id}`, { method: 'DELETE' });
           if (res.ok) {
-            setBlogs(prev => prev.filter(b => b.id !== id));
+            if (typeof setBlogs === 'function') setBlogs(prev => prev.filter(b => b.id !== id));
             if (showToast) showToast('info', 'Article Deleted', 'Blog article permanently deleted.');
           } else {
             const data = await res.json().catch(() => ({}));
@@ -555,7 +560,7 @@ export default function useCatalogActions({
         body: JSON.stringify({ is_published: newStatus })
       });
       if (res.ok) {
-        setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, is_published: newStatus } : b));
+        if (typeof setBlogs === 'function') setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, is_published: newStatus } : b));
         if (showToast) showToast('success', newStatus ? 'Article Published' : 'Article Hidden', `"${blog.title}" is now ${newStatus ? 'live' : 'draft'}.`);
       }
     } catch (err) {
@@ -572,7 +577,7 @@ export default function useCatalogActions({
         body: JSON.stringify({ is_featured: newFeatured })
       });
       if (res.ok) {
-        setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, is_featured: newFeatured } : b));
+        if (typeof setBlogs === 'function') setBlogs(prev => prev.map(b => b.id === blog.id ? { ...b, is_featured: newFeatured } : b));
         if (showToast) showToast('success', newFeatured ? 'Marked as Featured' : 'Removed from Featured', `"${blog.title}" ${newFeatured ? 'is now spotlighted' : 'is standard'}.`);
       }
     } catch (err) {
@@ -678,7 +683,7 @@ export default function useCatalogActions({
       if (res.ok) {
         setNewGroupForm({ name: '', filter_key: '' });
         const flts = await sf('/api/filter-groups');
-        if (flts && Array.isArray(flts)) setFilterGroups(flts);
+        if (flts && Array.isArray(flts) && typeof setFilterGroups === 'function') setFilterGroups(flts);
         if (showToast) showToast('success', 'Filter Group Added', 'New product filter group created!');
       } else {
         if (showToast) showToast('error', 'Creation Failed', data.error || 'Could not create filter group.');
@@ -697,7 +702,7 @@ export default function useCatalogActions({
       onConfirm: async () => {
         await adminFetch(`/api/admin/filter-groups/${id}`, { method: 'DELETE' });
         const flts = await sf('/api/filter-groups');
-        if (flts && Array.isArray(flts)) setFilterGroups(flts);
+        if (flts && Array.isArray(flts) && typeof setFilterGroups === 'function') setFilterGroups(flts);
         if (showToast) showToast('info', 'Filter Group Deleted', 'Filter group removed.');
       }
     });
@@ -716,7 +721,7 @@ export default function useCatalogActions({
       if (res.ok) {
         setNewOptionInputs(prev => ({ ...prev, [groupId]: '' }));
         const flts = await sf('/api/filter-groups');
-        if (flts && Array.isArray(flts)) setFilterGroups(flts);
+        if (flts && Array.isArray(flts) && typeof setFilterGroups === 'function') setFilterGroups(flts);
         if (showToast) showToast('success', 'Option Added', 'Filter pill option added!');
       } else {
         if (showToast) showToast('error', 'Option Failed', data.error || 'Could not add option.');
@@ -735,7 +740,7 @@ export default function useCatalogActions({
       onConfirm: async () => {
         await adminFetch(`/api/admin/filter-options/${optId}`, { method: 'DELETE' });
         const flts = await sf('/api/filter-groups');
-        if (flts && Array.isArray(flts)) setFilterGroups(flts);
+        if (flts && Array.isArray(flts) && typeof setFilterGroups === 'function') setFilterGroups(flts);
         if (showToast) showToast('info', 'Option Removed', 'Filter option deleted.');
       }
     });

@@ -90,7 +90,9 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
   const catalogActions = useCatalogActions({
     adminFetch: auth.adminFetch, fetchAdminData: data.fetchAdminData, showToast,
     askConfirmation: modals.askConfirmation,
-    setProducts: data.setProducts, setCollections: data.setCollections,
+    setProducts: data.setProducts,
+    setCategories: data.setCategories,
+    setCollections: data.setCollections,
     setBanners: data.setBanners, setCoupons: data.setCoupons,
     setPages: data.setPages, setBlogs: data.setBlogs, setInstagramPosts: data.setInstagramPosts, setFilterGroups: data.setFilterGroups,
     setShowCategoryModal: modals.setShowCategoryModal, setShowCollectionModal: modals.setShowCollectionModal,
