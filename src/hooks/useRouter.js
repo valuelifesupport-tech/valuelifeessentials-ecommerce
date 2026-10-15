@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export const getInitialRouteState = () => {
   if (typeof window === 'undefined') {
@@ -45,17 +45,19 @@ export const getInitialRouteState = () => {
     return { view: 'page', slug, category: null, collection: null };
   }
   if (path.startsWith('/category/')) {
-    const category = path.replace('/category/', '');
+    const category = path.replace('/category/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
     return { view: 'catalog', slug: null, category, collection: null };
   }
   if (path.startsWith('/collection/')) {
-    const collection = path.replace('/collection/', '');
+    const collection = path.replace('/collection/', '').split('?')[0].split('#')[0].replace(/\/$/, '');
     return { view: 'catalog', slug: null, category: null, collection };
   }
   return { view: 'store', slug: null, category: null, collection: null };
 };
 
-export function useRouter() {
+export const RouterContext = createContext(null);
+
+export function RouterProvider({ children }) {
   const [route, setRoute] = useState(getInitialRouteState);
 
   useEffect(() => {
@@ -65,7 +67,45 @@ export function useRouter() {
   }, []);
 
   const navigateTo = useCallback((path, newRouteState) => {
-    window.history.pushState({}, '', path);
+    if (path) {
+      window.history.pushState({}, '', path);
+    }
+    let state = newRouteState;
+    if (!state) {
+      state = getInitialRouteState();
+    } else {
+      if (state.view === 'product') {
+        state = { ...state, view: 'pdp' };
+      }
+    }
+    setRoute(state);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  return React.createElement(
+    RouterContext.Provider,
+    { value: { route, setRoute, navigateTo } },
+    children
+  );
+}
+
+export function useRouter() {
+  const ctx = useContext(RouterContext);
+  if (ctx) return ctx;
+
+  // Fallback for isolated tests or un-wrapped components
+  const [route, setRoute] = useState(getInitialRouteState);
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(getInitialRouteState());
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = useCallback((path, newRouteState) => {
+    if (path) {
+      window.history.pushState({}, '', path);
+    }
     let state = newRouteState;
     if (!state) {
       state = getInitialRouteState();

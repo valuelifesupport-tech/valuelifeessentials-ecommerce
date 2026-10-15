@@ -7,7 +7,7 @@ import { ShopProvider, useShop } from './context/ShopContext';
 import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
 import { CheckoutProvider, useCheckout } from './context/CheckoutContext';
-import { useRouter } from './hooks/useRouter';
+import { RouterProvider, useRouter } from './hooks/useRouter';
 import { useCatalog } from './hooks/useCatalog';
 
 // Layout & Common Components
@@ -135,7 +135,7 @@ function StorefrontLayout() {
     handlePaymentFailure
   } = useCheckout();
 
-  const { sortedProducts, handleClearFilters } = useCatalog();
+  const { sortedProducts, handleClearFilters } = useCatalog(route);
 
   // 1. Initial Brand Loader
   if (isAppLoading) {
@@ -390,17 +390,19 @@ function StorefrontLayout() {
 export default function App() {
   return (
     <ToastProvider>
-      <AuthProvider>
-        <ShopProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <CheckoutProvider>
-                <StorefrontLayout />
-              </CheckoutProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </ShopProvider>
-      </AuthProvider>
+      <RouterProvider>
+        <AuthProvider>
+          <ShopProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <CheckoutProvider>
+                  <StorefrontLayout />
+                </CheckoutProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </ShopProvider>
+        </AuthProvider>
+      </RouterProvider>
     </ToastProvider>
   );
 }
