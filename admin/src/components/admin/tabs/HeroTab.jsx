@@ -696,7 +696,7 @@ export default function HeroTab({
 
                   {/* Primary Desktop Banner Image */}
                   <ImageUploader 
-                    label="Desktop Full-Width Banner Image * (Recommended: 1920x600 px or 1600x500 px)"
+                    label="Desktop Full-Width Banner Image * (Fixed Size: 1920x830 px)"
                     value={slideForm.banner_img || slideForm.packaging_img}
                     onChange={(url) => setSlideForm({ ...slideForm, banner_img: url, packaging_img: url })}
                     placeholder="Upload full-screen banner image or paste URL..."

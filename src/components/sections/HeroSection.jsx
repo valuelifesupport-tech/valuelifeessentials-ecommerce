@@ -134,14 +134,17 @@ export default function HeroSection({
         </>
       )}
 
-      {/* OPTION 1: FULL SCREEN GRAPHIC BANNER SLIDE */}
+      {/* OPTION 1: FULL SCREEN GRAPHIC BANNER SLIDE (Fixed 1920x830 Dimension) */}
       {isFullBanner ? (
         <div 
           onClick={() => currentSlide.cta_link && handleCta(currentSlide.cta_link)}
           className={`relative w-full overflow-hidden group bg-[#fbf9f5] ${currentSlide.cta_link ? 'cursor-pointer' : ''}`}
         >
-          <div className="relative w-full flex items-center justify-center overflow-hidden bg-[#fbf9f5]">
-            <picture className="w-full block">
+          <div 
+            className="relative w-full aspect-[1920/830] flex items-center justify-center overflow-hidden bg-[#fbf9f5]"
+            style={{ aspectRatio: '1920 / 830' }}
+          >
+            <picture className="w-full h-full block">
               {currentSlide.mobile_banner_img && (
                 <source 
                   media="(max-width: 640px)" 
@@ -151,7 +154,8 @@ export default function HeroSection({
               <img
                 src={resolveImgUrl(currentSlide.banner_img || currentSlide.packaging_img)}
                 alt={currentSlide.title_part1 || 'ValueLife Full Screen Promotional Banner'}
-                className="w-full h-auto block object-contain sm:object-cover sm:max-h-[520px] lg:max-h-[580px] group-hover:scale-[1.01] transition-transform duration-700 ease-out mx-auto"
+                className="w-full h-full block object-cover group-hover:scale-[1.005] transition-transform duration-700 ease-out mx-auto"
+                style={{ aspectRatio: '1920 / 830' }}
               />
             </picture>
 
