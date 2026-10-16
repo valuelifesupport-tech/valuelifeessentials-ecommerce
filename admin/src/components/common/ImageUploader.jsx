@@ -40,7 +40,13 @@ export default function ImageUploader({ label, value, onChange, placeholder = 'h
     setShowMediaModal(true);
     setLoadingMedia(true);
     try {
-      const res = await fetch(getApiUrl('/api/media'));
+      const token = localStorage.getItem('admin_session_token') || '';
+      const res = await fetch(getApiUrl('/api/media'), {
+        headers: {
+          'x-admin-token': token,
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (Array.isArray(data)) {
         setMediaList(data);
