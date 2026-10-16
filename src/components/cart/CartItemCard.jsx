@@ -11,26 +11,56 @@ export default function CartItemCard({
   onUpdateQuantity,
   onRemoveItem
 }) {
-  const price = item.price !== undefined && item.price !== null 
-    ? Number(item.price) 
-    : (currency === 'INR' ? (item.discount_inr || item.price_inr || 0) : (item.discount_usd || item.price_usd || 0));
-  const itemKey = item.cartKey || item.id;
+  const itemKey = item.cartKey || (item.variant_id ? `${item.product_id || item.id}_var_${item.variant_id}` : (item.id || item.product_id));
   const matchedProduct = Array.isArray(allProducts)
-    ? allProducts.find(p => Number(p.id) === Number(item.id) || (p.slug && item.slug && p.slug === item.slug))
+    ? allProducts.find(p => Number(p.id) === Number(item.product_id) || Number(p.id) === Number(item.id) || (p.slug && item.slug && p.slug === item.slug))
     : null;
-  const optionLabel = resolveItemOptionLabel(item, matchedProduct, currency, price);
+
+  const matchedVariant = (item.variant_id && matchedProduct?.variants)
+    ? matchedProduct.variants.find(v => Number(v.id) === Number(item.variant_id))
+    : (item.selectedVariant || item.variant || null);
+
+  let price = item.price !== undefined && item.price !== null && Number(item.price) > 0
+    ? Number(item.price)
+    : null;
+
+  if (price === null && matchedVariant) {
+    const vPrice = currency === 'INR'
+      ? (Number(matchedVariant.discount_inr) > 0 ? Number(matchedVariant.discount_inr) : Number(matchedVariant.price_inr || 0))
+      : (Number(matchedVariant.discount_usd) > 0 ? Number(matchedVariant.discount_usd) : Number(matchedVariant.price_usd || 0));
+    if (vPrice > 0) price = vPrice;
+  }
+
+  if (price === null && matchedProduct) {
+    const pPrice = currency === 'INR'
+      ? (Number(matchedProduct.discount_inr) > 0 ? Number(matchedProduct.discount_inr) : Number(matchedProduct.price_inr || matchedProduct.price || 0))
+      : (Number(matchedProduct.discount_usd) > 0 ? Number(matchedProduct.discount_usd) : Number(matchedProduct.price_usd || 0));
+    if (pPrice > 0) price = pPrice;
+  }
+
+  if (price === null) {
+    price = currency === 'INR' ? Number(item.discount_inr || item.price_inr || 0) : Number(item.discount_usd || item.price_usd || 0);
+  }
+
+  const displayTitle = (item.title && item.title !== 'Product') 
+    ? item.title 
+    : (matchedProduct?.title || item.title || 'Product');
+
+  const displayImage = item.thumbnail || item.image_url || matchedVariant?.image_url || matchedProduct?.thumbnail || matchedProduct?.image_url;
+
+  const optionLabel = item.variant_name || matchedVariant?.variant_name || resolveItemOptionLabel(item, matchedProduct, currency, price);
   const effectiveGst = (item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '')
     ? item.gst_percent
     : ((item.gst_rate !== undefined && item.gst_rate !== null && item.gst_rate !== '')
         ? item.gst_rate
         : (matchedProduct?.gst_percent ?? matchedProduct?.gst_rate ?? null));
-  const itemTotal = (price * item.quantity).toFixed(2);
+  const itemTotal = (price * (Number(item.quantity) || 1)).toFixed(2);
 
   return (
     <div className="flex gap-3.5 p-3.5 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative group" data-reticle-target={`cart-item-${item.id}`}>
       <img 
-        src={resolveImgUrl(item.thumbnail || item.image_url || item.selectedVariant?.image_url)} 
-        alt={item.title} 
+        src={resolveImgUrl(displayImage)} 
+        alt={displayTitle} 
         className="w-20 h-20 object-cover rounded-xl border border-gray-100 bg-gray-50 shrink-0"
         onError={(e) => {
           e.target.onerror = null;
@@ -39,7 +69,7 @@ export default function CartItemCard({
       />
 
       <div className="flex-1 min-w-0">
-        <h4 className="font-extrabold text-sm text-gray-900 line-clamp-1 font-['Outfit']">{item.title}</h4>
+        <h4 className="font-extrabold text-sm text-gray-900 line-clamp-1 font-['Outfit']">{displayTitle}</h4>
         
         {/* Selected or Default Base Option Badge */}
         {optionLabel && (

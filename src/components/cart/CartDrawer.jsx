@@ -34,10 +34,32 @@ export default function CartDrawer({
   let calculatedGstTax = 0;
 
   cartItems.forEach(item => {
-    const itemPrice = item.price !== undefined && item.price !== null 
+    let itemPrice = item.price !== undefined && item.price !== null && Number(item.price) > 0
       ? Number(item.price) 
-      : (currency === 'INR' ? (item.discount_inr || item.price_inr || 0) : (item.discount_usd || item.price_usd || 0));
-    const itemTotal = itemPrice * item.quantity;
+      : null;
+
+    if (itemPrice === null && Array.isArray(allProducts) && allProducts.length > 0) {
+      const matched = allProducts.find(p => Number(p.id) === Number(item.product_id) || Number(p.id) === Number(item.id) || (p.slug && item.slug && p.slug === item.slug));
+      if (matched) {
+        const matchedVar = (item.variant_id && matched.variants) ? matched.variants.find(v => Number(v.id) === Number(item.variant_id)) : null;
+        if (matchedVar) {
+          itemPrice = currency === 'INR'
+            ? (Number(matchedVar.discount_inr) > 0 ? Number(matchedVar.discount_inr) : Number(matchedVar.price_inr || 0))
+            : (Number(matchedVar.discount_usd) > 0 ? Number(matchedVar.discount_usd) : Number(matchedVar.price_usd || 0));
+        } else {
+          itemPrice = currency === 'INR'
+            ? (Number(matched.discount_inr) > 0 ? Number(matched.discount_inr) : Number(matched.price_inr || matched.price || 0))
+            : (Number(matched.discount_usd) > 0 ? Number(matched.discount_usd) : Number(matched.price_usd || 0));
+        }
+      }
+    }
+
+    if (itemPrice === null) {
+      itemPrice = currency === 'INR' ? Number(item.discount_inr || item.price_inr || 0) : Number(item.discount_usd || item.price_usd || 0);
+    }
+
+    const qty = Math.max(1, Number(item.quantity) || 1);
+    const itemTotal = itemPrice * qty;
     rawSubtotal += itemTotal;
 
     const itemGstRate = (item.gst_percent !== undefined && item.gst_percent !== null && item.gst_percent !== '')
