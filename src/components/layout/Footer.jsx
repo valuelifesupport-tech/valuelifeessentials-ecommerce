@@ -1,6 +1,7 @@
 import React from 'react';
 import { Phone, Mail, MapPin, Leaf } from 'lucide-react';
 import { InstagramIcon, FacebookIcon, YoutubeIcon, WhatsAppIcon } from './SocialIcons';
+import PaymentBadges from '../common/PaymentLogos';
 
 export default function Footer({ settings, categories = [], navigateTo }) {
   const handleNav = (path, view, slug) => {
@@ -212,23 +213,7 @@ export default function Footer({ settings, categories = [], navigateTo }) {
             <p className="text-emerald-200/70 text-[11px] mb-2">
               100% Secure 256-Bit Encrypted Payments
             </p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="bg-white text-[#003366] font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
-                VISA
-              </span>
-              <span className="bg-white text-gray-900 font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
-                MasterCard
-              </span>
-              <span className="bg-white text-[#008060] font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
-                UPI
-              </span>
-              <span className="bg-white text-[#005b9f] font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
-                RuPay
-              </span>
-              <span className="bg-white text-gray-900 font-black text-[11px] px-2.5 py-1 rounded shadow-xs">
-                NetBanking
-              </span>
-            </div>
+            <PaymentBadges className="flex items-center gap-2 flex-wrap pt-1" />
           </div>
 
         </div>
