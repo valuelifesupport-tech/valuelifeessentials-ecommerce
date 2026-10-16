@@ -60,7 +60,8 @@ export default function TaxesTab({
 
   const effectiveOrdersList = ledgerOrders.length > 0 ? ledgerOrders : orders.map(o => {
     const taxAmt = Number(o.tax_amount || o.gst_amount || 0);
-    const isCancelled = o.order_status === 'CANCELLED' || o.payment_status === 'REFUNDED';
+    const isCancelled = o.order_status === 'CANCELLED' || o.payment_status === 'REFUNDED' || o.payment_status === 'FAILED';
+    const isPendingOnline = o.order_status === 'PENDING_PAYMENT' || (o.payment_mode !== 'COD' && o.payment_status !== 'PAID' && o.payment_status !== 'PARTIAL_PAID');
     const isIntra = !o.state_name || o.state_name.toLowerCase() === 'maharashtra';
     const taxableVal = Math.max(0, Number(o.total_amount || 0) - taxAmt);
     const cgst = Number(o.cgst_amount || 0) || (isIntra ? taxAmt / 2 : 0);
@@ -88,8 +89,9 @@ export default function TaxesTab({
       total_amount: Number(o.total_amount || 0),
       order_status: o.order_status || 'PROCESSING',
       payment_status: o.payment_status || 'PENDING',
+      payment_mode: o.payment_mode || 'COD',
       is_return: isCancelled,
-      tax_status: isCancelled ? 'REVERSED' : 'COLLECTED',
+      tax_status: isCancelled ? 'REVERSED' : (isPendingOnline ? 'PENDING' : 'COLLECTED'),
       credit_note_number: isCancelled ? `CN-${o.order_number}` : null
     };
   });

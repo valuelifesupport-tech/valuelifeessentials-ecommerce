@@ -85,6 +85,18 @@ export default function OrderTaxLedger({
 
           <button
             type="button"
+            onClick={() => { setLedgerStatusFilter('PENDING'); setLedgerPage(1); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1 ${
+              ledgerStatusFilter === 'PENDING'
+                ? 'bg-amber-600 text-white border-amber-500 shadow-md'
+                : 'bg-amber-950/60 text-amber-300 border-amber-800 hover:bg-amber-900/60'
+            }`}
+          >
+            ⏳ Tax Pending ({effectiveOrdersList.filter(o => o.tax_status === 'PENDING').length})
+          </button>
+
+          <button
+            type="button"
             onClick={() => { setLedgerStatusFilter('REVERSED'); setLedgerPage(1); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1 ${
               ledgerStatusFilter === 'REVERSED'
@@ -122,16 +134,22 @@ export default function OrderTaxLedger({
             ) : (
               paginatedLedgerOrders.map((o) => {
                 const isCancelled = o.tax_status === 'REVERSED';
+                const isPending = o.tax_status === 'PENDING';
                 const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN') : 'Recent';
 
                 return (
-                  <tr key={o.id} className={`hover:bg-slate-800/50 ${isCancelled ? 'bg-rose-950/10' : ''}`}>
+                  <tr key={o.id} className={`hover:bg-slate-800/50 ${isCancelled ? 'bg-rose-950/10' : (isPending ? 'bg-amber-950/10' : '')}`}>
                     <td className="p-3">
                       <div className="font-bold text-white font-mono">{o.order_number}</div>
                       <div className="text-[10px] text-slate-400">{dateStr}</div>
                       {isCancelled && o.credit_note_number && (
                         <div className="text-[9px] font-mono text-rose-300 font-bold mt-0.5">
                           CN: {o.credit_note_number}
+                        </div>
+                      )}
+                      {isPending && (
+                        <div className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">
+                          ⏳ Unpaid Checkout
                         </div>
                       )}
                     </td>
@@ -176,7 +194,7 @@ export default function OrderTaxLedger({
                     </td>
 
                     <td className="p-3 font-black text-sm">
-                      <span className={isCancelled ? 'text-rose-400 line-through' : 'text-emerald-400'}>
+                      <span className={isCancelled ? 'text-rose-400 line-through' : (isPending ? 'text-amber-400' : 'text-emerald-400')}>
                         ₹{Number(o.total_tax || 0).toFixed(2)}
                       </span>
                       <div className="text-[10px] text-slate-400 font-normal">
@@ -192,10 +210,20 @@ export default function OrderTaxLedger({
                           </span>
                           <span className="block text-[9px] text-rose-400 mt-0.5">Tax liability deducted</span>
                         </div>
+                      ) : isPending ? (
+                        <div>
+                          <span className="inline-flex items-center gap-1 bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-black px-2 py-0.5 rounded">
+                            ⏳ TAX PENDING (UNPAID)
+                          </span>
+                          <span className="block text-[9px] text-amber-400 mt-0.5">Awaiting online payment</span>
+                        </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[10px] font-black px-2 py-0.5 rounded">
-                          <CheckCircle2 size={10} /> TAX COLLECTED
-                        </span>
+                        <div>
+                          <span className="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[10px] font-black px-2 py-0.5 rounded">
+                            <CheckCircle2 size={10} /> TAX COLLECTED
+                          </span>
+                          <span className="block text-[9px] text-emerald-400 mt-0.5">Collected & reconciled</span>
+                        </div>
                       )}
                     </td>
 

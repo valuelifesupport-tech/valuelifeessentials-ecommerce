@@ -23,12 +23,24 @@ export default function OrdersTab({
       (o.customer_phone && o.customer_phone.toLowerCase().includes(query)) ||
       (o.order_notes && o.order_notes.toLowerCase().includes(query));
 
-    const matchesStatus = orderStatusFilter === 'ALL' || o.order_status === orderStatusFilter;
+    let matchesStatus = true;
+    if (orderStatusFilter === 'ALL') {
+      matchesStatus = true;
+    } else if (orderStatusFilter === 'CONFIRMED') {
+      // Confirmed orders: ready to fulfill (paid online or COD, excluding pending online checkout)
+      matchesStatus = (o.order_status === 'PROCESSING' || o.order_status === 'SHIPPED' || o.order_status === 'DELIVERED') &&
+        !(o.payment_mode !== 'COD' && o.payment_status === 'PENDING');
+    } else if (orderStatusFilter === 'PENDING_PAYMENT') {
+      matchesStatus = (o.order_status === 'PENDING_PAYMENT' || (o.payment_mode !== 'COD' && o.payment_status === 'PENDING'));
+    } else {
+      matchesStatus = o.order_status === orderStatusFilter;
+    }
     
     let matchesPayment = true;
-    if (orderPaymentFilter === 'PARTIAL') matchesPayment = (o.remaining_amount || 0) > 0 && (o.paid_amount || 0) > 0;
-    else if (orderPaymentFilter === 'FULL_PREPAID') matchesPayment = (o.paid_amount || 0) >= (o.total_amount || 0);
-    else if (orderPaymentFilter === 'FULL_COD') matchesPayment = (o.paid_amount || 0) === 0;
+    if (orderPaymentFilter === 'PARTIAL') matchesPayment = (o.payment_mode === 'PARTIAL' || ((o.remaining_amount || 0) > 0 && (o.paid_amount || 0) > 0));
+    else if (orderPaymentFilter === 'FULL_PREPAID') matchesPayment = (o.payment_status === 'PAID' && (o.paid_amount || 0) >= (o.total_amount || 0));
+    else if (orderPaymentFilter === 'FULL_COD') matchesPayment = (o.payment_mode === 'COD');
+    else if (orderPaymentFilter === 'UNPAID') matchesPayment = (o.order_status === 'PENDING_PAYMENT' || (o.payment_mode !== 'COD' && o.payment_status === 'PENDING'));
 
     return matchesSearch && matchesStatus && matchesPayment;
   });
@@ -36,12 +48,18 @@ export default function OrdersTab({
   const totalOrderPages = Math.ceil(filteredOrders.length / orderItemsPerPage) || 1;
   const paginatedOrders = filteredOrders.slice((orderPage - 1) * orderItemsPerPage, orderPage * orderItemsPerPage);
 
+  const pendingPaymentOrdersCount = orders.filter(o => o.order_status === 'PENDING_PAYMENT' || (o.payment_mode !== 'COD' && o.payment_status === 'PENDING')).length;
+  const confirmedOrdersCount = orders.filter(o => 
+    (o.order_status === 'PROCESSING' || o.order_status === 'SHIPPED' || o.order_status === 'DELIVERED') &&
+    !(o.payment_mode !== 'COD' && o.payment_status === 'PENDING')
+  ).length;
+
   return (
     <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-md space-y-6" data-reticle-target="admin-orders-tab">
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
-          <h3 className="text-lg font-extrabold text-white">Orders & Partial Payments Control</h3>
-          <p className="text-xs text-slate-400">Manage orders, view itemized invoice details, update shipping status, and view customer notes.</p>
+          <h3 className="text-lg font-extrabold text-white">Orders & Payments Management</h3>
+          <p className="text-xs text-slate-400">Manage orders, verify real-time payment receipts, handle fulfillment, and review order remarks.</p>
         </div>
 
         <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 text-xs font-bold px-3 py-1.5 rounded-xl">
@@ -62,6 +80,33 @@ export default function OrdersTab({
         >
           All Orders ({orders.length})
         </button>
+
+        <button
+          onClick={() => setOrderStatusFilter('CONFIRMED')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border flex items-center gap-1.5 ${
+            orderStatusFilter === 'CONFIRMED'
+              ? 'bg-emerald-700 text-white border-emerald-600 shadow-md ring-2 ring-emerald-500/50'
+              : 'bg-emerald-950/60 text-emerald-300 border-emerald-800 hover:bg-emerald-900/60'
+          }`}
+          data-reticle-target="admin-order-pill-confirmed"
+        >
+          <span>✓ Confirmed (Ready to Ship)</span>
+          <span className="bg-emerald-900/80 text-emerald-200 px-1.5 py-0.2 rounded-md font-mono text-[10px]">{confirmedOrdersCount}</span>
+        </button>
+
+        <button
+          onClick={() => setOrderStatusFilter('PENDING_PAYMENT')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border flex items-center gap-1.5 ${
+            orderStatusFilter === 'PENDING_PAYMENT'
+              ? 'bg-amber-600 text-white border-amber-500 shadow-md ring-2 ring-amber-500/50'
+              : 'bg-amber-950/70 text-amber-300 border-amber-800 hover:bg-amber-900/70'
+          }`}
+          data-reticle-target="admin-order-pill-pending-payment"
+        >
+          <span>⏳ Awaiting Payment</span>
+          <span className="bg-amber-900/80 text-amber-200 px-1.5 py-0.2 rounded-md font-mono text-[10px]">{pendingPaymentOrdersCount}</span>
+        </button>
+
         <button
           onClick={() => setOrderStatusFilter('PROCESSING')}
           className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
@@ -104,7 +149,7 @@ export default function OrdersTab({
           }`}
           data-reticle-target="admin-order-pill-cancelled"
         >
-          Cancelled Requests ({orders.filter(o => o.order_status === 'CANCELLED').length})
+          Cancelled ({orders.filter(o => o.order_status === 'CANCELLED').length})
         </button>
       </div>
 
@@ -133,6 +178,8 @@ export default function OrdersTab({
               data-reticle-target="admin-order-status-select"
             >
               <option value="ALL">All Order Statuses</option>
+              <option value="CONFIRMED">✓ CONFIRMED (Ready to Ship)</option>
+              <option value="PENDING_PAYMENT">⏳ PENDING_PAYMENT (Awaiting Online Payment)</option>
               <option value="PROCESSING">PROCESSING</option>
               <option value="SHIPPED">SHIPPED</option>
               <option value="DELIVERED">DELIVERED</option>
@@ -149,9 +196,10 @@ export default function OrdersTab({
               data-reticle-target="admin-order-payment-select"
             >
               <option value="ALL">All Payment Modes</option>
-              <option value="PARTIAL">Partial Deposit (Balance Rest on COD)</option>
-              <option value="FULL_PREPAID">100% Full Prepaid</option>
+              <option value="FULL_PREPAID">100% Full Prepaid (Verified Paid)</option>
+              <option value="PARTIAL">Partial Deposit (Balance on COD)</option>
               <option value="FULL_COD">100% Full COD</option>
+              <option value="UNPAID">⏳ Unpaid / Awaiting Payment</option>
             </select>
           </div>
         </div>
@@ -228,7 +276,8 @@ export default function OrdersTab({
                   <td className="p-3">
                     {(() => {
                       const taxAmt = Number(o.tax_amount || o.gst_amount || 0);
-                      const isCancelled = o.order_status === 'CANCELLED' || o.payment_status === 'REFUNDED';
+                      const isCancelled = o.order_status === 'CANCELLED' || o.payment_status === 'REFUNDED' || o.payment_status === 'FAILED';
+                      const isPendingOnline = o.order_status === 'PENDING_PAYMENT' || (o.payment_mode !== 'COD' && o.payment_status !== 'PAID' && o.payment_status !== 'PARTIAL_PAID');
                       const cgst = Number(o.cgst_amount || 0);
                       const sgst = Number(o.sgst_amount || 0);
                       const igst = Number(o.igst_amount || 0);
@@ -238,7 +287,7 @@ export default function OrdersTab({
                       return (
                         <div className="space-y-0.5">
                           <div className="font-extrabold text-xs flex items-center gap-1">
-                            <span className={isCancelled ? 'text-rose-400 line-through' : 'text-emerald-400'}>
+                            <span className={isCancelled ? 'text-rose-400 line-through' : (isPendingOnline ? 'text-amber-400' : 'text-emerald-400')}>
                               ₹{taxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                             <span className="text-[10px] text-slate-400 font-normal">
@@ -262,6 +311,10 @@ export default function OrdersTab({
                             <span className="inline-block bg-rose-950/80 text-rose-300 border border-rose-800 text-[9px] font-black px-1.5 py-0.5 rounded">
                               ↩️ Tax Reversed
                             </span>
+                          ) : isPendingOnline ? (
+                            <span className="inline-block bg-amber-950/80 text-amber-300 border border-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded" title="Payment pending - tax not collected">
+                              ⏳ Tax Pending
+                            </span>
                           ) : (
                             <span className="inline-block bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded">
                               ✓ Tax Collected
@@ -271,9 +324,57 @@ export default function OrdersTab({
                       );
                     })()}
                   </td>
-                  <td className="p-3 font-bold text-emerald-400 text-xs">
-                    {o.currency === 'USD' ? '$' : '₹'}{(Number(o.paid_amount) || 0).toLocaleString('en-IN')}
-                    <span className="text-[9px] text-slate-400 block font-normal uppercase">{o.payment_mode || 'PARTIAL'}</span>
+                  <td className="p-3 text-xs">
+                    {(() => {
+                      const isPendingOnline = o.order_status === 'PENDING_PAYMENT' || (o.payment_mode !== 'COD' && o.payment_status !== 'PAID' && o.payment_status !== 'PARTIAL_PAID');
+                      const paidNum = Number(o.paid_amount) || 0;
+                      const isPaid = (o.payment_status === 'PAID' || o.payment_status === 'PARTIAL_PAID') && paidNum > 0;
+
+                      if (isPaid) {
+                        return (
+                          <div>
+                            <div className="font-extrabold text-emerald-400">
+                              {o.currency === 'USD' ? '$' : '₹'}{paidNum.toLocaleString('en-IN')}
+                            </div>
+                            <span className="text-[9px] text-emerald-300 font-bold uppercase inline-block bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-800 mt-0.5">
+                              ✓ {o.payment_mode || 'PAID ONLINE'}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      if (isPendingOnline) {
+                        return (
+                          <div>
+                            <div className="font-bold text-amber-400 font-mono">
+                              ₹0.00
+                            </div>
+                            <span className="text-[9px] text-amber-300 font-bold uppercase inline-block bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800 mt-0.5">
+                              ⏳ Unpaid ({o.payment_mode || 'ONLINE'})
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      if (o.payment_mode === 'COD') {
+                        return (
+                          <div>
+                            <div className="font-bold text-slate-400 font-mono">
+                              ₹0.00
+                            </div>
+                            <span className="text-[9px] text-slate-300 font-bold uppercase inline-block bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 mt-0.5">
+                              💵 Cash On Delivery
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="text-slate-400 font-bold font-mono">
+                          ₹{paidNum.toLocaleString('en-IN')}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="p-3 font-bold text-amber-400 text-xs">
                     {o.currency === 'USD' ? '$' : '₹'}{(Number(o.remaining_amount) || 0).toLocaleString('en-IN')}
@@ -283,9 +384,10 @@ export default function OrdersTab({
                       o.order_status === 'CANCELLED' ? 'bg-rose-950/80 text-rose-300 border-rose-800' :
                       o.order_status === 'SHIPPED' ? 'bg-blue-950/80 text-blue-300 border-blue-800' :
                       o.order_status === 'DELIVERED' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800' :
+                      o.order_status === 'PENDING_PAYMENT' ? 'bg-amber-950/90 text-amber-300 border-amber-700' :
                       'bg-amber-950/80 text-amber-300 border-amber-800'
                     }`}>
-                      {o.order_status || 'PROCESSING'}
+                      {o.order_status === 'PENDING_PAYMENT' ? '⏳ PENDING PAYMENT' : (o.order_status || 'PROCESSING')}
                     </span>
                     {o.cancellation_reason && (
                       <div className="mt-1 text-[10px] text-rose-400 font-bold bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-900/60 truncate max-w-[150px]" title={o.cancellation_reason}>
