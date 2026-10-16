@@ -93,9 +93,13 @@ export default function CustomerProfilePage({
       const queryParams = new URLSearchParams();
       if (currentUser?.email) queryParams.set('email', currentUser.email);
       if (currentUser?.phone) queryParams.set('phone', currentUser.phone);
-      if (currentUser?.id) queryParams.set('user_id', currentUser.id);
-
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/orders?${queryParams.toString()}`));
+      const token = currentUser?.token || localStorage.getItem('customer_token');
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/orders?${queryParams.toString()}`), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (res.ok) {
         const text = await res.text();
         if (!text || !text.trim()) {

@@ -42,10 +42,17 @@ export function CartProvider({ children, currency: propCurrency, products: propP
   // Sync with server for logged-in users
   useEffect(() => {
     if (currentUser && currentUser.id) {
+      const token = currentUser.token || localStorage.getItem('customer_token');
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        'x-user-id': String(currentUser.id),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+
       if (isInitialMount.current) {
         isInitialMount.current = false;
         fetch(getApiUrl(`/api/cart?user_id=${currentUser.id}`), {
-          headers: { 'x-user-id': String(currentUser.id) }
+          headers: authHeaders
         })
           .then(res => res.ok ? res.json() : null)
           .then(data => {
@@ -115,7 +122,7 @@ export function CartProvider({ children, currency: propCurrency, products: propP
             } else if (cart.length > 0) {
               fetch(getApiUrl('/api/cart'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-user-id': String(currentUser.id) },
+                headers: authHeaders,
                 body: JSON.stringify({ user_id: currentUser.id, items: cart })
               }).catch(() => {});
             }
@@ -125,7 +132,7 @@ export function CartProvider({ children, currency: propCurrency, products: propP
         const timer = setTimeout(() => {
           fetch(getApiUrl('/api/cart'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-user-id': String(currentUser.id) },
+            headers: authHeaders,
             body: JSON.stringify({ user_id: currentUser.id, items: cart })
           }).catch(() => {});
         }, 600);

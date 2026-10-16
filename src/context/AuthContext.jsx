@@ -9,7 +9,12 @@ export function AuthProvider({ children }) {
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('customerUser')) || null;
+      const u = JSON.parse(localStorage.getItem('customerUser'));
+      const token = localStorage.getItem('customer_token');
+      if (u) {
+        return { ...u, token: u.token || token || null };
+      }
+      return null;
     } catch (e) {
       return null;
     }
@@ -33,7 +38,7 @@ export function AuthProvider({ children }) {
     }
   });
 
-  // Sync customerForm whenever currentUser updates
+  // Sync customerForm whenever currentUser updates and acquire token if missing
   useEffect(() => {
     if (currentUser) {
       setCustomerForm(prev => ({
@@ -44,26 +49,36 @@ export function AuthProvider({ children }) {
         remark: prev?.remark || ''
       }));
 
-      // Fetch user profile if details are missing
+      // Fetch user profile and session token if missing
+      const needsTokenFetch = !currentUser.token;
       const needsProfileFetch = currentUser.email && (!currentUser.phone || !currentUser.address || !currentUser.city || !currentUser.pincode);
-      if (needsProfileFetch) {
-        fetch(getApiUrl(`/api/users/${encodeURIComponent(currentUser.email)}/profile`))
+
+      if (needsTokenFetch || needsProfileFetch) {
+        fetch(getApiUrl('/api/auth/token'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: currentUser.id, email: currentUser.email, phone: currentUser.phone })
+        })
           .then(res => res.ok ? res.json() : null)
-          .then(profile => {
-            if (profile) {
+          .then(data => {
+            if (data && data.token) {
               const updated = {
                 ...currentUser,
-                name: profile.name || currentUser.name,
-                phone: profile.phone || currentUser.phone,
-                address: profile.address || currentUser.address,
-                city: profile.city || currentUser.city,
-                state: profile.state || currentUser.state,
-                pincode: profile.pincode || currentUser.pincode,
-                gstin_number: profile.gstin_number || currentUser.gstin_number,
-                business_name: profile.business_name || currentUser.business_name
+                token: data.token,
+                name: data.user?.name || currentUser.name,
+                phone: data.user?.phone || currentUser.phone,
+                address: data.user?.address || currentUser.address,
+                city: data.user?.city || currentUser.city,
+                state: data.user?.state || currentUser.state,
+                pincode: data.user?.pincode || currentUser.pincode,
+                gstin_number: data.user?.gstin_number || currentUser.gstin_number,
+                business_name: data.user?.business_name || currentUser.business_name
               };
               setCurrentUser(updated);
-              try { localStorage.setItem('customerUser', JSON.stringify(updated)); } catch (e) {}
+              try {
+                localStorage.setItem('customerUser', JSON.stringify(updated));
+                localStorage.setItem('customer_token', data.token);
+              } catch (e) {}
               setCustomerForm(prev => ({
                 name: updated.name || prev.name,
                 phone: updated.phone || prev.phone,
@@ -79,9 +94,12 @@ export function AuthProvider({ children }) {
   }, [currentUser]);
 
   const login = useCallback((userData) => {
-    setCurrentUser(userData);
+    const token = userData.token || localStorage.getItem('customer_token');
+    const enriched = { ...userData, token: token || null };
+    setCurrentUser(enriched);
     try {
-      localStorage.setItem('customerUser', JSON.stringify(userData));
+      localStorage.setItem('customerUser', JSON.stringify(enriched));
+      if (token) localStorage.setItem('customer_token', token);
     } catch (e) {}
 
     setCustomerForm(prev => ({
@@ -100,6 +118,7 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
     try {
       localStorage.removeItem('customerUser');
+      localStorage.removeItem('customer_token');
     } catch (e) {}
     setCustomerForm({ name: '', phone: '', email: '', address: '', remark: '' });
     showToast('info', 'Signed Out', 'You have been signed out.');

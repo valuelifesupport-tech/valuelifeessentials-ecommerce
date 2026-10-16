@@ -60,7 +60,13 @@ export default function CustomerAuthModal({
     if (!userEmail) return;
     setLoadingOrders(true);
     try {
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(userEmail)}/orders`));
+      const token = currentUser?.token || localStorage.getItem('customer_token');
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(userEmail)}/orders`), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (res.ok) {
         const text = await res.text();
         if (!text || !text.trim()) {
@@ -141,7 +147,7 @@ export default function CustomerAuthModal({
 
       if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Login successful!');
-        onLoginSuccess(data.user);
+        onLoginSuccess({ ...data.user, token: data.token || data.user.token });
         fetchMyOrders(data.user.email);
         setTimeout(() => {
           setActiveTab('PROFILE');
@@ -189,7 +195,7 @@ export default function CustomerAuthModal({
         setRegStep(2);
       } else if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Login successful!');
-        onLoginSuccess(data.user);
+        onLoginSuccess({ ...data.user, token: data.token || data.user.token });
         fetchMyOrders(data.user.email);
         setTimeout(() => {
           setActiveTab('PROFILE');
@@ -231,7 +237,7 @@ export default function CustomerAuthModal({
 
       if (res.ok && (data.user || data.autoVerified)) {
         setSuccessMsg(data.message || 'Registration successful!');
-        onLoginSuccess(data.user);
+        onLoginSuccess({ ...data.user, token: data.token || data.user.token });
         fetchMyOrders(data.user.email);
         setTimeout(() => {
           setActiveTab('PROFILE');
@@ -244,7 +250,7 @@ export default function CustomerAuthModal({
         setRegStep(2);
       } else if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Registration successful!');
-        onLoginSuccess(data.user);
+        onLoginSuccess({ ...data.user, token: data.token || data.user.token });
         fetchMyOrders(data.user.email);
         setTimeout(() => {
           setActiveTab('PROFILE');
@@ -277,7 +283,7 @@ export default function CustomerAuthModal({
       const data = await res.json();
       if (res.ok && data.user) {
         setSuccessMsg(data.message || 'Email Verified Successfully! Account Activated.');
-        onLoginSuccess(data.user);
+        onLoginSuccess({ ...data.user, token: data.token || data.user.token });
         fetchMyOrders(data.user.email);
         setTimeout(() => {
           setActiveTab('PROFILE');
@@ -387,7 +393,7 @@ export default function CustomerAuthModal({
       if (res.ok) {
         setSuccessMsg(data.message || 'Password reset successfully!');
         if (data.user) {
-          onLoginSuccess(data.user);
+          onLoginSuccess({ ...data.user, token: data.token || data.user.token });
           fetchMyOrders(data.user.email);
           setTimeout(() => {
             setActiveTab('PROFILE');
