@@ -31,7 +31,6 @@ import MaintenancePage from './components/sections/MaintenancePage';
 import CartDrawer from './components/cart/CartDrawer';
 import WishlistDrawer from './components/cart/WishlistDrawer';
 import CheckoutModal from './components/checkout/CheckoutModal';
-import PaymentGatewayModal from './components/payment/PaymentGatewayModal';
 import CustomerAuthModal from './components/auth/CustomerAuthModal';
 import SelectVariantModal from './components/product/SelectVariantModal';
 
@@ -124,15 +123,8 @@ function StorefrontLayout() {
     setOrderSuccess,
     selectedPaymentGateway,
     setSelectedPaymentGateway,
-    availableGateways,
-    showPaymentModal,
-    setShowPaymentModal,
-    pendingPaymentOrder,
-    paymentPayableAmount,
     proceedToCheckout,
-    submitOrder,
-    handlePaymentSuccess,
-    handlePaymentFailure
+    submitOrder
   } = useCheckout();
 
   const { sortedProducts, handleClearFilters } = useCatalog(route);
@@ -342,25 +334,6 @@ function StorefrontLayout() {
         orderSuccess={orderSuccess}
         setOrderSuccess={setOrderSuccess}
         navigateTo={navigateTo}
-      />
-
-      {/* PAYMENT GATEWAY MODAL */}
-      <PaymentGatewayModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        orderData={pendingPaymentOrder}
-        payableAmount={paymentPayableAmount}
-        currency={currency}
-        currencySymbol={currencySymbol}
-        customerInfo={{
-          name: currentUser?.name || customerForm.name,
-          email: currentUser?.email || customerForm.email,
-          phone: currentUser?.phone || customerForm.phone
-        }}
-        activeGateway={selectedPaymentGateway}
-        availableGateways={availableGateways}
-        onPaymentSuccess={handlePaymentSuccess}
-        onPaymentFailure={handlePaymentFailure}
       />
 
       {/* CUSTOMER AUTH MODAL */}
