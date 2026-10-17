@@ -13,6 +13,7 @@ export default function SettingsTab({
   showToast
 }) {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Fetch current Admin Profile (Name & Email) on mount
   useEffect(() => {
@@ -36,6 +37,52 @@ export default function SettingsTab({
     loadAdminProfile();
     return () => { isMounted = false; };
   }, []);
+
+  const handleUpdateAdminProfile = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!adminProfileForm.email || !emailRegex.test(String(adminProfileForm.email).trim())) {
+      if (showToast) showToast('error', 'Invalid Email', 'Please enter a valid administrative email address.');
+      return false;
+    }
+
+    setIsUpdatingProfile(true);
+    try {
+      const fetcher = adminFetch || fetch;
+      const res = await fetcher('/api/admin/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: (adminProfileForm.name || '').trim() || 'Master Admin Owner',
+          email: String(adminProfileForm.email).trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (showToast) showToast('success', 'Profile Updated 💾', data.message || 'Admin profile and email address saved successfully!');
+        try {
+          const authKey = 'valuelife_admin_auth';
+          const stored = localStorage.getItem(authKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.admin) {
+              parsed.admin.name = data.name || adminProfileForm.name;
+              parsed.admin.email = data.email || adminProfileForm.email;
+              localStorage.setItem(authKey, JSON.stringify(parsed));
+            }
+          }
+        } catch (e) {}
+        return true;
+      } else {
+        if (showToast) showToast('error', 'Update Failed', data.error || 'Failed to update admin profile');
+        return false;
+      }
+    } catch (err) {
+      if (showToast) showToast('error', 'Network Error', err.message || 'Failed to connect to backend');
+      return false;
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   const handleUpdateAdminPassword = async () => {
     if (!adminProfileForm.currentPass) {
@@ -122,6 +169,21 @@ export default function SettingsTab({
               className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold"
             />
           </div>
+        </div>
+
+        {/* Dedicated Admin Profile & Email Save Action */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-b border-slate-800 pb-4">
+          <p className="text-[11px] text-slate-400">
+            ℹ️ Changing this email updates your Master Admin login credentials and administrative alert recipient.
+          </p>
+          <button
+            type="button"
+            disabled={isUpdatingProfile}
+            onClick={handleUpdateAdminProfile}
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all active:scale-95"
+          >
+            <span>{isUpdatingProfile ? '⏳ Saving Profile...' : '💾 Save Admin Profile & Email'}</span>
+          </button>
         </div>
 
         {/* PASSWORD CHANGE FORM */}
