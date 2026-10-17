@@ -36,8 +36,10 @@ export const apiClient = async (endpoint, options = {}) => {
   // Auto-inject customer auth token if present
   try {
     const customerUser = JSON.parse(localStorage.getItem('customerUser') || 'null');
-    if (customerUser?.token) {
-      defaultHeaders['Authorization'] = `Bearer ${customerUser.token}`;
+    const directToken = localStorage.getItem('customer_token');
+    const token = customerUser?.token || directToken;
+    if (token) {
+      defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
     if (customerUser?.id) {
       defaultHeaders['x-user-id'] = String(customerUser.id);

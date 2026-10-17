@@ -57,11 +57,34 @@ export default function CustomerAuthModal({
   }, [currentUser, isOpen]);
 
   const fetchMyOrders = async (userEmail) => {
-    if (!userEmail) return;
+    const identifier = currentUser?.id || userEmail || currentUser?.email || currentUser?.phone || '';
+    if (!identifier) return;
     setLoadingOrders(true);
     try {
-      const token = currentUser?.token || localStorage.getItem('customer_token');
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(userEmail)}/orders`), {
+      let token = currentUser?.token || localStorage.getItem('customer_token');
+      if (!token && (currentUser?.id || userEmail)) {
+        try {
+          const tokRes = await fetch(getApiUrl('/api/auth/token'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: currentUser?.id, email: userEmail || currentUser?.email, phone: currentUser?.phone })
+          });
+          if (tokRes.ok) {
+            const tokData = await tokRes.json();
+            if (tokData?.token) {
+              token = tokData.token;
+              try { localStorage.setItem('customer_token', token); } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
+      const queryParams = new URLSearchParams();
+      if (userEmail) queryParams.set('email', userEmail);
+      if (currentUser?.phone) queryParams.set('phone', currentUser.phone);
+      if (currentUser?.id) queryParams.set('user_id', currentUser.id);
+
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/orders?${queryParams.toString()}`), {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})

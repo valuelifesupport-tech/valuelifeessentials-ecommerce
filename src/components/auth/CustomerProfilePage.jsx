@@ -84,7 +84,7 @@ export default function CustomerProfilePage({
   const fetchOrders = async () => {
     setLoadingOrders(true);
     try {
-      const identifier = currentUser?.email || currentUser?.phone || currentUser?.id || '';
+      const identifier = currentUser?.id || currentUser?.email || currentUser?.phone || '';
       if (!identifier) {
         setOrders([]);
         setLoadingOrders(false);
@@ -93,7 +93,26 @@ export default function CustomerProfilePage({
       const queryParams = new URLSearchParams();
       if (currentUser?.email) queryParams.set('email', currentUser.email);
       if (currentUser?.phone) queryParams.set('phone', currentUser.phone);
-      const token = currentUser?.token || localStorage.getItem('customer_token');
+      if (currentUser?.id) queryParams.set('user_id', currentUser.id);
+
+      let token = currentUser?.token || localStorage.getItem('customer_token');
+      if (!token && (currentUser?.id || currentUser?.email)) {
+        try {
+          const tokRes = await fetch(getApiUrl('/api/auth/token'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: currentUser?.id, email: currentUser?.email, phone: currentUser?.phone })
+          });
+          if (tokRes.ok) {
+            const tokData = await tokRes.json();
+            if (tokData?.token) {
+              token = tokData.token;
+              try { localStorage.setItem('customer_token', token); } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
       const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/orders?${queryParams.toString()}`), {
         headers: {
           'Content-Type': 'application/json',
@@ -125,11 +144,20 @@ export default function CustomerProfilePage({
 
   const fetchProfile = async () => {
     try {
-      const identifier = currentUser?.email || currentUser?.phone || '';
+      const identifier = currentUser?.id || currentUser?.email || currentUser?.phone || '';
       if (!identifier) return;
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/profile`));
+      const token = currentUser?.token || localStorage.getItem('customer_token');
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/profile`), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (res.ok) {
         const data = await res.json();
+        if (data?.token) {
+          try { localStorage.setItem('customer_token', data.token); } catch (e) {}
+        }
         setProfileForm(prev => ({
           name: data.name || currentUser?.name || prev.name || '',
           email: data.email || currentUser?.email || prev.email || '',
