@@ -48,14 +48,37 @@ export default function BlogDetailView({ slug, navigateTo, showToast }) {
     }
   };
 
-  const formatDate = (dateStr) => {
+  const formatDateTime = (dateStr) => {
     if (!dateStr) return 'Recently published';
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      if (isNaN(d.getTime())) return 'Recently published';
+      const datePart = d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const timePart = d.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      return `${datePart} at ${timePart}`;
     } catch (e) {
       return 'Recently published';
     }
+  };
+
+  const getDynamicReadTime = (content, storedTime) => {
+    if (storedTime && storedTime !== '7 min read' && storedTime !== '5 min read' && String(storedTime).trim()) {
+      return storedTime;
+    }
+    if (!content) return storedTime || '5 min read';
+    const plain = String(content).replace(/<[^>]*>/g, ' ').replace(/[#*`_~\[\]]/g, ' ');
+    const wordCount = plain.split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) return storedTime || '3 min read';
+    const mins = Math.max(1, Math.ceil(wordCount / 220));
+    return `${mins} min read`;
   };
 
   if (loading) {
@@ -119,21 +142,17 @@ export default function BlogDetailView({ slug, navigateTo, showToast }) {
             <span className="bg-emerald-800 text-white text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
               {blog.category}
             </span>
-            <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-emerald-700" /> {blog.read_time || '5 min read'}
+            <span className="text-xs font-medium text-slate-600 flex items-center gap-1 font-mono">
+              <Clock className="w-3.5 h-3.5 text-emerald-700" /> {getDynamicReadTime(blog.content, blog.read_time)}
             </span>
             <span className="text-slate-300">•</span>
-            <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-emerald-700" /> {formatDate(blog.created_at)}
+            <span className="text-xs font-medium text-slate-600 flex items-center gap-1" title="Exact publication timestamp">
+              <Calendar className="w-3.5 h-3.5 text-emerald-700" /> {formatDateTime(blog.created_at)}
             </span>
-            {blog.views_count > 0 && (
-              <>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                  <Eye className="w-3.5 h-3.5 text-slate-400" /> {blog.views_count} views
-                </span>
-              </>
-            )}
+            <span className="text-slate-300">•</span>
+            <span className="text-xs font-medium text-slate-600 flex items-center gap-1" title="Real live page views">
+              <Eye className="w-3.5 h-3.5 text-emerald-700" /> {blog.views_count || 1} {Number(blog.views_count) === 1 ? 'view' : 'views'}
+            </span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">

@@ -271,6 +271,37 @@ export default function BlogModal({
             </div>
           </div>
 
+          {/* Section 8: Exact Real Date & Time, and Live Views */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end p-3.5 bg-slate-850 rounded-xl border border-slate-800">
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">
+                📅 Exact Publication Date & Time
+              </label>
+              <input 
+                type="datetime-local"
+                value={blogForm.created_at ? new Date(blogForm.created_at).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setBlogForm({ ...blogForm, created_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs font-mono"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">Live timestamp shown to customers on storefront</span>
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">
+                👁️ Live Real View Count
+              </label>
+              <input 
+                type="number"
+                min="0"
+                placeholder="Real live views"
+                value={blogForm.views_count ?? 0}
+                onChange={(e) => setBlogForm({ ...blogForm, views_count: Number(e.target.value) || 0 })}
+                className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs font-mono"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">Increments automatically in real-time as visitors read</span>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="pt-2 border-t border-slate-800 flex justify-end gap-3">
             <button

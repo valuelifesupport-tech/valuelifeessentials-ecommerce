@@ -44,14 +44,29 @@ export default function BlogListingView({ navigateTo, showToast }) {
     ? filteredBlogs 
     : filteredBlogs.filter(b => b.id !== featuredBlog?.id);
 
-  const formatDate = (dateStr) => {
+  const formatDateTime = (dateStr) => {
     if (!dateStr) return 'Recently published';
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      if (isNaN(d.getTime())) return 'Recently published';
+      const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${datePart} • ${timePart}`;
     } catch (e) {
       return 'Recently published';
     }
+  };
+
+  const getDynamicReadTime = (content, storedTime) => {
+    if (storedTime && storedTime !== '7 min read' && storedTime !== '5 min read' && String(storedTime).trim()) {
+      return storedTime;
+    }
+    if (!content) return storedTime || '5 min read';
+    const plain = String(content).replace(/<[^>]*>/g, ' ').replace(/[#*`_~\[\]]/g, ' ');
+    const wordCount = plain.split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) return storedTime || '3 min read';
+    const mins = Math.max(1, Math.ceil(wordCount / 220));
+    return `${mins} min read`;
   };
 
   return (
@@ -189,10 +204,12 @@ export default function BlogListingView({ navigateTo, showToast }) {
                         {featuredBlog.category}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" /> {featuredBlog.read_time || '5 min read'}
+                        <Clock className="w-3.5 h-3.5" /> {getDynamicReadTime(featuredBlog.content, featuredBlog.read_time)}
                       </span>
                       <span>•</span>
-                      <span>{formatDate(featuredBlog.created_at)}</span>
+                      <span>{formatDateTime(featuredBlog.created_at)}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-slate-400" /> {featuredBlog.views_count || 1} views</span>
                     </div>
 
                     <h2 className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-emerald-800 transition-colors leading-snug">
@@ -261,10 +278,12 @@ export default function BlogListingView({ navigateTo, showToast }) {
                       <div className="space-y-2.5">
                         <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400">
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-emerald-600" /> {blog.read_time || '5 min'}
+                            <Clock className="w-3 h-3 text-emerald-600" /> {getDynamicReadTime(blog.content, blog.read_time)}
                           </span>
                           <span>•</span>
-                          <span>{formatDate(blog.created_at)}</span>
+                          <span>{formatDateTime(blog.created_at)}</span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1"><Eye className="w-3 h-3 text-slate-400" /> {blog.views_count || 1}</span>
                         </div>
 
                         <h4 className="text-lg font-black text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">

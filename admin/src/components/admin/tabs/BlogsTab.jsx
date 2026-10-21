@@ -68,7 +68,9 @@ export default function BlogsTab({
       tags: 'Organic, Wellness, Ayurveda',
       is_published: 1,
       is_featured: 0,
-      sort_order: 0
+      sort_order: 0,
+      created_at: new Date().toISOString().slice(0, 16),
+      views_count: 0
     });
     setShowBlogModal(true);
   };
@@ -90,6 +92,8 @@ export default function BlogsTab({
       is_published: blog.is_published === 1 || blog.is_published === true ? 1 : 0,
       is_featured: blog.is_featured === 1 || blog.is_featured === true ? 1 : 0,
       sort_order: blog.sort_order || 0,
+      created_at: blog.created_at ? new Date(blog.created_at).toISOString().slice(0, 16) : '',
+      views_count: Number(blog.views_count) || 0,
       _editing: blog
     });
     setShowBlogModal(true);

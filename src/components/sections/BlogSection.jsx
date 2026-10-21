@@ -3,6 +3,31 @@ import { getApiUrl } from '../../api/config';
 import { BookOpen, Clock, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function BlogSection({ sectionsConfig, navigateTo }) {
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return 'Recently published';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 'Recently published';
+      const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${datePart} • ${timePart}`;
+    } catch (e) {
+      return 'Recently published';
+    }
+  };
+
+  const getDynamicReadTime = (content, storedTime) => {
+    if (storedTime && storedTime !== '7 min read' && storedTime !== '5 min read' && String(storedTime).trim()) {
+      return storedTime;
+    }
+    if (!content) return storedTime || '5 min read';
+    const plain = String(content).replace(/<[^>]*>/g, ' ').replace(/[#*`_~\[\]]/g, ' ');
+    const wordCount = plain.split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) return storedTime || '3 min read';
+    const mins = Math.max(1, Math.ceil(wordCount / 220));
+    return `${mins} min read`;
+  };
+
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -79,9 +104,11 @@ export default function BlogSection({ sectionsConfig, navigateTo }) {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400">
                       <Clock className="w-3 h-3 text-emerald-600" />
-                      <span>{post.read_time || '5 min read'}</span>
+                      <span>{getDynamicReadTime(post.content, post.read_time)}</span>
                       <span>•</span>
-                      <span>By {post.author_name}</span>
+                      <span>{formatDateTime(post.created_at)}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-0.5"><Eye className="w-3 h-3 text-slate-400" /> {post.views_count || 1}</span>
                     </div>
 
                     <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
