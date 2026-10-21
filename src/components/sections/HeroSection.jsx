@@ -2,6 +2,67 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, Leaf, Shield, HeartHandshake, Award } from 'lucide-react';
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 
+const HERO_SLIDES_STORAGE_KEY = 'valuelife_hero_slides_cache_v3';
+
+// Default fallback to user's active promotional banners (Never stale dummy slides)
+const DEFAULT_HERO_SLIDES = [
+  {
+    id: 8,
+    slide_type: 'FULL_BANNER',
+    title_part1: 'Promotional Banner',
+    title_part2: '',
+    tagline: '100% Nature pure Essentials',
+    description: '',
+    cta_text: 'Shop Now',
+    cta_link: '/products',
+    banner_img: '/uploads/1792066277142-vl_banner_1.jpg',
+    packaging_img: '/uploads/1792066277142-vl_banner_1.jpg',
+    jars_img: '',
+    script_quote: 'Good Products, Brighter Days.',
+    sort_order: 3,
+    is_active: 1,
+    show_overlay_text: 0
+  },
+  {
+    id: 9,
+    slide_type: 'FULL_BANNER',
+    title_part1: 'Promotional Banner',
+    title_part2: '',
+    tagline: '100% Nature pure Essentials',
+    description: '',
+    cta_text: 'Shop Now',
+    cta_link: '/products',
+    banner_img: '/uploads/1792150330824-20801121-33e4-4e7b-a862-ebafd87ec9a6.png',
+    packaging_img: '/uploads/1792150330824-20801121-33e4-4e7b-a862-ebafd87ec9a6.png',
+    jars_img: '',
+    script_quote: 'Good Products, Brighter Days.',
+    sort_order: 4,
+    is_active: 1,
+    show_overlay_text: 0
+  }
+];
+
+const getInitialHeroSlides = (propSlides) => {
+  if (propSlides && Array.isArray(propSlides) && propSlides.length > 0) {
+    return propSlides;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(HERO_SLIDES_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasOldDummy = parsed.some(s => s.id === 1 || s.id === 2 || s.title_part1 === 'Better Choices');
+          if (!hasOldDummy) {
+            return parsed;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+  return DEFAULT_HERO_SLIDES;
+};
+
 export default function HeroSection({
   heroConfig,
   navigateTo,
@@ -12,34 +73,7 @@ export default function HeroSection({
 }) {
   const [internalActiveSlide, setInternalActiveSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [slides, setSlides] = useState([
-    {
-      id: 1,
-      slide_type: 'SPLIT',
-      tagline: 'NATURAL • HEALTHY • SUSTAINABLE',
-      title_part1: 'Better Choices',
-      title_part2: 'Better Life.',
-      description: 'Discover natural, healthy and premium products for a smarter, happier everyday life.',
-      cta_text: 'Shop Now',
-      cta_link: '/products',
-      packaging_img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
-      jars_img: 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?auto=format&fit=crop&w=600&q=80',
-      script_quote: 'Good Products, Brighter Days.'
-    },
-    {
-      id: 2,
-      slide_type: 'SPLIT',
-      tagline: '100% Nature pure Essentials',
-      title_part1: 'Pure Superfoods',
-      title_part2: 'Pure Vitality.',
-      description: 'Farm-fresh chia seeds, pure herbal teas, cold-pressed oils & natural pantry staples.',
-      cta_text: 'Explore Catalog',
-      cta_link: '/products',
-      packaging_img: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=800&q=80',
-      jars_img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80',
-      script_quote: 'Nature Nurtures You.'
-    }
-  ]);
+  const [slides, setSlides] = useState(() => getInitialHeroSlides(propHeroSlides));
 
   // Sync prop heroSlides if provided
   useEffect(() => {
@@ -56,10 +90,23 @@ export default function HeroSection({
     fetch(getApiUrl('/api/hero-slides'))
       .then(res => res.json())
       .then(data => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
-          const activeOnly = data.filter(s => s.is_active === undefined || Number(s.is_active) === 1);
+        if (isMounted && Array.isArray(data)) {
+          const activeOnly = data.filter(s => 
+            (s.is_active === undefined || Number(s.is_active) === 1) &&
+            s.id !== 1 &&
+            s.id !== 2 &&
+            s.title_part1 !== 'Better Choices'
+          );
           if (activeOnly.length > 0) {
             setSlides(activeOnly);
+            try {
+              localStorage.setItem(HERO_SLIDES_STORAGE_KEY, JSON.stringify(activeOnly));
+            } catch (_) {}
+          } else {
+            setSlides([]);
+            try {
+              localStorage.setItem(HERO_SLIDES_STORAGE_KEY, JSON.stringify([]));
+            } catch (_) {}
           }
         }
       })
@@ -81,7 +128,7 @@ export default function HeroSection({
     return () => clearInterval(interval);
   }, [isPaused, slides.length, propActiveIndex]);
 
-  const isHeroDisabled = (sectionsConfig && (Number(sectionsConfig.show_hero) === 0 || sectionsConfig.show_hero === false)) || (heroConfig && (Number(heroConfig.hero_enabled) === 0 || heroConfig.hero_enabled === false || heroConfig.hero_enabled === '0'));
+  const isHeroDisabled = (sectionsConfig && (Number(sectionsConfig.show_hero) === 0 || sectionsConfig.show_hero === false)) || (heroConfig && (Number(heroConfig.hero_enabled) === 0 || heroConfig.hero_enabled === false || heroConfig.hero_enabled === '0')) || slides.length === 0;
   if (isHeroDisabled) return null;
 
   const currentSlide = slides[activeSlide] || slides[0] || {};
