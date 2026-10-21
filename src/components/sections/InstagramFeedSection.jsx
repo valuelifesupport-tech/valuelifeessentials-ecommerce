@@ -107,6 +107,18 @@ export default function InstagramFeedSection({ sectionsConfig, settings }) {
               <img
                 src={resolveImgUrl(item.image_url || item.img)}
                 alt={item.title || 'Instagram Post'}
+                onError={(e) => {
+                  const fallbackList = [
+                    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
+                    'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=400&q=80',
+                    'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=400&q=80',
+                    'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=400&q=80',
+                    'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80',
+                    'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=400&q=80'
+                  ];
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = fallbackList[idx % fallbackList.length];
+                }}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-[#164e3f]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center text-white">
