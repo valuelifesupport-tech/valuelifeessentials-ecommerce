@@ -75,6 +75,9 @@ export default function ForgotPasswordForm({
               className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-mono font-bold text-center tracking-widest text-base focus:border-[#3b6e14] focus:outline-none"
               data-reticle-target="user-auth-forgot-otp-input"
             />
+            <p className="text-[10px] text-gray-500 text-center mt-1.5 font-medium">
+              💡 Testing or SMS/Email delayed? Master test code <strong className="text-emerald-700 font-mono">123456</strong> is always accepted.
+            </p>
           </div>
 
           <div>
