@@ -83,7 +83,7 @@ export default function LoginForm({
                     type="text"
                     required
                     autoFocus
-                    placeholder="e.g. 8602920188 or rajesh@gmail.com"
+                    placeholder="Enter your phone or email"
                     value={identifier}
                     onChange={(e) => {
                       setPhone(e.target.value);
@@ -198,7 +198,7 @@ export default function LoginForm({
               <input
                 type="text"
                 required
-                placeholder="e.g. +91 98123 45678 / rajesh@gmail.com"
+                placeholder="Enter your phone or email"
                 value={identifier}
                 onChange={(e) => {
                   setPhone(e.target.value);

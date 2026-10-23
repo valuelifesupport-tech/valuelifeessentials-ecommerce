@@ -147,7 +147,7 @@ export default function MobileBottomNav({
               <input
                 type="text"
                 required
-                placeholder="e.g. OB-2026-1026 or 9876543210"
+                placeholder="Enter Order ID or mobile number"
                 value={trackInput}
                 onChange={(e) => setTrackInput(e.target.value)}
                 className="flex-1 p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold focus:border-[#3b6e14] focus:outline-none"

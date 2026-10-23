@@ -30,7 +30,7 @@ export default function CartSummary({
           <Tag size={16} className="absolute left-3 top-3 text-gray-400" />
           <input 
             type="text" 
-            placeholder="Enter Coupon Code (e.g. ORGANIC15)" 
+            placeholder="Enter Coupon Code" 
             value={couponCode}
             onChange={(e) => setCouponCode(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-xs border rounded-lg focus:outline-none focus:border-[#2d6a4f]"

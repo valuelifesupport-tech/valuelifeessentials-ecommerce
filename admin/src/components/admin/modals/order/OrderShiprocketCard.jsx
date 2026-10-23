@@ -264,7 +264,7 @@ export default function OrderShiprocketCard({
                 <input
                   type="text"
                   maxLength={6}
-                  placeholder="e.g. 560001"
+                  placeholder="PIN code"
                   value={pincodeInput}
                   onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ''))}
                   className="w-24 px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-indigo-500 focus:outline-none text-center"

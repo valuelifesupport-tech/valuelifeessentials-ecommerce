@@ -31,7 +31,7 @@ export default function ForgotPasswordForm({
               <input
                 type="text"
                 required
-                placeholder="e.g. rohan@gmail.com or +919988776655"
+                placeholder="Enter your phone or email"
                 value={forgotInput}
                 onChange={(e) => setForgotInput(e.target.value)}
                 className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
@@ -69,7 +69,7 @@ export default function ForgotPasswordForm({
               type="text"
               required
               maxLength={6}
-              placeholder="Enter 6-digit OTP code (e.g. 123456)"
+              placeholder="Enter 6-digit OTP code"
               value={forgotOtp}
               onChange={(e) => setForgotOtp(e.target.value)}
               className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-mono font-bold text-center tracking-widest text-base focus:border-[#3b6e14] focus:outline-none"

@@ -187,7 +187,7 @@ export default function ProductReviews({
                   <div>
                     <label className="block font-bold text-gray-700 mb-1">Your Name *</label>
                     <input 
-                      type="text" required placeholder="e.g. Ramesh Kumar"
+                      type="text" required placeholder="Enter your name"
                       value={reviewForm.user_name}
                       onChange={(e) => setReviewForm({ ...reviewForm, user_name: e.target.value })}
                       className="w-full p-2.5 border rounded-xl"
@@ -196,7 +196,7 @@ export default function ProductReviews({
                   <div>
                     <label className="block font-bold text-gray-700 mb-1">Your Email (Gmail) *</label>
                     <input 
-                      type="email" required placeholder="e.g. ramesh@gmail.com"
+                      type="email" required placeholder="Enter your email address"
                       value={reviewForm.user_email || ''}
                       onChange={(e) => setReviewForm({ ...reviewForm, user_email: e.target.value })}
                       className="w-full p-2.5 border rounded-xl"

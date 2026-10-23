@@ -19,7 +19,7 @@ export default function CardPaymentTab({
           type="text" 
           value={cardForm.number}
           onChange={(e) => setCardForm({ ...cardForm, number: e.target.value })}
-          placeholder="4111 2222 3333 4444"
+          placeholder="Enter 16-digit card number"
           className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-xs focus:outline-none focus:border-blue-600"
           data-reticle-target="payment-card-number-input"
         />
@@ -32,7 +32,7 @@ export default function CardPaymentTab({
             type="text" 
             value={cardForm.expiry}
             onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })}
-            placeholder="12/28"
+            placeholder="MM / YY"
             className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-xs focus:outline-none focus:border-blue-600"
             data-reticle-target="payment-card-expiry-input"
           />
@@ -44,7 +44,7 @@ export default function CardPaymentTab({
             maxLength={4}
             value={cardForm.cvv}
             onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })}
-            placeholder="888"
+            placeholder="CVV"
             className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-xs focus:outline-none focus:border-blue-600"
             data-reticle-target="payment-card-cvv-input"
           />

@@ -78,7 +78,7 @@ export default function ProfileDetailsTab({
           <label className="block text-gray-700 font-extrabold mb-1">City *</label>
           <input 
             type="text" required
-            placeholder="Enter city (e.g. Indore, Delhi, Mumbai)"
+            placeholder="Enter your city"
             value={profileForm.city}
             onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"

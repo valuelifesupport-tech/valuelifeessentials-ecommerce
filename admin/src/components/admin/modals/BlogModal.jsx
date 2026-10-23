@@ -200,7 +200,7 @@ export default function BlogModal({
                 <label className="block text-slate-400 text-[11px] mb-1">Author Name</label>
                 <input 
                   type="text"
-                  placeholder="e.g. Dr. Ananya Sharma"
+                  placeholder="Enter author name"
                   value={blogForm.author_name || ''}
                   onChange={(e) => setBlogForm({ ...blogForm, author_name: e.target.value })}
                   className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"
@@ -211,7 +211,7 @@ export default function BlogModal({
                 <label className="block text-slate-400 text-[11px] mb-1">Author Role / Credential</label>
                 <input 
                   type="text"
-                  placeholder="e.g. Ayurvedic Vaidya, BAMS"
+                  placeholder="Enter author role / credential"
                   value={blogForm.author_role || ''}
                   onChange={(e) => setBlogForm({ ...blogForm, author_role: e.target.value })}
                   className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"
@@ -222,7 +222,7 @@ export default function BlogModal({
                 <label className="block text-slate-400 text-[11px] mb-1">Author Avatar URL</label>
                 <input 
                   type="text"
-                  placeholder="https://... avatar image"
+                  placeholder="Enter author avatar URL"
                   value={blogForm.author_avatar || ''}
                   onChange={(e) => setBlogForm({ ...blogForm, author_avatar: e.target.value })}
                   className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"

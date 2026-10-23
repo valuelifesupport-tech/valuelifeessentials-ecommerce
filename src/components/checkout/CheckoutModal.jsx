@@ -18,8 +18,6 @@ export default function CheckoutModal({
   setOrderSuccess,
   navigateTo
 }) {
-  if (!isOpen && !orderSuccess) return null;
-
   // Auto-fill logged-in user credentials and address when checkout opens
   React.useEffect(() => {
     if (isOpen && currentUser) {
@@ -32,6 +30,8 @@ export default function CheckoutModal({
       }));
     }
   }, [isOpen, currentUser]);
+
+  if (!isOpen && !orderSuccess) return null;
 
   return (
     <>
@@ -119,7 +119,7 @@ export default function CheckoutModal({
               <div>
                 <label className="block font-bold text-gray-700 mb-1">Full Name *</label>
                 <input 
-                  type="text" required placeholder="e.g. Rajesh Gupta"
+                  type="text" required placeholder="Enter full name"
                   value={customerForm?.name || ''}
                   onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), name: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
@@ -131,7 +131,7 @@ export default function CheckoutModal({
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">Mobile Phone Number * (Mandatory)</label>
                   <input 
-                    type="tel" required placeholder="e.g. +91 98123 45678"
+                    type="tel" required placeholder="Enter 10-digit mobile number"
                     value={customerForm?.phone || ''}
                     onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), phone: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
@@ -141,7 +141,7 @@ export default function CheckoutModal({
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">Email Address (Optional)</label>
                   <input 
-                    type="email" placeholder="e.g. rajesh@gmail.com (Optional)"
+                    type="email" placeholder="Enter email address (Optional)"
                     value={customerForm?.email || ''}
                     onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), email: e.target.value }))}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none"
@@ -153,7 +153,7 @@ export default function CheckoutModal({
               <div>
                 <label className="block font-bold text-gray-700 mb-1">Shipping Home Address *</label>
                 <textarea 
-                  rows={2} required placeholder="Flat No., Street, Area, City, Pincode"
+                  rows={2} required placeholder="Enter house no., building, street, area, city, pincode"
                   value={customerForm?.address || ''}
                   onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), address: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
@@ -167,7 +167,7 @@ export default function CheckoutModal({
                 </label>
                 <textarea 
                   rows={2}
-                  placeholder="e.g. Please call before delivery, leave with security guard, pack in eco-friendly box..."
+                  placeholder="Any special delivery instructions (optional)..."
                   value={customerForm?.remark || ''}
                   onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), remark: e.target.value }))}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"

@@ -199,7 +199,7 @@ export default function OrderCustomerCard({
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-r-lg text-white font-mono text-xs font-bold focus:border-emerald-500 focus:outline-none"
-                  placeholder="9876543210"
+                  placeholder="Enter 10-digit mobile number"
                 />
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function OrderCustomerCard({
               value={editEmail}
               onChange={(e) => setEditEmail(e.target.value)}
               className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium text-xs focus:border-emerald-500 focus:outline-none"
-              placeholder="customer@email.com"
+              placeholder="Enter email address"
             />
           </div>
 
@@ -224,7 +224,7 @@ export default function OrderCustomerCard({
               value={editAddress}
               onChange={(e) => setEditAddress(e.target.value)}
               className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium text-xs focus:border-emerald-500 focus:outline-none"
-              placeholder="Flat No, Building, Street, Landmark"
+              placeholder="Enter house/flat no, building, street, landmark"
             />
           </div>
 
@@ -237,7 +237,7 @@ export default function OrderCustomerCard({
                 value={editCity}
                 onChange={(e) => setEditCity(e.target.value)}
                 className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium text-xs focus:border-emerald-500 focus:outline-none"
-                placeholder="e.g. Mumbai"
+                placeholder="Enter city"
               />
             </div>
             <div>
@@ -261,7 +261,7 @@ export default function OrderCustomerCard({
                 value={editPincode}
                 onChange={(e) => setEditPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs font-bold focus:border-emerald-500 focus:outline-none text-center"
-                placeholder="e.g. 400001"
+                placeholder="Enter 6-digit pincode"
               />
             </div>
           </div>

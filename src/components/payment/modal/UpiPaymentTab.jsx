@@ -39,7 +39,7 @@ export default function UpiPaymentTab({
           type="text" 
           value={upiId} 
           onChange={(e) => setUpiId(e.target.value)}
-          placeholder="e.g. mobile@upi or username@okhdfcbank"
+          placeholder="Enter your UPI ID"
           className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-xs focus:outline-none focus:border-blue-600"
           data-reticle-target="payment-upi-vpa-input"
         />

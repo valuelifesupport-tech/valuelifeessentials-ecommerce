@@ -102,7 +102,7 @@ export default function GstConfigCard({
           <label className="block text-slate-300 font-bold mb-1">Store GSTIN Identification Number *</label>
           <input 
             type="text" 
-            placeholder="e.g. 36AAPFV4767N1Z4"
+            placeholder="Enter 15-digit GSTIN"
             value={settingsForm.gstin_number !== undefined && settingsForm.gstin_number !== null ? settingsForm.gstin_number : ''}
             onChange={(e) => setSettingsForm({ ...settingsForm, gstin_number: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-400 font-mono font-bold"
@@ -113,7 +113,7 @@ export default function GstConfigCard({
           <label className="block text-slate-300 font-bold mb-1">Legal Business / Entity Name *</label>
           <input 
             type="text" 
-            placeholder="e.g. VALUELIFE ESSENTIALS Retail Pvt Ltd"
+            placeholder="Enter legal business / company name"
             value={settingsForm.legal_business_name !== undefined && settingsForm.legal_business_name !== null ? settingsForm.legal_business_name : ''}
             onChange={(e) => setSettingsForm({ ...settingsForm, legal_business_name: e.target.value })}
             className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold"

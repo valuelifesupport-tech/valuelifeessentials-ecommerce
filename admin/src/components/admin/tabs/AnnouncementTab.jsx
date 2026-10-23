@@ -100,7 +100,7 @@ export default function AnnouncementTab({
                   <label className="block text-slate-300 font-bold mb-1">WhatsApp Business Number</label>
                   <input 
                     type="text"
-                    placeholder="e.g. +91 98765 43210"
+                    placeholder="Enter WhatsApp business number"
                     value={settingsForm.whatsapp_number || ''}
                     onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number: e.target.value })}
                     className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium"

@@ -34,7 +34,7 @@ export default function OtpVerificationForm({
           type="text"
           required
           maxLength={6}
-          placeholder="e.g. 849201"
+          placeholder="Enter 6-digit OTP"
           value={regOtp}
           onChange={(e) => setRegOtp(e.target.value)}
           className="w-full text-center tracking-widest text-xl font-black py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:border-[#3b6e14] focus:outline-none font-mono"

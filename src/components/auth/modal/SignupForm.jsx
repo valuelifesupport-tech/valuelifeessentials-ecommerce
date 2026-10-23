@@ -22,7 +22,7 @@ export default function SignupForm({
           <input
             type="text"
             required
-            placeholder="e.g. Vikram Sharma"
+            placeholder="Enter your full name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
@@ -38,7 +38,7 @@ export default function SignupForm({
           <input
             type="tel"
             required={!email}
-            placeholder="e.g. +91 98123 45678"
+            placeholder="Enter 10-digit mobile number"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"
@@ -54,7 +54,7 @@ export default function SignupForm({
           <input
             type="email"
             required={!phone}
-            placeholder="e.g. vikram@gmail.com"
+            placeholder="Enter your email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-bold focus:border-[#3b6e14] focus:outline-none"

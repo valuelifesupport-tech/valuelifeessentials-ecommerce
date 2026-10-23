@@ -4,9 +4,6 @@ import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Truck, Clock } fr
 import BlogListingView from '../blog/BlogListingView';
 
 export default function PageView({ slug, onGoHome, showToast }) {
-  if (slug === 'blog') {
-    return <BlogListingView navigateTo={(path) => { window.location.href = path; }} showToast={showToast} />;
-  }
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,8 +11,10 @@ export default function PageView({ slug, onGoHome, showToast }) {
   // Contact form state
   const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (slug === 'blog') return;
     fetchPage();
   }, [slug]);
 
@@ -34,7 +33,6 @@ export default function PageView({ slug, onGoHome, showToast }) {
     }
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const handleContactSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -56,6 +54,10 @@ export default function PageView({ slug, onGoHome, showToast }) {
       setIsSubmitting(false);
     }
   };
+
+  if (slug === 'blog') {
+    return <BlogListingView navigateTo={(path) => { window.location.href = path; }} showToast={showToast} />;
+  }
 
   if (loading) {
     return (
@@ -216,7 +218,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       <div>
                         <label className="block text-slate-700 font-bold mb-1">Your Full Name *</label>
                         <input 
-                          type="text" required placeholder="Ramesh Kumar"
+                          type="text" required placeholder="Enter your full name"
                           value={contactForm.name}
                           onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
                           className="w-full p-3 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -226,7 +228,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       <div>
                         <label className="block text-slate-700 font-bold mb-1">Email Address *</label>
                         <input 
-                          type="email" required placeholder="ramesh@gmail.com"
+                          type="email" required placeholder="Enter your email address"
                           value={contactForm.email}
                           onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                           className="w-full p-3 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -236,7 +238,7 @@ export default function PageView({ slug, onGoHome, showToast }) {
                       <div>
                         <label className="block text-slate-700 font-bold mb-1">Subject / Issue *</label>
                         <input 
-                          type="text" required placeholder="Order Status, Product Guidance, Bulk Query"
+                          type="text" required placeholder="Enter subject or topic"
                           value={contactForm.subject}
                           onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
                           className="w-full p-3 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"

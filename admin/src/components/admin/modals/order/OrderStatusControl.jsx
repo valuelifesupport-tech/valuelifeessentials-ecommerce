@@ -74,7 +74,7 @@ export default function OrderStatusControl({
             <label className="block text-slate-400 mb-1 font-bold">Courier Partner Name</label>
             <input
               type="text"
-              placeholder="e.g. Delhivery, BlueDart, DTDC"
+              placeholder="Enter courier partner name"
               value={courierInput}
               onChange={(e) => setCourierInput(e.target.value)}
               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium"
@@ -85,7 +85,7 @@ export default function OrderStatusControl({
             <label className="block text-slate-400 mb-1 font-bold">Tracking Number / AWB #</label>
             <input
               type="text"
-              placeholder="e.g. 123456789"
+              placeholder="Enter tracking number or AWB"
               value={trackingInput}
               onChange={(e) => setTrackingInput(e.target.value)}
               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-emerald-400 font-mono"
@@ -118,7 +118,7 @@ export default function OrderStatusControl({
             </div>
             <input
               type="text"
-              placeholder="Reason for cancellation (e.g. Customer request, Out of stock)"
+              placeholder="Enter reason for cancellation"
               value={adminCancelReasonInput}
               onChange={(e) => setAdminCancelReasonInput(e.target.value)}
               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium text-xs"
