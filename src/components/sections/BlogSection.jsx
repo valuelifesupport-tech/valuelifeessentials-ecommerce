@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../../api/config';
-import { BookOpen, Clock, ArrowRight, Sparkles } from 'lucide-react';
+import { Clock, ArrowRight, Sparkles, Eye } from 'lucide-react';
 
 export default function BlogSection({ sectionsConfig, navigateTo }) {
   const formatDateTime = (dateStr) => {

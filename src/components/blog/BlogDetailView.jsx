@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../../api/config';
-import { ChevronRight, Clock, Calendar, Eye, Share2, Check, ArrowLeft, Bookmark, ShoppingBag, MessageCircle, Link2 } from 'lucide-react';
+import { ChevronRight, Clock, Calendar, Eye, Check, ArrowLeft, ShoppingBag, Link2 } from 'lucide-react';
 import { TwitterIcon, FacebookIcon, WhatsAppIcon } from '../layout/SocialIcons';
 
 export default function BlogDetailView({ slug, navigateTo, showToast }) {

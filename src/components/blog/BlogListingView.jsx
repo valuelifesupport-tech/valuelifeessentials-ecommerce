@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../../api/config';
-import { Search, Calendar, Clock, User, ArrowRight, BookOpen, Sparkles, Filter, ChevronRight } from 'lucide-react';
+import { Search, Clock, ArrowRight, BookOpen, Sparkles, Filter, ChevronRight, Eye } from 'lucide-react';
 
 export default function BlogListingView({ navigateTo, showToast }) {
   const [blogs, setBlogs] = useState([]);
