@@ -9,10 +9,13 @@ export function AuthProvider({ children }) {
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('customerUser'));
       const token = localStorage.getItem('customer_token');
-      if (u) {
-        return { ...u, token: u.token || token || null };
+      const u = JSON.parse(localStorage.getItem('customerUser'));
+      if (token && u && u.id) {
+        return { ...u, token };
+      }
+      if (!token && u) {
+        localStorage.removeItem('customerUser');
       }
       return null;
     } catch (e) {
@@ -49,15 +52,17 @@ export function AuthProvider({ children }) {
         remark: prev?.remark || ''
       }));
 
-      // Fetch user profile and session token if missing
-      const needsTokenFetch = !currentUser.token;
-      const needsProfileFetch = currentUser.email && (!currentUser.phone || !currentUser.address || !currentUser.city || !currentUser.pincode);
+      // Fetch user profile if missing and user has valid signed token
+      const needsProfileFetch = currentUser.token && currentUser.email && (!currentUser.phone || !currentUser.address || !currentUser.city || !currentUser.pincode);
 
-      if (needsTokenFetch || needsProfileFetch) {
+      if (needsProfileFetch) {
         fetch(getApiUrl('/api/auth/token'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: currentUser.id, email: currentUser.email, phone: currentUser.phone })
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.token}`
+          },
+          body: JSON.stringify({ user_id: currentUser.id })
         })
           .then(res => res.ok ? res.json() : null)
           .then(data => {
