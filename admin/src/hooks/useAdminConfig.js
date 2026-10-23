@@ -9,7 +9,8 @@ export default function useAdminConfig({
   adminFetch, fetchAdminData, showToast,
   propSectionsConfig, onUpdateSectionsConfig,
   propSettings, onUpdateSettings,
-  settings, setSettings
+  settings, setSettings,
+  isAuthLocked
 }) {
   const sf = (url) => safeFetchJson(adminFetch, url);
 
@@ -337,11 +338,13 @@ export default function useAdminConfig({
   const [gstSummaryData, setGstSummaryData] = useState(null);
 
   const fetchGstSummaryData = async (monthKey) => {
+    if (isAuthLocked) return;
     const data = await sf(`/api/admin/gst-report/summary${monthKey && monthKey !== 'ALL' ? `?month=${monthKey}` : ''}`);
     if (data) setGstSummaryData(data);
   };
 
   const fetchTaxesData = async () => {
+    if (isAuthLocked) return;
     const [rates, overrides] = await Promise.all([
       sf('/api/admin/taxes/states'),
       sf('/api/admin/taxes/overrides')
@@ -351,9 +354,10 @@ export default function useAdminConfig({
   };
 
   useEffect(() => {
+    if (isAuthLocked) return;
     fetchTaxesData();
     fetchGstSummaryData(selectedGstMonth);
-  }, [selectedGstMonth]);
+  }, [selectedGstMonth, isAuthLocked]);
 
   const handleSaveStateTaxRates = async () => {
     try {

@@ -72,7 +72,8 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
     adminFetch: auth.adminFetch, fetchAdminData: data.fetchAdminData, showToast,
     propSectionsConfig, onUpdateSectionsConfig,
     propSettings, onUpdateSettings,
-    settings: data.settings, setSettings: data.setSettings
+    settings: data.settings, setSettings: data.setSettings,
+    isAuthLocked: auth.isAuthLocked
   });
   const productActions = useProductActions({
     adminFetch: auth.adminFetch, products: data.products, setProducts: data.setProducts,
@@ -172,13 +173,22 @@ export default function AdminDashboard({ onExitAdmin, showToast, sectionsConfig:
         <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-emerald-950/40 space-y-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
 
-          <div className="text-center space-y-2">
-            <div className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-600/30 text-slate-950 font-black text-2xl">
-              🔐
+          <div className="text-center space-y-3">
+            <div className="w-20 h-20 bg-white/95 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-950/50 p-2.5 border border-slate-700/50">
+              <img
+                src="/valuelife_logo.png"
+                alt="ValueLife Essentials Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h1 className="text-xl font-extrabold text-white tracking-tight font-['Outfit'] uppercase pt-2">
-              MASTER ADMIN ACCESS
-            </h1>
+            <div>
+              <h1 className="text-xl font-extrabold text-white tracking-tight font-['Outfit'] uppercase">
+                VALUELIFE ESSENTIALS
+              </h1>
+              <span className="text-[11px] font-bold tracking-widest text-emerald-400 uppercase">
+                Master Admin Access
+              </span>
+            </div>
             <p className="text-xs text-slate-400 font-medium">
               Enter Master Credentials or PIN to unlock the control panel.
             </p>
