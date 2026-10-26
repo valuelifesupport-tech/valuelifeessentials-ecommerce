@@ -1,5 +1,6 @@
 import { getApiUrl, resolveImgUrl } from '../../api/config';
 import { resolveBaseVariant } from '../../utils/pricing';
+import { applyProductSEO } from '../../utils/seo';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, ChevronRight, ChevronLeft, Heart, ShoppingBag, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -81,6 +82,14 @@ export default function ProductDetailPage({
     fetchProductDetail();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [productSlug, productId]);
+
+  // Apply dynamic SEO, Meta Tags & Google Rich Snippets Schema for this product
+  useEffect(() => {
+    if (productData) {
+      const cleanupSEO = applyProductSEO(productData, currency, currencySymbol);
+      return cleanupSEO;
+    }
+  }, [productData, currency, currencySymbol]);
 
   const allProductImages = useMemo(() => {
     if (!productData) return [];

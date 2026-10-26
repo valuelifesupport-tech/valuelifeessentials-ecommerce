@@ -1,0 +1,9 @@
+# robots.txt for ValueLife Essentials (https://valuelifeessentials.com)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+# XML Sitemaps for Google, Bing, and Search Engines
+Sitemap: https://valuelifeessentials.com/sitemap.xml

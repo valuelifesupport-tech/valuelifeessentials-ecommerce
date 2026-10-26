@@ -17,10 +17,12 @@
   RewriteEngine On
   RewriteBase /
 
-  # 1. Do NOT rewrite API endpoints (/api/*), uploaded images (/uploads/*), or static assets (/assets/*) to index.html
+  # 1. Do NOT rewrite API endpoints (/api/*), uploaded images (/uploads/*), static assets (/assets/*), sitemap.xml, or robots.txt to index.html
   RewriteCond %{REQUEST_URI} ^/api/ [NC,OR]
   RewriteCond %{REQUEST_URI} ^/uploads/ [NC,OR]
-  RewriteCond %{REQUEST_URI} ^/assets/ [NC]
+  RewriteCond %{REQUEST_URI} ^/assets/ [NC,OR]
+  RewriteCond %{REQUEST_URI} ^/sitemap\.xml$ [NC,OR]
+  RewriteCond %{REQUEST_URI} ^/robots\.txt$ [NC]
   RewriteRule ^ - [L]
 
   # 2. Serve static files directly if they exist
