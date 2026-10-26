@@ -1,11 +1,13 @@
 import { getApiUrl } from '../../api/config';
 import React, { useState } from 'react';
-import { Home, Bookmark, User, UserCheck, ShoppingBag, PhoneCall, X, Search, PackageCheck, Truck } from 'lucide-react';
+import { Home, Bookmark, User, UserCheck, ShoppingBag, PhoneCall, X, Search, PackageCheck, Truck, Heart } from 'lucide-react';
 
 export default function MobileBottomNav({ 
   cartCount = 0, 
+  wishlistCount = 0,
   navigateTo, 
   onOpenCart,
+  onOpenWishlist,
   currentUser,
   onOpenAuth
 }) {
@@ -66,16 +68,55 @@ export default function MobileBottomNav({
           type="button"
           onClick={() => navigateTo('/products', { view: 'all_products', slug: null, category: null, collection: null })}
           className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1"
+          data-reticle-target="mobile-nav-collections-btn"
         >
           <Bookmark size={19} className="stroke-[2.2]" />
           <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Collections</span>
         </button>
 
-        {/* 3. ACCOUNT / PROFILE (DYNAMICALLY CHANGED BASED ON AUTH STATUS) */}
+        {/* 3. WISHLIST WITH BADGE */}
+        <button
+          type="button"
+          onClick={onOpenWishlist}
+          className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-red-500 transition-colors py-1 relative cursor-pointer"
+          data-reticle-target="mobile-nav-wishlist-btn"
+          title="Wishlist"
+        >
+          <div className="relative">
+            <Heart size={19} className="stroke-[2.2] text-rose-500" />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-sm">
+                {wishlistCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-extrabold tracking-tight font-['Outfit'] text-rose-600">Wishlist</span>
+        </button>
+
+        {/* 4. CART WITH BADGE */}
+        <button
+          type="button"
+          onClick={onOpenCart}
+          className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1 relative cursor-pointer"
+          data-reticle-target="mobile-nav-cart-btn"
+        >
+          <div className="relative">
+            <ShoppingBag size={19} className="stroke-[2.2]" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-amber-400 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-sm">
+                {cartCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Cart</span>
+        </button>
+
+        {/* 5. ACCOUNT / PROFILE (DYNAMICALLY CHANGED BASED ON AUTH STATUS) */}
         <button
           type="button"
           onClick={handleAccountOrProfileClick}
-          className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1 relative"
+          className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1 relative cursor-pointer"
+          data-reticle-target="mobile-nav-account-btn"
         >
           {currentUser ? (
             <>
@@ -90,33 +131,6 @@ export default function MobileBottomNav({
               <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Account</span>
             </>
           )}
-        </button>
-
-        {/* 4. CART WITH BADGE */}
-        <button
-          type="button"
-          onClick={onOpenCart}
-          className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1 relative"
-        >
-          <div className="relative">
-            <ShoppingBag size={19} className="stroke-[2.2]" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-amber-400 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-sm">
-                {cartCount}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Cart</span>
-        </button>
-
-        {/* 5. CONTACT */}
-        <button
-          type="button"
-          onClick={() => navigateTo('/pages/contact-us', { view: 'page', slug: 'contact-us', category: null, collection: null })}
-          className="flex flex-col items-center gap-0.5 text-gray-700 hover:text-[#3b6e14] transition-colors py-1"
-        >
-          <PhoneCall size={19} className="stroke-[2.2]" />
-          <span className="text-[10px] font-extrabold tracking-tight font-['Outfit']">Contact</span>
         </button>
       </div>
 

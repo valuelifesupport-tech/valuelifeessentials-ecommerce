@@ -125,7 +125,7 @@ export default function Header({
           <button 
             type="button"
             onClick={onOpenWishlist}
-            className="relative p-2 sm:p-2.5 rounded-full hover:bg-gray-100 text-gray-700 transition-colors hidden sm:flex items-center justify-center border border-gray-200 cursor-pointer"
+            className="relative p-2 sm:p-2.5 rounded-full hover:bg-gray-100 text-gray-700 transition-colors flex items-center justify-center border border-gray-200 cursor-pointer"
             title="Wishlist"
             data-reticle-target="header-wishlist-btn"
           >

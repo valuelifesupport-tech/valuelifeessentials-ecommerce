@@ -348,8 +348,10 @@ function StorefrontLayout() {
       {/* MOBILE BOTTOM NAV */}
       <MobileBottomNav
         cartCount={cartCount}
+        wishlistCount={wishlistCount}
         navigateTo={navigateTo}
         onOpenCart={openCart}
+        onOpenWishlist={openWishlist}
         currentUser={currentUser}
         onOpenAuth={() => currentUser ? navigateTo('/account', { view: 'account' }) : openAuthModal()}
       />

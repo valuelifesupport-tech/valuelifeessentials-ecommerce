@@ -18,16 +18,34 @@ export default function CheckoutModal({
   setOrderSuccess,
   navigateTo
 }) {
+  const [selectedAddressId, setSelectedAddressId] = React.useState(null);
+
   // Auto-fill logged-in user credentials and address when checkout opens
   React.useEffect(() => {
     if (isOpen && currentUser) {
-      setCustomerForm(prev => ({
-        name: prev?.name || currentUser.name || '',
-        phone: prev?.phone || currentUser.phone || '',
-        email: prev?.email || currentUser.email || '',
-        address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
-        remark: prev?.remark || ''
-      }));
+      const defAddr = Array.isArray(currentUser.addresses) && currentUser.addresses.length > 0 
+        ? (currentUser.addresses.find(a => a.is_default) || currentUser.addresses[0]) 
+        : null;
+
+      if (defAddr) {
+        setSelectedAddressId(defAddr.id);
+        const fullAddrStr = `${defAddr.address}, ${defAddr.city}, ${defAddr.state} - ${defAddr.pincode}`;
+        setCustomerForm(prev => ({
+          name: prev?.name || defAddr.name || currentUser.name || '',
+          phone: prev?.phone || defAddr.phone || currentUser.phone || '',
+          email: prev?.email || currentUser.email || '',
+          address: prev?.address || fullAddrStr,
+          remark: prev?.remark || ''
+        }));
+      } else {
+        setCustomerForm(prev => ({
+          name: prev?.name || currentUser.name || '',
+          phone: prev?.phone || currentUser.phone || '',
+          email: prev?.email || currentUser.email || '',
+          address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+          remark: prev?.remark || ''
+        }));
+      }
     }
   }, [isOpen, currentUser]);
 
@@ -150,12 +168,77 @@ export default function CheckoutModal({
                 </div>
               </div>
 
+              {/* SAVED ADDRESS SELECTOR (IF MULTIPLE SAVED ADDRESSES EXIST) */}
+              {Array.isArray(currentUser?.addresses) && currentUser.addresses.length > 0 && (
+                <div className="space-y-2 p-3 bg-gray-50/80 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <label className="block font-extrabold text-gray-800 text-xs flex items-center gap-1.5">
+                      <span>📍</span>
+                      <span>Select Saved Delivery Address</span>
+                    </label>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                      {currentUser.addresses.length} {currentUser.addresses.length === 1 ? 'saved' : 'saved'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                    {currentUser.addresses.map((addr) => {
+                      const fullAddrStr = `${addr.address}, ${addr.city}, ${addr.state} - ${addr.pincode}`;
+                      const isSelected = selectedAddressId === addr.id || (!selectedAddressId && addr.is_default);
+                      return (
+                        <div
+                          key={addr.id}
+                          onClick={() => {
+                            setSelectedAddressId(addr.id);
+                            setCustomerForm(prev => ({
+                              ...(prev || {}),
+                              name: addr.name || prev?.name || currentUser.name || '',
+                              phone: addr.phone || prev?.phone || currentUser.phone || '',
+                              address: fullAddrStr
+                            }));
+                          }}
+                          className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
+                            isSelected 
+                              ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-500 shadow-xs' 
+                              : 'border-gray-200 bg-white hover:bg-gray-100/60'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="checkout_selected_address"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="mt-0.5 text-emerald-600 cursor-pointer"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 font-bold text-gray-900">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 border border-gray-200 text-gray-700 font-extrabold">
+                                {addr.type || 'Home'}
+                              </span>
+                              <span>{addr.name || currentUser.name}</span>
+                              {addr.is_default && (
+                                <span className="text-[9px] bg-[#3b6e14] text-white font-extrabold px-1.5 py-0.5 rounded-full">DEFAULT</span>
+                              )}
+                            </div>
+                            <p className="text-gray-700 truncate mt-0.5 text-[11px] font-medium">{addr.address}, {addr.city}</p>
+                            <p className="text-gray-500 text-[10px] font-mono">{addr.state} - {addr.pincode}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block font-bold text-gray-700 mb-1">Shipping Home Address *</label>
+                <label className="block font-bold text-gray-700 mb-1">Shipping Delivery Address *</label>
                 <textarea 
                   rows={2} required placeholder="Enter house no., building, street, area, city, pincode"
                   value={customerForm?.address || ''}
-                  onChange={(e) => setCustomerForm(prev => ({ ...(prev || {}), address: e.target.value }))}
+                  onChange={(e) => {
+                    setSelectedAddressId(null);
+                    setCustomerForm(prev => ({ ...(prev || {}), address: e.target.value }));
+                  }}
                   className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
                   data-reticle-target="checkout-input-address"
                 ></textarea>

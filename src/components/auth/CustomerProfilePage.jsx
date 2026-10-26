@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, User, Lock, FileText, ArrowLeft } from 'lucide-react';
 import ProfileHeaderBanner from '../profile/ProfileHeaderBanner';
 import ProfileOrdersTab from '../profile/tabs/ProfileOrdersTab';
-import ProfileDetailsTab from '../profile/tabs/ProfileDetailsTab';
+import ProfileDetailsTab, { INDIAN_STATES } from '../profile/tabs/ProfileDetailsTab';
 import ProfileSecurityTab from '../profile/tabs/ProfileSecurityTab';
 import ProfileGstinTab from '../profile/tabs/ProfileGstinTab';
 import CancelOrderModal from '../profile/modals/CancelOrderModal';
@@ -39,7 +39,8 @@ export default function CustomerProfilePage({
       state: u?.state || 'Madhya Pradesh',
       pincode: u?.pincode || '',
       gstin_number: u?.gstin_number || '',
-      business_name: u?.business_name || ''
+      business_name: u?.business_name || '',
+      addresses: Array.isArray(u?.addresses) ? u.addresses : []
     };
   });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -72,7 +73,8 @@ export default function CustomerProfilePage({
         state: currentUser.state || prev.state || 'Madhya Pradesh',
         pincode: currentUser.pincode || prev.pincode || '',
         gstin_number: currentUser.gstin_number || prev.gstin_number || '',
-        business_name: currentUser.business_name || prev.business_name || ''
+        business_name: currentUser.business_name || prev.business_name || '',
+        addresses: Array.isArray(currentUser.addresses) ? currentUser.addresses : (prev.addresses || [])
       }));
       fetchOrders();
       fetchProfile();
@@ -158,6 +160,25 @@ export default function CustomerProfilePage({
         if (data?.token) {
           try { localStorage.setItem('customer_token', data.token); } catch (e) {}
         }
+        let fetchedAddresses = [];
+        if (data.addresses) {
+          fetchedAddresses = typeof data.addresses === 'string' ? JSON.parse(data.addresses) : data.addresses;
+        }
+        if (!Array.isArray(fetchedAddresses)) fetchedAddresses = [];
+        if (fetchedAddresses.length === 0 && (data.address || data.city || data.pincode)) {
+          fetchedAddresses.push({
+            id: 'addr_default',
+            name: data.name || '',
+            phone: data.phone || '',
+            address: data.address || '',
+            city: data.city || '',
+            state: data.state || 'Madhya Pradesh',
+            pincode: data.pincode || '',
+            type: 'Home',
+            is_default: true
+          });
+        }
+
         setProfileForm(prev => ({
           name: data.name || currentUser?.name || prev.name || '',
           email: data.email || currentUser?.email || prev.email || '',
@@ -167,7 +188,8 @@ export default function CustomerProfilePage({
           state: data.state || currentUser?.state || prev.state || 'Madhya Pradesh',
           pincode: data.pincode || currentUser?.pincode || prev.pincode || '',
           gstin_number: data.gstin_number || currentUser?.gstin_number || prev.gstin_number || '',
-          business_name: data.business_name || currentUser?.business_name || prev.business_name || ''
+          business_name: data.business_name || currentUser?.business_name || prev.business_name || '',
+          addresses: fetchedAddresses.length > 0 ? fetchedAddresses : (prev.addresses || [])
         }));
 
         if (typeof onUpdateUser === 'function' && data) {
@@ -179,7 +201,8 @@ export default function CustomerProfilePage({
             state: data.state || currentUser?.state,
             pincode: data.pincode || currentUser?.pincode,
             gstin_number: data.gstin_number || currentUser?.gstin_number,
-            business_name: data.business_name || currentUser?.business_name
+            business_name: data.business_name || currentUser?.business_name,
+            addresses: fetchedAddresses
           });
         }
       }
@@ -207,32 +230,95 @@ export default function CustomerProfilePage({
       }
     }
 
-    // 2. PROFILE TAB VALIDATION: Prevent sending request if mandatory fields are empty
+    // 2. PROFILE TAB VALIDATION: Mandatory Name, Phone, PIN code, State, Address
     if (activeTab === 'PROFILE') {
-      if (!profileForm.name || !profileForm.name.trim()) {
-        if (showToast) showToast('error', 'Validation Error', 'Full Name is mandatory and required.');
+      const nameTrimmed = (profileForm.name || '').trim();
+      if (!nameTrimmed || nameTrimmed.length < 2) {
+        if (showToast) showToast('error', 'Validation Error', 'Full Name is mandatory (minimum 2 characters).');
         return;
       }
-      if (!profileForm.phone || !profileForm.phone.trim()) {
-        if (showToast) showToast('error', 'Validation Error', 'Phone number is mandatory and required.');
+
+      const cleanPhone = (profileForm.phone || '').replace(/\D/g, '').slice(-10);
+      if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+        if (showToast) showToast('error', 'Validation Error', 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
         return;
       }
-      if (!profileForm.address || !profileForm.address.trim()) {
-        if (showToast) showToast('error', 'Validation Error', 'Shipping Delivery Address is mandatory and required.');
-        return;
+
+      // Check addresses array
+      if (Array.isArray(profileForm.addresses) && profileForm.addresses.length > 0) {
+        for (let i = 0; i < profileForm.addresses.length; i++) {
+          const a = profileForm.addresses[i];
+          const pin = String(a.pincode || '').trim();
+          if (!/^[1-9][0-9]{5}$/.test(pin)) {
+            if (showToast) showToast('error', 'Validation Error', `PIN code in Address #${i + 1} must be exactly 6 digits (e.g. 400001) and cannot start with 0.`);
+            return;
+          }
+          if (!a.state || !INDIAN_STATES.includes(a.state)) {
+            if (showToast) showToast('error', 'Validation Error', `Please select a valid Indian State or Union Territory in Address #${i + 1}.`);
+            return;
+          }
+          if (!a.address || a.address.trim().length < 5) {
+            if (showToast) showToast('error', 'Validation Error', `Street address must be at least 5 characters in Address #${i + 1}.`);
+            return;
+          }
+        }
+      } else {
+        if (!profileForm.address || !profileForm.address.trim() || profileForm.address.trim().length < 5) {
+          if (showToast) showToast('error', 'Validation Error', 'Shipping Delivery Address is mandatory (minimum 5 characters).');
+          return;
+        }
+        if (!profileForm.city || !profileForm.city.trim() || profileForm.city.trim().length < 2) {
+          if (showToast) showToast('error', 'Validation Error', 'City is mandatory.');
+          return;
+        }
+        const pin = String(profileForm.pincode || '').trim();
+        if (!/^[1-9][0-9]{5}$/.test(pin)) {
+          if (showToast) showToast('error', 'Validation Error', 'PIN code is mandatory and must be a valid 6-digit Indian postal code (e.g. 400001).');
+          return;
+        }
+        if (!profileForm.state || !INDIAN_STATES.includes(profileForm.state)) {
+          if (showToast) showToast('error', 'Validation Error', 'Please select a valid Indian State or Union Territory.');
+          return;
+        }
       }
     }
 
     setSavingProfile(true);
     try {
-      const identifier = currentUser?.email || currentUser?.phone || '';
+      const identifier = currentUser?.id || currentUser?.email || currentUser?.phone || '';
+      let token = currentUser?.token || localStorage.getItem('customer_token');
+      if (!token && (currentUser?.id || currentUser?.email)) {
+        try {
+          const tokRes = await fetch(getApiUrl('/api/auth/token'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: currentUser?.id, email: currentUser?.email, phone: currentUser?.phone })
+          });
+          if (tokRes.ok) {
+            const tokData = await tokRes.json();
+            if (tokData?.token) {
+              token = tokData.token;
+              try { localStorage.setItem('customer_token', token); } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
       const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(identifier)}/profile`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 
+            'Authorization': `Bearer ${token}`,
+            'x-customer-token': token,
+            'x-auth-token': token 
+          } : {})
+        },
         body: JSON.stringify(profileForm)
       });
       const data = await res.json();
       if (res.ok) {
+        const returnedAddrs = data.user?.addresses || profileForm.addresses;
         const updatedUserObj = {
           ...currentUser,
           ...(data.user || {}),
@@ -243,7 +329,8 @@ export default function CustomerProfilePage({
           state: profileForm.state,
           pincode: profileForm.pincode,
           gstin_number: profileForm.gstin_number,
-          business_name: profileForm.business_name
+          business_name: profileForm.business_name,
+          addresses: returnedAddrs
         };
 
         try {
