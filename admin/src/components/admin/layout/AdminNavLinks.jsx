@@ -118,7 +118,7 @@ export default function AdminNavLinks({
             </button>
 
             <button 
-              onClick={() => { handleNavSelect('media'); if (fetchAdminData) fetchAdminData(); }}
+              onClick={() => handleNavSelect('media')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
                 activeTab === 'media' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}

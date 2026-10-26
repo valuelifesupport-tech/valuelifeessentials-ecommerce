@@ -51,7 +51,10 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
 
   const fetchAdminData = async () => {
     try {
-      const [prods, cats, cols, ords, setts, revs, slides, blgs, igs, subs] = await Promise.all([
+      const [
+        prods, cats, cols, ords, setts, revs, slides, blgs, igs, subs,
+        media, filters, usrList, bans, coups, pgs
+      ] = await Promise.all([
         sf('/api/products?includeDrafts=true'),
         sf('/api/categories'),
         sf('/api/collections'),
@@ -61,7 +64,13 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
         sf('/api/admin/hero-slides'),
         sf('/api/admin/blogs'),
         sf('/api/admin/instagram-posts'),
-        sf('/api/admin/newsletter/subscribers')
+        sf('/api/admin/newsletter/subscribers'),
+        sf('/api/admin/media'),
+        sf('/api/filter-groups'),
+        sf('/api/admin/users'),
+        sf('/api/banners'),
+        sf('/api/coupons'),
+        sf('/api/pages')
       ]);
       if (prods) setProducts(prods);
       if (cats) setCategories(cats);
@@ -73,6 +82,12 @@ export default function useAdminData({ adminFetch, isAuthLocked }) {
       if (blgs && Array.isArray(blgs)) setBlogs(blgs);
       if (igs && Array.isArray(igs)) setInstagramPosts(igs);
       if (subs && Array.isArray(subs)) setSubscribers(subs);
+      if (media && Array.isArray(media)) setMediaFiles(media);
+      if (filters && Array.isArray(filters)) setFilterGroups(filters);
+      if (usrList && Array.isArray(usrList)) setUsers(usrList);
+      if (bans && Array.isArray(bans)) setBanners(bans);
+      if (coups && Array.isArray(coups)) setCoupons(coups);
+      if (pgs && Array.isArray(pgs)) setPages(pgs);
     } catch (err) {
       console.error('fetchAdminData error:', err);
     }
