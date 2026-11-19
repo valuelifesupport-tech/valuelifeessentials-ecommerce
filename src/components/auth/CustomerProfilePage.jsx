@@ -1,5 +1,5 @@
 import { getApiUrl } from '../../api/config';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Package, User, Lock, FileText, ArrowLeft } from 'lucide-react';
 import ProfileHeaderBanner from '../profile/ProfileHeaderBanner';
 import ProfileOrdersTab from '../profile/tabs/ProfileOrdersTab';
@@ -59,6 +59,12 @@ export default function CustomerProfilePage({
   const [cancelNotes, setCancelNotes] = useState('');
   const [cancellingOrder, setCancellingOrder] = useState(false);
 
+  // Guards to prevent duplicate/infinite API request loops
+  const lastFetchedUserKeyRef = useRef(null);
+  const isFetchingOrdersRef = useRef(false);
+
+  const userKey = currentUser ? (currentUser.id || currentUser.email || currentUser.phone || null) : null;
+
   useEffect(() => {
     if (currentUser) {
       let savedAddr = '';
@@ -76,20 +82,27 @@ export default function CustomerProfilePage({
         business_name: currentUser.business_name || prev.business_name || '',
         addresses: Array.isArray(currentUser.addresses) ? currentUser.addresses : (prev.addresses || [])
       }));
-      fetchOrders();
-      fetchProfile();
+
+      // Strictly fetch orders and profile once per user login/account to prevent infinite API hammering
+      if (userKey && lastFetchedUserKeyRef.current !== userKey) {
+        lastFetchedUserKeyRef.current = userKey;
+        fetchOrders();
+        fetchProfile();
+      }
     } else {
+      lastFetchedUserKeyRef.current = null;
       setLoadingOrders(false);
     }
-  }, [currentUser]);
+  }, [userKey]);
 
   const fetchOrders = async () => {
+    if (isFetchingOrdersRef.current) return;
+    isFetchingOrdersRef.current = true;
     setLoadingOrders(true);
     try {
       const identifier = currentUser?.id || currentUser?.email || currentUser?.phone || '';
       if (!identifier) {
         setOrders([]);
-        setLoadingOrders(false);
         return;
       }
       const queryParams = new URLSearchParams();
@@ -141,6 +154,7 @@ export default function CustomerProfilePage({
       setOrders([]);
     } finally {
       setLoadingOrders(false);
+      isFetchingOrdersRef.current = false;
     }
   };
 
@@ -191,20 +205,6 @@ export default function CustomerProfilePage({
           business_name: data.business_name || currentUser?.business_name || prev.business_name || '',
           addresses: fetchedAddresses.length > 0 ? fetchedAddresses : (prev.addresses || [])
         }));
-
-        if (typeof onUpdateUser === 'function' && data) {
-          onUpdateUser({
-            name: data.name || currentUser?.name,
-            phone: data.phone || currentUser?.phone,
-            address: data.address || currentUser?.address,
-            city: data.city || currentUser?.city,
-            state: data.state || currentUser?.state,
-            pincode: data.pincode || currentUser?.pincode,
-            gstin_number: data.gstin_number || currentUser?.gstin_number,
-            business_name: data.business_name || currentUser?.business_name,
-            addresses: fetchedAddresses
-          });
-        }
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err);

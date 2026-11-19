@@ -31,6 +31,7 @@ export function CartProvider({ children, currency: propCurrency, products: propP
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const isInitialMount = useRef(true);
+  const lastSyncedCartJsonRef = useRef('');
 
   // Sync to localStorage
   useEffect(() => {
@@ -129,7 +130,12 @@ export function CartProvider({ children, currency: propCurrency, products: propP
           })
           .catch(() => {});
       } else {
+        const currentCartJson = JSON.stringify(cart);
+        if (lastSyncedCartJsonRef.current === currentCartJson) {
+          return;
+        }
         const timer = setTimeout(() => {
+          lastSyncedCartJsonRef.current = currentCartJson;
           fetch(getApiUrl('/api/cart'), {
             method: 'POST',
             headers: authHeaders,
@@ -139,7 +145,7 @@ export function CartProvider({ children, currency: propCurrency, products: propP
         return () => clearTimeout(timer);
       }
     }
-  }, [cart, currentUser, products, currency]);
+  }, [cart, currentUser?.id, products, currency]);
 
   // Auto-heal any cart items missing title, thumbnail, or price once products catalog loads
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getApiUrl } from '../config/env';
 import { useToast } from './ToastContext';
 
@@ -41,62 +41,75 @@ export function AuthProvider({ children }) {
     }
   });
 
-  // Sync customerForm whenever currentUser updates and acquire token if missing
+  const fetchedUserIdsRef = useRef(new Set());
+
+  // Sync customerForm whenever currentUser updates and acquire token at most once per user session
   useEffect(() => {
     if (currentUser) {
-      setCustomerForm(prev => ({
-        name: currentUser.name || prev?.name || '',
-        phone: currentUser.phone || prev?.phone || '',
-        email: currentUser.email || prev?.email || '',
-        address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
-        remark: prev?.remark || ''
-      }));
+      setCustomerForm(prev => {
+        if (
+          prev.name === (currentUser.name || '') &&
+          prev.phone === (currentUser.phone || '') &&
+          prev.email === (currentUser.email || '') &&
+          prev.address === (currentUser.address || '')
+        ) {
+          return prev;
+        }
+        return {
+          name: currentUser.name || prev?.name || '',
+          phone: currentUser.phone || prev?.phone || '',
+          email: currentUser.email || prev?.email || '',
+          address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+          remark: prev?.remark || ''
+        };
+      });
 
-      // Fetch user profile if missing and user has valid signed token
-      const needsProfileFetch = currentUser.token && currentUser.email && (!currentUser.phone || !currentUser.address || !currentUser.city || !currentUser.pincode);
+      // Fetch user profile token AT MOST ONCE per user session to guarantee no infinite loop
+      const userKey = currentUser.id ? `id_${currentUser.id}` : (currentUser.email || currentUser.phone || '');
+      if (userKey && !fetchedUserIdsRef.current.has(userKey) && currentUser.token) {
+        fetchedUserIdsRef.current.add(userKey);
 
-      if (needsProfileFetch) {
-        fetch(getApiUrl('/api/auth/token'), {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentUser.token}`
-          },
-          body: JSON.stringify({ user_id: currentUser.id })
-        })
-          .then(res => res.ok ? res.json() : null)
-          .then(data => {
-            if (data && data.token) {
-              const updated = {
-                ...currentUser,
-                token: data.token,
-                name: data.user?.name || currentUser.name,
-                phone: data.user?.phone || currentUser.phone,
-                address: data.user?.address || currentUser.address,
-                city: data.user?.city || currentUser.city,
-                state: data.user?.state || currentUser.state,
-                pincode: data.user?.pincode || currentUser.pincode,
-                gstin_number: data.user?.gstin_number || currentUser.gstin_number,
-                business_name: data.user?.business_name || currentUser.business_name
-              };
-              setCurrentUser(updated);
-              try {
-                localStorage.setItem('customerUser', JSON.stringify(updated));
-                localStorage.setItem('customer_token', data.token);
-              } catch (e) {}
-              setCustomerForm(prev => ({
-                name: updated.name || prev.name,
-                phone: updated.phone || prev.phone,
-                email: updated.email || prev.email,
-                address: updated.address || prev.address,
-                remark: prev.remark || ''
-              }));
-            }
+        const needsProfileFetch = !currentUser.phone || !currentUser.name || currentUser.name.startsWith('Customer ');
+        if (needsProfileFetch) {
+          fetch(getApiUrl('/api/auth/token'), {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentUser.token}`
+            },
+            body: JSON.stringify({ user_id: currentUser.id, email: currentUser.email, phone: currentUser.phone })
           })
-          .catch(() => {});
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data && data.token && data.user) {
+                setCurrentUser(prev => {
+                  if (!prev) return null;
+                  const updated = {
+                    ...prev,
+                    token: data.token,
+                    name: data.user.name || prev.name,
+                    phone: data.user.phone || prev.phone,
+                    address: data.user.address || prev.address,
+                    city: data.user.city || prev.city,
+                    state: data.user.state || prev.state,
+                    pincode: data.user.pincode || prev.pincode,
+                    gstin_number: data.user.gstin_number || prev.gstin_number,
+                    business_name: data.user.business_name || prev.business_name,
+                    addresses: data.user.addresses || prev.addresses
+                  };
+                  try {
+                    localStorage.setItem('customerUser', JSON.stringify(updated));
+                    localStorage.setItem('customer_token', data.token);
+                  } catch (e) {}
+                  return updated;
+                });
+              }
+            })
+            .catch(() => {});
+        }
       }
     }
-  }, [currentUser]);
+  }, [currentUser?.id, currentUser?.token, currentUser?.email, currentUser?.phone, currentUser?.name]);
 
   const login = useCallback((userData) => {
     const token = userData.token || localStorage.getItem('customer_token');

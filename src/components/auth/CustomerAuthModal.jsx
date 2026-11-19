@@ -1,5 +1,5 @@
 import { getApiUrl } from '../../api/config';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import LoginForm from './modal/LoginForm';
 import ForgotPasswordForm from './modal/ForgotPasswordForm';
@@ -47,18 +47,31 @@ export default function CustomerAuthModal({
   const [cancelNotes, setCancelNotes] = useState('');
   const [cancellingOrder, setCancellingOrder] = useState(false);
 
+  const lastFetchedAuthModalUserRef = useRef(null);
+  const isFetchingAuthModalOrdersRef = useRef(false);
+
   useEffect(() => {
+    if (!isOpen) {
+      lastFetchedAuthModalUserRef.current = null;
+      return;
+    }
     if (currentUser) {
       setActiveTab('PROFILE');
-      fetchMyOrders(currentUser.email);
+      const uid = currentUser.id || currentUser.email || currentUser.phone || '';
+      if (uid && lastFetchedAuthModalUserRef.current !== uid) {
+        lastFetchedAuthModalUserRef.current = uid;
+        fetchMyOrders(currentUser.email);
+      }
     } else {
       setActiveTab('LOGIN');
     }
-  }, [currentUser, isOpen]);
+  }, [currentUser?.id, currentUser?.email, currentUser?.phone, isOpen]);
 
   const fetchMyOrders = async (userEmail) => {
     const identifier = currentUser?.id || userEmail || currentUser?.email || currentUser?.phone || '';
     if (!identifier) return;
+    if (isFetchingAuthModalOrdersRef.current) return;
+    isFetchingAuthModalOrdersRef.current = true;
     setLoadingOrders(true);
     try {
       let token = currentUser?.token || localStorage.getItem('customer_token');
@@ -110,6 +123,7 @@ export default function CustomerAuthModal({
       setMyOrders([]);
     } finally {
       setLoadingOrders(false);
+      isFetchingAuthModalOrdersRef.current = false;
     }
   };
 
