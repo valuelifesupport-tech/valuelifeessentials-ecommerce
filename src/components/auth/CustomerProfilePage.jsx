@@ -211,20 +211,25 @@ export default function CustomerProfilePage({
     }
   };
 
-  const handleSaveProfile = async (e) => {
-    e.preventDefault();
+  const handleSaveProfile = async (customFormOrEvent) => {
+    if (customFormOrEvent && typeof customFormOrEvent.preventDefault === 'function') {
+      customFormOrEvent.preventDefault();
+    }
+    const formToSave = (customFormOrEvent && typeof customFormOrEvent.preventDefault !== 'function' && typeof customFormOrEvent === 'object')
+      ? { ...profileForm, ...customFormOrEvent }
+      : profileForm;
 
     // 1. GSTIN TAB VALIDATION: Prevent sending request if both GST fields are empty
     if (activeTab === 'GSTIN') {
-      const hasBusinessName = profileForm.business_name && profileForm.business_name.trim();
-      const hasGstin = profileForm.gstin_number && profileForm.gstin_number.trim();
+      const hasBusinessName = formToSave.business_name && formToSave.business_name.trim();
+      const hasGstin = formToSave.gstin_number && formToSave.gstin_number.trim();
 
       if (!hasBusinessName && !hasGstin) {
         if (showToast) showToast('error', 'Empty GST Details', 'Please fill in Registered Business Name or GSTIN Identification Number before saving.');
         return;
       }
 
-      if (hasGstin && profileForm.gstin_number.trim().length < 15) {
+      if (hasGstin && formToSave.gstin_number.trim().length < 15) {
         if (showToast) showToast('error', 'Invalid GSTIN Format', 'GSTIN Identification Number must be 15 alphanumeric characters (e.g. 27AAAAA0000A1Z5).');
         return;
       }
@@ -232,22 +237,30 @@ export default function CustomerProfilePage({
 
     // 2. PROFILE TAB VALIDATION: Mandatory Name, Phone, PIN code, State, Address
     if (activeTab === 'PROFILE') {
-      const nameTrimmed = (profileForm.name || '').trim();
+      const nameTrimmed = (formToSave.name || '').trim();
       if (!nameTrimmed || nameTrimmed.length < 2) {
         if (showToast) showToast('error', 'Validation Error', 'Full Name is mandatory (minimum 2 characters).');
         return;
       }
 
-      const cleanPhone = (profileForm.phone || '').replace(/\D/g, '').slice(-10);
+      const cleanPhone = (formToSave.phone || '').replace(/\D/g, '').slice(-10);
       if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
         if (showToast) showToast('error', 'Validation Error', 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
         return;
       }
 
-      // Check addresses array
-      if (Array.isArray(profileForm.addresses) && profileForm.addresses.length > 0) {
-        for (let i = 0; i < profileForm.addresses.length; i++) {
-          const a = profileForm.addresses[i];
+      if (formToSave.email && formToSave.email.trim()) {
+        const emailTrimmed = formToSave.email.trim();
+        if (!emailTrimmed.includes('@') || !emailTrimmed.includes('.')) {
+          if (showToast) showToast('error', 'Validation Error', 'Please enter a valid email address.');
+          return;
+        }
+      }
+
+      // Check addresses array if addresses exist
+      if (Array.isArray(formToSave.addresses) && formToSave.addresses.length > 0) {
+        for (let i = 0; i < formToSave.addresses.length; i++) {
+          const a = formToSave.addresses[i];
           const pin = String(a.pincode || '').trim();
           if (!/^[1-9][0-9]{5}$/.test(pin)) {
             if (showToast) showToast('error', 'Validation Error', `PIN code in Address #${i + 1} must be exactly 6 digits (e.g. 400001) and cannot start with 0.`);
@@ -263,22 +276,32 @@ export default function CustomerProfilePage({
           }
         }
       } else {
-        if (!profileForm.address || !profileForm.address.trim() || profileForm.address.trim().length < 5) {
-          if (showToast) showToast('error', 'Validation Error', 'Shipping Delivery Address is mandatory (minimum 5 characters).');
-          return;
-        }
-        if (!profileForm.city || !profileForm.city.trim() || profileForm.city.trim().length < 2) {
-          if (showToast) showToast('error', 'Validation Error', 'City is mandatory.');
-          return;
-        }
-        const pin = String(profileForm.pincode || '').trim();
-        if (!/^[1-9][0-9]{5}$/.test(pin)) {
-          if (showToast) showToast('error', 'Validation Error', 'PIN code is mandatory and must be a valid 6-digit Indian postal code (e.g. 400001).');
-          return;
-        }
-        if (!profileForm.state || !INDIAN_STATES.includes(profileForm.state)) {
-          if (showToast) showToast('error', 'Validation Error', 'Please select a valid Indian State or Union Territory.');
-          return;
+        // If single address fields are filled, validate them.
+        // If empty (0 addresses), do NOT block saving Personal Details!
+        const hasAddressDetails = Boolean(
+          (formToSave.address && formToSave.address.trim()) ||
+          (formToSave.city && formToSave.city.trim()) ||
+          (formToSave.pincode && formToSave.pincode.trim())
+        );
+
+        if (hasAddressDetails) {
+          if (!formToSave.address || !formToSave.address.trim() || formToSave.address.trim().length < 5) {
+            if (showToast) showToast('error', 'Validation Error', 'Shipping Delivery Address is mandatory (minimum 5 characters).');
+            return;
+          }
+          if (!formToSave.city || !formToSave.city.trim() || formToSave.city.trim().length < 2) {
+            if (showToast) showToast('error', 'Validation Error', 'City is mandatory.');
+            return;
+          }
+          const pin = String(formToSave.pincode || '').trim();
+          if (!/^[1-9][0-9]{5}$/.test(pin)) {
+            if (showToast) showToast('error', 'Validation Error', 'PIN code is mandatory and must be a valid 6-digit Indian postal code (e.g. 400001).');
+            return;
+          }
+          if (!formToSave.state || !INDIAN_STATES.includes(formToSave.state)) {
+            if (showToast) showToast('error', 'Validation Error', 'Please select a valid Indian State or Union Territory.');
+            return;
+          }
         }
       }
     }
@@ -314,22 +337,26 @@ export default function CustomerProfilePage({
             'x-auth-token': token 
           } : {})
         },
-        body: JSON.stringify(profileForm)
+        body: JSON.stringify(formToSave)
       });
       const data = await res.json();
       if (res.ok) {
-        const returnedAddrs = data.user?.addresses || profileForm.addresses;
+        if (data?.token) {
+          try { localStorage.setItem('customer_token', data.token); } catch (e) {}
+        }
+        const returnedAddrs = data.user?.addresses || formToSave.addresses;
         const updatedUserObj = {
           ...currentUser,
           ...(data.user || {}),
-          name: profileForm.name,
-          phone: profileForm.phone,
-          address: profileForm.address,
-          city: profileForm.city,
-          state: profileForm.state,
-          pincode: profileForm.pincode,
-          gstin_number: profileForm.gstin_number,
-          business_name: profileForm.business_name,
+          name: formToSave.name,
+          email: data.user?.email || formToSave.email || currentUser?.email,
+          phone: formToSave.phone,
+          address: formToSave.address,
+          city: formToSave.city,
+          state: formToSave.state,
+          pincode: formToSave.pincode,
+          gstin_number: formToSave.gstin_number,
+          business_name: formToSave.business_name,
           addresses: returnedAddrs
         };
 

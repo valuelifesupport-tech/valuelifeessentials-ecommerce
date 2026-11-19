@@ -229,18 +229,23 @@ export default function ProfileDetailsTab({
     // Sync default address to primary profileForm fields for instant checkout backward compatibility
     const defaultAddr = updatedList.find(a => a.is_default) || updatedList[0];
 
-    setProfileForm(prev => ({
-      ...prev,
+    const updatedForm = {
+      ...profileForm,
       addresses: updatedList,
-      address: defaultAddr?.address || prev.address,
-      city: defaultAddr?.city || prev.city,
-      state: defaultAddr?.state || prev.state,
-      pincode: defaultAddr?.pincode || prev.pincode,
-      phone: defaultAddr?.phone || prev.phone
-    }));
+      address: defaultAddr?.address || profileForm.address,
+      city: defaultAddr?.city || profileForm.city,
+      state: defaultAddr?.state || profileForm.state,
+      pincode: defaultAddr?.pincode || profileForm.pincode,
+      phone: defaultAddr?.phone || profileForm.phone
+    };
 
+    setProfileForm(updatedForm);
     setIsEditingAddress(false);
     setEditingAddressId(null);
+
+    if (typeof onSubmit === 'function') {
+      onSubmit(updatedForm);
+    }
   };
 
   const handleSetDefaultAddress = (id) => {
@@ -250,15 +255,21 @@ export default function ProfileDetailsTab({
     }));
     const defaultAddr = updated.find(a => a.id === id);
 
-    setProfileForm(prev => ({
-      ...prev,
+    const updatedForm = {
+      ...profileForm,
       addresses: updated,
-      address: defaultAddr?.address || prev.address,
-      city: defaultAddr?.city || prev.city,
-      state: defaultAddr?.state || prev.state,
-      pincode: defaultAddr?.pincode || prev.pincode,
-      phone: defaultAddr?.phone || prev.phone
-    }));
+      address: defaultAddr?.address || profileForm.address,
+      city: defaultAddr?.city || profileForm.city,
+      state: defaultAddr?.state || profileForm.state,
+      pincode: defaultAddr?.pincode || profileForm.pincode,
+      phone: defaultAddr?.phone || profileForm.phone
+    };
+
+    setProfileForm(updatedForm);
+
+    if (typeof onSubmit === 'function') {
+      onSubmit(updatedForm);
+    }
   };
 
   const handleDeleteAddress = (id) => {
@@ -276,15 +287,21 @@ export default function ProfileDetailsTab({
 
     const defaultAddr = updated.find(a => a.is_default) || updated[0];
 
-    setProfileForm(prev => ({
-      ...prev,
+    const updatedForm = {
+      ...profileForm,
       addresses: updated,
-      address: defaultAddr?.address || prev.address,
-      city: defaultAddr?.city || prev.city,
-      state: defaultAddr?.state || prev.state,
-      pincode: defaultAddr?.pincode || prev.pincode,
-      phone: defaultAddr?.phone || prev.phone
-    }));
+      address: defaultAddr?.address || profileForm.address,
+      city: defaultAddr?.city || profileForm.city,
+      state: defaultAddr?.state || profileForm.state,
+      pincode: defaultAddr?.pincode || profileForm.pincode,
+      phone: defaultAddr?.phone || profileForm.phone
+    };
+
+    setProfileForm(updatedForm);
+
+    if (typeof onSubmit === 'function') {
+      onSubmit(updatedForm);
+    }
   };
 
   const getTypeIcon = (type) => {
@@ -302,12 +319,25 @@ export default function ProfileDetailsTab({
     <div className="space-y-6" data-reticle-target="user-profile-details-container">
       {/* 1. PERSONAL INFORMATION CARD */}
       <div className="bg-white p-6 rounded-3xl border border-gray-200/80 shadow-sm space-y-4">
-        <div className="border-b pb-3">
-          <h2 className="text-base font-extrabold text-gray-900 font-['Outfit'] flex items-center gap-2">
-            <span>👤</span>
-            <span>Personal Information</span>
-          </h2>
-          <p className="text-xs text-gray-500">Your account identity and primary phone number.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-3">
+          <div>
+            <h2 className="text-base font-extrabold text-gray-900 font-['Outfit'] flex items-center gap-2">
+              <span>👤</span>
+              <span>Personal Information</span>
+            </h2>
+            <p className="text-xs text-gray-500">Your account identity, display name, and primary contact details.</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={savingProfile}
+            className="inline-flex items-center gap-1.5 bg-[#3b6e14] hover:bg-[#2d560f] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all disabled:opacity-50 shrink-0 self-start sm:self-auto"
+            data-reticle-target="save-personal-info-btn"
+          >
+            <Save size={15} />
+            <span>{savingProfile ? 'Saving Details...' : 'Save Personal Details'}</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -318,9 +348,15 @@ export default function ProfileDetailsTab({
               placeholder="Enter your full name"
               value={profileForm.name}
               onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all"
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all text-sm"
               data-reticle-target="user-profile-name-input"
             />
+            {profileForm.name && profileForm.name.startsWith('Customer ') && (
+              <p className="text-[11px] text-amber-600 font-medium mt-1.5 flex items-center gap-1">
+                <span>✏️</span>
+                <span>Type your real name above and click <b>"Save Personal Details"</b>.</span>
+              </p>
+            )}
           </div>
 
           <div>
@@ -330,20 +366,35 @@ export default function ProfileDetailsTab({
               placeholder="Enter 10-digit mobile number"
               value={profileForm.phone}
               onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/\D/g, '') })}
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all font-mono"
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all font-mono text-sm"
               data-reticle-target="user-profile-phone-input"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-gray-700 font-extrabold mb-1">Email Address (Registered Account)</label>
+            <label className="block text-gray-700 font-extrabold mb-1 flex items-center justify-between">
+              <span>Email Address</span>
+              {profileForm.email && profileForm.email.includes('@valuelifeessentials.com') ? (
+                <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                  Temporary OTP Email (Update Below)
+                </span>
+              ) : (
+                <span className="text-[10px] text-gray-400 font-normal">Registered Account Email</span>
+              )}
+            </label>
             <input 
-              type="email" disabled
-              placeholder="Enter your email address"
+              type="email"
+              placeholder="Enter your personal email address (e.g. yourname@gmail.com)"
               value={profileForm.email}
-              className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl font-bold text-gray-500 cursor-not-allowed"
-              data-reticle-target="user-profile-email-disabled"
+              onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all text-sm"
+              data-reticle-target="user-profile-email-input"
             />
+            {profileForm.email && profileForm.email.includes('@valuelifeessentials.com') && (
+              <p className="text-[11px] text-gray-500 mt-1.5">
+                💡 Enter your personal Gmail/Email so order receipts, invoices, and shipping updates reach your inbox.
+              </p>
+            )}
           </div>
         </div>
       </div>
