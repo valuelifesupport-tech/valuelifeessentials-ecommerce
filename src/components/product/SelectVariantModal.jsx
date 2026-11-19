@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, ShoppingBag, Heart, ExternalLink, Star } from 'lucide-react';
+import { X, Check, ShoppingBag, Heart, ExternalLink, Star, Ban } from 'lucide-react';
 import { resolveImgUrl } from '../../api/config';
 import { resolveBaseVariant, resolveItemOptionLabel } from '../../utils/pricing';
 
@@ -24,6 +24,11 @@ export default function SelectVariantModal({
 
   const [selectedVariant, setSelectedVariant] = useState(defaultBaseVariant);
   const [quantity, setQuantity] = useState(1);
+
+  const effectiveStock = selectedVariant
+    ? (selectedVariant.stock !== undefined && selectedVariant.stock !== null ? Number(selectedVariant.stock) : Number(product?.stock ?? 0))
+    : Number(product?.stock ?? 0);
+  const isOutOfStock = effectiveStock <= 0;
 
   // Sync when product changes
   useEffect(() => {
@@ -161,9 +166,23 @@ export default function SelectVariantModal({
                 )}
               </div>
 
-              <div className="text-[11px] font-semibold text-gray-500">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-                In Stock ({selectedVariant?.stock || product.stock || 100} available)
+              <div className="text-[11px] font-semibold">
+                {isOutOfStock ? (
+                  <span className="text-rose-600 font-extrabold flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1"></span>
+                    Out of Stock
+                  </span>
+                ) : effectiveStock <= 5 ? (
+                  <span className="text-amber-700 font-extrabold flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1 animate-pulse"></span>
+                    Only {effectiveStock} left in stock!
+                  </span>
+                ) : (
+                  <span className="text-gray-500 font-semibold flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
+                    In Stock ({effectiveStock} available)
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -229,22 +248,24 @@ export default function SelectVariantModal({
               <span className="text-[11px] text-gray-400">Total: {currencySymbol}{currentPrice * quantity}.00</span>
             </div>
 
-            <div className="inline-flex items-center border border-gray-200 rounded-2xl bg-gray-50/80 p-1">
+            <div className={`inline-flex items-center border border-gray-200 rounded-2xl p-1 ${isOutOfStock ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-gray-50/80'}`}>
               <button 
                 type="button"
+                disabled={isOutOfStock || quantity <= 1}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-8 h-8 rounded-xl bg-white text-gray-700 font-bold hover:bg-gray-100 flex items-center justify-center shadow-xs cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-white text-gray-700 font-bold hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-xs cursor-pointer"
                 data-reticle-target="variant-modal-qty-minus"
               >
                 -
               </button>
               <span className="w-10 text-center font-black text-sm text-gray-900 font-mono">
-                {quantity}
+                {isOutOfStock ? 0 : quantity}
               </span>
               <button 
                 type="button"
-                onClick={() => setQuantity(quantity + 1)}
-                className="w-8 h-8 rounded-xl bg-white text-gray-700 font-bold hover:bg-gray-100 flex items-center justify-center shadow-xs cursor-pointer"
+                disabled={isOutOfStock || (effectiveStock > 0 && quantity >= effectiveStock)}
+                onClick={() => setQuantity(Math.min(effectiveStock || 1, quantity + 1))}
+                className="w-8 h-8 rounded-xl bg-white text-gray-700 font-bold hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-xs cursor-pointer"
                 data-reticle-target="variant-modal-qty-plus"
               >
                 +
@@ -277,11 +298,27 @@ export default function SelectVariantModal({
 
             <button
               type="button"
-              onClick={handleAddToCartClick}
-              className="flex-1 bg-[#2d6a4f] hover:bg-[#1b4332] text-white py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-800/20 transition-all cursor-pointer"
+              disabled={isOutOfStock}
+              onClick={() => {
+                if (isOutOfStock) return;
+                handleAddToCartClick();
+              }}
+              className={`flex-1 py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                isOutOfStock
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none border border-gray-300'
+                  : 'bg-[#2d6a4f] hover:bg-[#1b4332] text-white shadow-lg shadow-emerald-800/20 cursor-pointer'
+              }`}
               data-reticle-target="variant-modal-add-to-cart-btn"
             >
-              <ShoppingBag size={17} /> ADD TO CART • {currencySymbol}{currentPrice * quantity}.00
+              {isOutOfStock ? (
+                <>
+                  <Ban size={17} className="text-gray-500" /> OUT OF STOCK
+                </>
+              ) : (
+                <>
+                  <ShoppingBag size={17} /> ADD TO CART • {currencySymbol}{currentPrice * quantity}.00
+                </>
+              )}
             </button>
           </div>
 

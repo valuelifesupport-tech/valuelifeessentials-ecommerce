@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Heart, ShoppingBag, Layers } from 'lucide-react';
+import { Eye, Heart, ShoppingBag, Layers, Ban } from 'lucide-react';
 import { resolveImgUrl } from '../../../api/config';
 
 export default function CatalogProductCard({
@@ -21,7 +21,13 @@ export default function CatalogProductCard({
   const effectiveVars = activeVars.length > 0 ? activeVars : rawVars;
   const variantsExist = effectiveVars.length > 1;
 
+  const totalStock = variantsExist
+    ? effectiveVars.reduce((acc, v) => acc + (v.stock !== undefined && v.stock !== null ? Number(v.stock) : 0), 0)
+    : (p.stock !== undefined && p.stock !== null ? Number(p.stock) : (rawVars.length > 0 ? Number(rawVars[0]?.stock ?? 0) : 100));
+  const isOutOfStock = totalStock <= 0;
+
   const handleActionClick = () => {
+    if (isOutOfStock) return;
     if (variantsExist && openVariantModal) {
       openVariantModal(p);
     } else {
@@ -41,6 +47,11 @@ export default function CatalogProductCard({
             alt={p.title}
             className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500"
           />
+          {isOutOfStock && (
+            <span className="absolute top-2 left-2 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow z-10 uppercase tracking-wider">
+              Out of Stock
+            </span>
+          )}
           <button 
             type="button"
             onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p); }}
@@ -155,6 +166,11 @@ export default function CatalogProductCard({
           alt={p.title}
           className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500"
         />
+        {isOutOfStock && (
+          <span className="absolute top-2.5 left-2.5 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow z-10 uppercase tracking-wider">
+            Out of Stock
+          </span>
+        )}
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p); }}
@@ -224,13 +240,22 @@ export default function CatalogProductCard({
           </div>
         ) : (
           <button 
+            disabled={isOutOfStock}
             onClick={handleActionClick}
-            className={`w-full text-white py-2.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all mt-2 cursor-pointer ${
-              variantsExist ? 'bg-[#2d6a4f] hover:bg-[#1b4332]' : 'bg-[#3b6e14] hover:bg-[#2e5710]'
+            className={`w-full py-2.5 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all mt-2 ${
+              isOutOfStock
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300 shadow-none'
+                : variantsExist
+                ? 'bg-[#2d6a4f] hover:bg-[#1b4332] text-white cursor-pointer'
+                : 'bg-[#3b6e14] hover:bg-[#2e5710] text-white cursor-pointer'
             }`}
             data-reticle-target={`add-to-cart-${p.id}`}
           >
-            {variantsExist ? (
+            {isOutOfStock ? (
+              <>
+                <Ban size={14} className="text-gray-500" /> OUT OF STOCK
+              </>
+            ) : variantsExist ? (
               <>
                 <Layers size={14} /> SELECT OPTIONS
               </>

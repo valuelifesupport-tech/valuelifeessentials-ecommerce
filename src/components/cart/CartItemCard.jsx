@@ -56,6 +56,15 @@ export default function CartItemCard({
         : (matchedProduct?.gst_percent ?? matchedProduct?.gst_rate ?? null));
   const itemTotal = (price * (Number(item.quantity) || 1)).toFixed(2);
 
+  const availableStock = matchedVariant && matchedVariant.stock !== undefined && matchedVariant.stock !== null
+    ? Number(matchedVariant.stock)
+    : (matchedProduct && matchedProduct.stock !== undefined && matchedProduct.stock !== null
+        ? Number(matchedProduct.stock)
+        : (item.stock !== undefined && item.stock !== null ? Number(item.stock) : 100));
+
+  const isOutOfStock = availableStock <= 0;
+  const isStockExceeded = !isOutOfStock && item.quantity > availableStock;
+
   return (
     <div className="flex gap-3.5 p-3.5 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative group" data-reticle-target={`cart-item-${item.id}`}>
       <img 
@@ -80,7 +89,7 @@ export default function CartItemCard({
           </div>
         )}
 
-        {/* Price Per Unit & GST */}
+        {/* Price Per Unit & GST & Stock Badge */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           <span className="text-xs text-gray-600 font-bold">
             Unit Price: <strong className="text-[#2d6a4f] font-extrabold">{currencySymbol}{price}</strong>
@@ -90,6 +99,16 @@ export default function CartItemCard({
               {effectiveGst}% GST
             </span>
           ) : null}
+          {isOutOfStock && (
+            <span className="bg-rose-50 text-rose-700 border border-rose-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+              ⚠️ Out of Stock
+            </span>
+          )}
+          {isStockExceeded && (
+            <span className="bg-amber-50 text-amber-700 border border-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+              ⚠️ Max {availableStock} in stock
+            </span>
+          )}
         </div>
 
         {/* Quantity Controls & Product Total */}
@@ -105,8 +124,9 @@ export default function CartItemCard({
             </button>
             <span className="px-3 text-xs font-black text-gray-900 font-mono">{item.quantity}</span>
             <button 
+              disabled={isOutOfStock || item.quantity >= availableStock}
               onClick={() => onUpdateQuantity(itemKey, item.quantity + 1)}
-              className="px-3 py-1 text-gray-700 font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+              className="px-3 py-1 text-gray-700 font-bold hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer text-xs"
               data-reticle-target={`cart-item-qty-plus-${item.id}`}
               title="Increase quantity"
             >

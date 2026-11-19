@@ -126,6 +126,21 @@ export default function CartDrawer({
     }
   };
 
+  const hasOutOfStockItems = cartItems.some(item => {
+    const matchedProduct = Array.isArray(allProducts)
+      ? allProducts.find(p => Number(p.id) === Number(item.product_id) || Number(p.id) === Number(item.id))
+      : null;
+    const matchedVariant = (item.variant_id && matchedProduct?.variants)
+      ? matchedProduct.variants.find(v => Number(v.id) === Number(item.variant_id))
+      : (item.selectedVariant || item.variant || null);
+    const stock = matchedVariant && matchedVariant.stock !== undefined && matchedVariant.stock !== null
+      ? Number(matchedVariant.stock)
+      : (matchedProduct && matchedProduct.stock !== undefined && matchedProduct.stock !== null
+          ? Number(matchedProduct.stock)
+          : (item.stock !== undefined && item.stock !== null ? Number(item.stock) : 100));
+    return stock <= 0 || item.quantity > stock;
+  });
+
   return (
     <div className="drawer-overlay" data-reticle-target="cart-drawer-modal">
       <div className="drawer-content">
@@ -210,6 +225,7 @@ export default function CartDrawer({
               isTaxInclusive={isTaxInclusive}
               finalTaxAmount={finalTaxAmount}
               finalTotal={finalTotal}
+              hasOutOfStockItems={hasOutOfStockItems}
               onProceedToCheckout={onProceedToCheckout}
               paymentMode={paymentMode}
               depositAmount={depositAmount}

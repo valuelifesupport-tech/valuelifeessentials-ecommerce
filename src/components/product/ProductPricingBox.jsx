@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, Heart, ShoppingBag } from 'lucide-react';
+import { Star, Heart, ShoppingBag, Ban } from 'lucide-react';
 
 export default function ProductPricingBox({
   productData,
@@ -19,6 +19,11 @@ export default function ProductPricingBox({
   showToast
 }) {
   const activeVariant = selectedVariant || (variantsList && variantsList.length > 0 ? variantsList[0] : null);
+
+  const effectiveStock = activeVariant
+    ? (activeVariant.stock !== undefined && activeVariant.stock !== null ? Number(activeVariant.stock) : Number(productData?.stock ?? 0))
+    : Number(productData?.stock ?? 0);
+  const isOutOfStock = effectiveStock <= 0;
 
   const [pincode, setPincode] = useState('');
   const [pincodeResult, setPincodeResult] = useState(null);
@@ -186,40 +191,65 @@ export default function ProductPricingBox({
 
       {/* QUANTITY & ADD TO CART BAR */}
       <div className="space-y-4 pt-2">
-        <label className="text-xs font-bold text-gray-700 block mb-1">
-          Quantity
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-gray-700 block">
+            Quantity
+          </label>
+          {effectiveStock > 0 && effectiveStock <= 5 && (
+            <span className="text-[11px] font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              ⚡ Only {effectiveStock} left in stock!
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-4">
           {/* QUANTITY STEPPER */}
-          <div className="inline-flex items-center border border-gray-300 rounded-full px-3 py-1.5 bg-gray-50/80">
+          <div className={`inline-flex items-center border border-gray-300 rounded-full px-3 py-1.5 ${isOutOfStock ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-gray-50/80'}`}>
             <button 
               type="button"
+              disabled={isOutOfStock || quantity <= 1}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="px-2 text-base font-bold text-gray-600 hover:text-gray-900 cursor-pointer"
+              className="px-2 text-base font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               data-reticle-target="pdp-qty-minus"
             >
               -
             </button>
-            <span className="px-3 text-sm font-bold text-gray-900 min-w-[24px] text-center">{quantity}</span>
+            <span className="px-3 text-sm font-bold text-gray-900 min-w-[24px] text-center">{isOutOfStock ? 0 : quantity}</span>
             <button 
               type="button"
-              onClick={() => setQuantity(quantity + 1)}
-              className="px-2 text-base font-bold text-gray-600 hover:text-gray-900 cursor-pointer"
+              disabled={isOutOfStock || (effectiveStock > 0 && quantity >= effectiveStock)}
+              onClick={() => setQuantity(Math.min(effectiveStock || 1, quantity + 1))}
+              className="px-2 text-base font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               data-reticle-target="pdp-qty-plus"
             >
               +
             </button>
           </div>
 
-          {/* GREEN ADD TO CART BUTTON */}
+          {/* ADD TO CART BUTTON */}
           <button 
             type="button"
-            onClick={() => onAddToCart({ ...productData, variant: activeVariant, price, quantity })}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-8 rounded-full shadow-lg shadow-emerald-600/20 text-sm sm:text-base flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer transition-all"
+            disabled={isOutOfStock}
+            onClick={() => {
+              if (isOutOfStock) return;
+              onAddToCart({ ...productData, variant: activeVariant, price, quantity });
+            }}
+            className={`flex-1 font-extrabold py-3.5 px-8 rounded-full shadow-lg text-sm sm:text-base flex items-center justify-center gap-2 uppercase tracking-wide transition-all ${
+              isOutOfStock
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none border border-gray-300'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 cursor-pointer'
+            }`}
             data-reticle-target="pdp-add-to-cart-btn"
           >
-            <ShoppingBag size={18} /> ADD TO CART
+            {isOutOfStock ? (
+              <>
+                <Ban size={18} className="text-gray-500" /> OUT OF STOCK
+              </>
+            ) : (
+              <>
+                <ShoppingBag size={18} /> ADD TO CART
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -243,10 +273,22 @@ export default function ProductPricingBox({
           <span>{isWishlisted ? 'Saved in Wishlist' : 'Add To Wishlist'}</span>
         </button>
 
-        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-200/80 text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          In stock ({activeVariant?.stock || productData.stock || 100})
-        </span>
+        {isOutOfStock ? (
+          <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-800 font-bold px-3 py-1 rounded-full border border-rose-200 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            Out of Stock
+          </span>
+        ) : effectiveStock <= 5 ? (
+          <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 font-bold px-3 py-1 rounded-full border border-amber-200 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            Only {effectiveStock} left
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-200/80 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            In Stock ({effectiveStock} available)
+          </span>
+        )}
 
         <button 
           type="button"

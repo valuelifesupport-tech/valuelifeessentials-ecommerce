@@ -17,6 +17,7 @@ export default function CartSummary({
   isTaxInclusive,
   finalTaxAmount,
   finalTotal,
+  hasOutOfStockItems = false,
   onProceedToCheckout,
   paymentMode,
   depositAmount,
@@ -95,25 +96,41 @@ export default function CartSummary({
         </div>
       </div>
 
+      {/* OUT OF STOCK WARNING BANNER */}
+      {hasOutOfStockItems && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+          <span className="text-base">⚠️</span>
+          <span>Some items in your cart are Out of Stock. Please remove them or reduce quantity to proceed.</span>
+        </div>
+      )}
+
       {/* Checkout Action Button */}
       <button 
-        onClick={() => onProceedToCheckout({ 
-          paymentMode, 
-          rawSubtotal,
-          discountAmount,
-          shippingAmount,
-          taxAmount: finalTaxAmount,
-          isTaxInclusive,
-          finalTotal, 
-          depositAmount, 
-          remainingAmount, 
-          appliedCoupon 
-        })}
-        className="btn-primary w-full py-3 text-sm font-bold shadow-md cursor-pointer flex items-center justify-center gap-2"
+        disabled={hasOutOfStockItems}
+        onClick={() => {
+          if (hasOutOfStockItems) return;
+          onProceedToCheckout({ 
+            paymentMode, 
+            rawSubtotal,
+            discountAmount,
+            shippingAmount,
+            taxAmount: finalTaxAmount,
+            isTaxInclusive,
+            finalTotal, 
+            depositAmount, 
+            remainingAmount, 
+            appliedCoupon 
+          });
+        }}
+        className={`w-full py-3 text-sm font-bold shadow-md flex items-center justify-center gap-2 rounded-xl transition-all ${
+          hasOutOfStockItems
+            ? 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300 shadow-none'
+            : 'btn-primary cursor-pointer'
+        }`}
         data-reticle-target="cart-proceed-checkout-btn"
       >
-        <span>Proceed to Checkout</span>
-        <ArrowRight size={18} />
+        <span>{hasOutOfStockItems ? 'Cannot Checkout (Out of Stock)' : 'Proceed to Checkout'}</span>
+        {!hasOutOfStockItems && <ArrowRight size={18} />}
       </button>
     </div>
   );
