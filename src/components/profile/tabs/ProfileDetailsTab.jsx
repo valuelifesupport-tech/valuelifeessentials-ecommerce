@@ -525,7 +525,7 @@ export default function ProfileDetailsTab({
                 <span className="text-[10px] text-gray-500 font-medium mt-0.5 block">Indian PIN code (cannot start with 0)</span>
               </div>
 
-              <div className="sm:col-span-2">
+              <div>
                 <label className="block text-gray-700 font-extrabold mb-1">State / Union Territory *</label>
                 <select
                   value={addressFormData.state}
@@ -536,6 +536,14 @@ export default function ProfileDetailsTab({
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-extrabold mb-1">Country *</label>
+                <div className="flex items-center gap-2 p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-xs font-bold text-gray-800">
+                  <span>🇮🇳</span>
+                  <span>India</span>
+                </div>
               </div>
 
               <div className="sm:col-span-2 pt-1">

@@ -37,11 +37,19 @@ export function CheckoutProvider({ children }) {
     const rawName = currentUser.name || '';
     const cleanName = (!rawName || rawName.startsWith('Customer ')) ? '' : rawName;
 
+    const defAddr = Array.isArray(currentUser.addresses) && currentUser.addresses.length > 0 
+      ? (currentUser.addresses.find(a => a.is_default) || currentUser.addresses[0]) 
+      : null;
+
     setCustomerForm(prev => ({
-      name: cleanName || prev?.name || '',
-      phone: currentUser.phone || prev?.phone || '',
+      name: cleanName || defAddr?.name || prev?.name || '',
+      phone: currentUser.phone || defAddr?.phone || prev?.phone || '',
       email: cleanEmail || prev?.email || '',
-      address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+      address: defAddr?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+      city: defAddr?.city || currentUser.city || prev?.city || '',
+      state: defAddr?.state || currentUser.state || prev?.state || 'Maharashtra',
+      pincode: defAddr?.pincode || currentUser.pincode || prev?.pincode || '',
+      country: 'India',
       remark: prev?.remark || ''
     }));
 
@@ -61,8 +69,20 @@ export function CheckoutProvider({ children }) {
     }
 
     const finalPhone = currentUser?.phone || customerForm.phone;
-    if (!finalPhone || !customerForm.address) {
-      showToast('error', 'Required Fields', 'Phone number and shipping address are required.');
+    if (!finalPhone) {
+      showToast('error', 'Required Field', '10-digit mobile number is mandatory.');
+      return;
+    }
+    if (!customerForm.address || !customerForm.address.trim()) {
+      showToast('error', 'Required Field', 'Street address / house number is mandatory.');
+      return;
+    }
+    if (!customerForm.city || !customerForm.city.trim()) {
+      showToast('error', 'Required Field', 'City is mandatory.');
+      return;
+    }
+    if (!customerForm.pincode || !customerForm.pincode.trim()) {
+      showToast('error', 'Required Field', 'PIN code is mandatory.');
       return;
     }
 
@@ -87,9 +107,12 @@ export function CheckoutProvider({ children }) {
             ? customerForm.email 
             : (currentUser.email && !currentUser.email.includes('@valuelifeessentials.com') ? currentUser.email : ''),
           customer_phone: finalPhone,
-          shipping_address: customerForm.address,
+          shipping_address: customerForm.address.trim(),
+          shipping_city: (customerForm.city || '').trim(),
+          shipping_state: customerForm.state || 'Maharashtra',
+          shipping_pincode: (customerForm.pincode || '').trim(),
+          country: customerForm.country || (currency === 'INR' ? 'India' : 'International'),
           order_notes: customerForm.remark || '',
-          country: currency === 'INR' ? 'India' : 'International',
           currency,
           total_amount: checkoutData?.finalTotal || 0,
           paid_amount: isOnlinePay ? payableAmount : 0,
@@ -114,7 +137,10 @@ export function CheckoutProvider({ children }) {
         updateUser({
           name: customerForm.name || currentUser.name,
           phone: finalPhone,
-          address: customerForm.address
+          address: customerForm.address.trim(),
+          city: (customerForm.city || '').trim(),
+          state: customerForm.state || 'Maharashtra',
+          pincode: (customerForm.pincode || '').trim()
         });
       }
 

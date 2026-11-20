@@ -31,6 +31,7 @@ export default function CheckoutModal({
     city: '',
     state: 'Maharashtra',
     pincode: '',
+    country: 'India',
     type: 'Home'
   });
   const [addressFormError, setAddressFormError] = useState('');
@@ -51,12 +52,15 @@ export default function CheckoutModal({
 
       if (defAddr) {
         setSelectedAddressId(defAddr.id);
-        const fullAddrStr = `${defAddr.address}, ${defAddr.city}, ${defAddr.state} - ${defAddr.pincode}`;
         setCustomerForm(prev => ({
           name: prev?.name || defAddr.name || cleanName || '',
           phone: prev?.phone || defAddr.phone || cleanPhone || '',
           email: prev?.email || cleanEmail || '',
-          address: prev?.address || fullAddrStr,
+          address: defAddr.address || prev?.address || '',
+          city: defAddr.city || prev?.city || '',
+          state: defAddr.state || prev?.state || 'Maharashtra',
+          pincode: defAddr.pincode || prev?.pincode || '',
+          country: defAddr.country || 'India',
           remark: prev?.remark || ''
         }));
       } else {
@@ -65,6 +69,10 @@ export default function CheckoutModal({
           phone: prev?.phone || cleanPhone || '',
           email: prev?.email || cleanEmail || '',
           address: prev?.address || currentUser.address || localStorage.getItem('user_last_shipping_address') || '',
+          city: prev?.city || currentUser.city || '',
+          state: prev?.state || currentUser.state || 'Maharashtra',
+          pincode: prev?.pincode || currentUser.pincode || '',
+          country: 'India',
           remark: prev?.remark || ''
         }));
       }
@@ -90,6 +98,7 @@ export default function CheckoutModal({
       city: '',
       state: 'Maharashtra',
       pincode: '',
+      country: 'India',
       type: 'Home'
     });
     setAddressFormError('');
@@ -140,20 +149,24 @@ export default function CheckoutModal({
       city: cityTrimmed,
       state: addressFormData.state || 'Maharashtra',
       pincode: cleanPincode,
+      country: 'India',
       type: addressFormData.type || 'Home',
       is_default: (!currentUser?.addresses || currentUser.addresses.length === 0)
     };
 
     const currentList = Array.isArray(currentUser?.addresses) ? currentUser.addresses : [];
     const updatedList = [...currentList, newAddrObj];
-    const fullAddrStr = `${newAddrObj.address}, ${newAddrObj.city}, ${newAddrObj.state} - ${newAddrObj.pincode}`;
 
-    // Update parent customerForm
+    // Update parent customerForm with all individual fields
     setCustomerForm(prev => ({
       ...(prev || {}),
       name: newAddrObj.name,
       phone: newAddrObj.phone,
-      address: fullAddrStr
+      address: newAddrObj.address,
+      city: newAddrObj.city,
+      state: newAddrObj.state,
+      pincode: newAddrObj.pincode,
+      country: newAddrObj.country
     }));
     setSelectedAddressId(newAddressId);
     setShowAddAddressForm(false);
@@ -272,6 +285,7 @@ export default function CheckoutModal({
             </div>
 
             <form onSubmit={handleOrderSubmit} className="space-y-3.5 text-xs" data-reticle-target="checkout-form">
+              {/* CONTACT DETAILS (NAME, PHONE, OPTIONAL EMAIL) */}
               <div>
                 <label className="block font-bold text-gray-700 mb-1">Full Name *</label>
                 <input 
@@ -311,11 +325,11 @@ export default function CheckoutModal({
               </div>
 
               {/* SAVED DELIVERY ADDRESS SELECTOR & MULTI-ADDRESS MANAGER */}
-              <div className="space-y-2 p-3 bg-gray-50/90 rounded-2xl border border-gray-200">
+              <div className="space-y-3 p-3.5 bg-gray-50/90 rounded-2xl border border-gray-200">
                 <div className="flex items-center justify-between">
                   <label className="block font-extrabold text-gray-800 text-xs flex items-center gap-1.5">
                     <span>📍</span>
-                    <span>Delivery Address</span>
+                    <span>Saved Delivery Addresses</span>
                     {Array.isArray(currentUser?.addresses) && currentUser.addresses.length > 0 && (
                       <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full ml-1">
                         {currentUser.addresses.length} saved
@@ -336,13 +350,13 @@ export default function CheckoutModal({
                   )}
                 </div>
 
-                {/* INLINE ADD ADDRESS FORM */}
+                {/* INLINE ADD ADDRESS FORM (FOR SAVING A NEW CARD TO ACCOUNT) */}
                 {showAddAddressForm && (
                   <div className="bg-white border-2 border-emerald-500/50 rounded-xl p-3.5 space-y-3 mt-2 animate-fadeIn shadow-sm">
                     <div className="flex justify-between items-center border-b pb-2">
                       <span className="font-extrabold text-xs text-gray-900 flex items-center gap-1.5">
                         <MapPin size={14} className="text-[#3b6e14]" />
-                        <span>Add New Delivery Address</span>
+                        <span>Add New Delivery Address Card</span>
                       </span>
                       <button
                         type="button"
@@ -381,8 +395,8 @@ export default function CheckoutModal({
                       </div>
                       <div className="col-span-2">
                         <label className="block text-gray-700 font-bold text-[11px] mb-0.5">House / Flat / Street Address *</label>
-                        <textarea
-                          rows={2} required placeholder="Flat/House No., Building, Street, Area"
+                        <input
+                          type="text" required placeholder="Flat/House No., Building, Street, Area"
                           value={addressFormData.address}
                           onChange={(e) => setAddressFormData({ ...addressFormData, address: e.target.value })}
                           className="w-full p-2 bg-gray-50 border border-gray-300 rounded-lg text-xs font-semibold focus:border-emerald-600 focus:bg-white outline-none"
@@ -456,11 +470,10 @@ export default function CheckoutModal({
                   </div>
                 )}
 
-                {/* SAVED ADDRESS LIST (IF EXISTS) */}
+                {/* SAVED ADDRESS CARDS (SELECTABLE) */}
                 {Array.isArray(currentUser?.addresses) && currentUser.addresses.length > 0 && !showAddAddressForm && (
                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {currentUser.addresses.map((addr) => {
-                      const fullAddrStr = `${addr.address}, ${addr.city}, ${addr.state} - ${addr.pincode}`;
                       const isSelected = selectedAddressId === addr.id || (!selectedAddressId && addr.is_default);
                       return (
                         <div
@@ -471,7 +484,11 @@ export default function CheckoutModal({
                               ...(prev || {}),
                               name: addr.name || prev?.name || currentUser.name || '',
                               phone: addr.phone || prev?.phone || currentUser.phone || '',
-                              address: fullAddrStr
+                              address: addr.address || '',
+                              city: addr.city || '',
+                              state: addr.state || 'Maharashtra',
+                              pincode: addr.pincode || '',
+                              country: addr.country || 'India'
                             }));
                           }}
                           className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
@@ -506,18 +523,100 @@ export default function CheckoutModal({
                   </div>
                 )}
 
-                {/* CURRENT / MANUAL ADDRESS INPUT */}
-                <div>
-                  <textarea 
-                    rows={2} required placeholder="Enter house no., building, street, area, city, pincode"
-                    value={customerForm?.address || ''}
-                    onChange={(e) => {
-                      setSelectedAddressId(null);
-                      setCustomerForm(prev => ({ ...(prev || {}), address: e.target.value }));
-                    }}
-                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-gray-900 font-medium focus:border-emerald-600 focus:outline-none text-xs"
-                    data-reticle-target="checkout-input-address"
-                  ></textarea>
+                {/* DEDICATED SEPARATE INPUTS FOR ADDRESS, CITY, PINCODE, STATE, COUNTRY */}
+                <div className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <span className="font-extrabold text-xs text-gray-800 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-[#3b6e14]" />
+                      <span>Delivery Address Fields</span>
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">Auto-filled or type manually</span>
+                  </div>
+
+                  {/* 1. Flat, House No., Building & Street Address */}
+                  <div>
+                    <label className="block font-bold text-gray-700 text-[11px] mb-1">
+                      Flat / House No., Building Name & Street Address *
+                    </label>
+                    <input 
+                      type="text" required 
+                      placeholder="e.g. Flat 301, Sunshine Heights, MG Road"
+                      value={customerForm?.address || ''}
+                      onChange={(e) => {
+                        setSelectedAddressId(null);
+                        setCustomerForm(prev => ({ ...(prev || {}), address: e.target.value }));
+                      }}
+                      className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-emerald-600 focus:bg-white focus:outline-none text-xs"
+                      data-reticle-target="checkout-input-street-address"
+                    />
+                  </div>
+
+                  {/* 2 & 3. City and PIN Code */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block font-bold text-gray-700 text-[11px] mb-1">
+                        City / District *
+                      </label>
+                      <input 
+                        type="text" required 
+                        placeholder="e.g. Mumbai / Indore / Delhi"
+                        value={customerForm?.city || ''}
+                        onChange={(e) => {
+                          setSelectedAddressId(null);
+                          setCustomerForm(prev => ({ ...(prev || {}), city: e.target.value }));
+                        }}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-emerald-600 focus:bg-white focus:outline-none text-xs"
+                        data-reticle-target="checkout-input-city"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 text-[11px] mb-1">
+                        PIN Code (6 Digits) *
+                      </label>
+                      <input 
+                        type="text" required maxLength={6}
+                        placeholder="e.g. 400001"
+                        value={customerForm?.pincode || ''}
+                        onChange={(e) => {
+                          setSelectedAddressId(null);
+                          setCustomerForm(prev => ({ ...(prev || {}), pincode: e.target.value.replace(/\D/g, '') }));
+                        }}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-emerald-600 focus:bg-white focus:outline-none text-xs font-mono"
+                        data-reticle-target="checkout-input-pincode"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 4 & 5. State and Country */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block font-bold text-gray-700 text-[11px] mb-1">
+                        State / Union Territory *
+                      </label>
+                      <select
+                        value={customerForm?.state || 'Maharashtra'}
+                        onChange={(e) => {
+                          setSelectedAddressId(null);
+                          setCustomerForm(prev => ({ ...(prev || {}), state: e.target.value }));
+                        }}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-emerald-600 focus:bg-white focus:outline-none text-xs cursor-pointer"
+                        data-reticle-target="checkout-input-state"
+                      >
+                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 text-[11px] mb-1">
+                        Country *
+                      </label>
+                      <div className="flex items-center gap-2 p-2.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-800">
+                        <span>🇮🇳</span>
+                        <span>India</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

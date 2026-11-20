@@ -55,10 +55,14 @@ export function AuthProvider({ children }) {
         phone: u?.phone || '',
         email: u?.email || '',
         address: u?.address || savedAddr || '',
+        city: u?.city || '',
+        state: u?.state || 'Maharashtra',
+        pincode: u?.pincode || '',
+        country: 'India',
         remark: ''
       };
     } catch (e) {
-      return { name: '', phone: '', email: '', address: '', remark: '' };
+      return { name: '', phone: '', email: '', address: '', city: '', state: 'Maharashtra', pincode: '', country: 'India', remark: '' };
     }
   });
 
@@ -73,7 +77,10 @@ export function AuthProvider({ children }) {
           prev.name === (sanitized.name || '') &&
           prev.phone === (sanitized.phone || '') &&
           prev.email === (sanitized.email || '') &&
-          prev.address === (sanitized.address || '')
+          prev.address === (sanitized.address || '') &&
+          prev.city === (sanitized.city || '') &&
+          prev.state === (sanitized.state || 'Maharashtra') &&
+          prev.pincode === (sanitized.pincode || '')
         ) {
           return prev;
         }
@@ -82,6 +89,10 @@ export function AuthProvider({ children }) {
           phone: sanitized.phone || prev?.phone || '',
           email: sanitized.email || prev?.email || '',
           address: sanitized.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+          city: sanitized.city || prev?.city || '',
+          state: sanitized.state || prev?.state || 'Maharashtra',
+          pincode: sanitized.pincode || prev?.pincode || '',
+          country: 'India',
           remark: prev?.remark || ''
         };
       });
@@ -150,6 +161,10 @@ export function AuthProvider({ children }) {
       phone: enriched.phone || prev?.phone || '',
       email: enriched.email || prev?.email || '',
       address: enriched.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+      city: enriched.city || prev?.city || '',
+      state: enriched.state || prev?.state || 'Maharashtra',
+      pincode: enriched.pincode || prev?.pincode || '',
+      country: 'India',
       remark: prev?.remark || ''
     }));
 
@@ -163,7 +178,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('customerUser');
       localStorage.removeItem('customer_token');
     } catch (e) {}
-    setCustomerForm({ name: '', phone: '', email: '', address: '', remark: '' });
+    setCustomerForm({ name: '', phone: '', email: '', address: '', city: '', state: 'Maharashtra', pincode: '', country: 'India', remark: '' });
     showToast('info', 'Signed Out', 'You have been signed out.');
   }, [showToast]);
 
