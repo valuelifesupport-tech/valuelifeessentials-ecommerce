@@ -6,7 +6,18 @@ export default function ProfileHeaderBanner({
   currentUser,
   onLogout
 }) {
-  const initial = (profileForm?.name || currentUser?.name || 'U').charAt(0).toUpperCase();
+  const rawName = profileForm?.name || currentUser?.name || '';
+  const validName = (!rawName || rawName.startsWith('Customer ')) ? '' : rawName;
+  const rawPhone = profileForm?.phone || currentUser?.phone || '';
+  const cleanPhone = rawPhone ? rawPhone.replace(/\D/g, '').slice(-10) : '';
+
+  const displayName = validName || (cleanPhone ? `+91 ${cleanPhone}` : 'My Account');
+  const initial = validName 
+    ? validName.charAt(0).toUpperCase() 
+    : (cleanPhone ? cleanPhone.slice(-2) : '👤');
+
+  const rawEmail = currentUser?.email || profileForm?.email || '';
+  const cleanEmail = (!rawEmail || rawEmail.includes('@valuelifeessentials.com') || rawEmail.includes('@temporary.com')) ? '' : rawEmail;
 
   return (
     <div className="bg-white p-6 rounded-3xl border border-gray-200/80 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" data-reticle-target="user-profile-header-banner">
@@ -17,14 +28,11 @@ export default function ProfileHeaderBanner({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-extrabold text-gray-900 font-['Outfit']">
-              {profileForm?.name || currentUser?.name || 'Customer Account'}
+              {displayName}
             </h1>
-            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-              VERIFIED MEMBER
-            </span>
           </div>
-          <p className="text-xs text-gray-500 font-medium">{currentUser?.email}</p>
-          {profileForm?.phone && <p className="text-xs text-gray-400 font-medium">📞 {profileForm.phone}</p>}
+          {cleanEmail && <p className="text-xs text-gray-500 font-medium">{cleanEmail}</p>}
+          {cleanPhone && <p className="text-xs text-gray-400 font-medium">📞 +91 {cleanPhone}</p>}
         </div>
       </div>
 

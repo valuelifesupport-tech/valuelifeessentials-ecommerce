@@ -2,6 +2,25 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { getApiUrl } from '../config/env';
 import { useToast } from './ToastContext';
 
+export function sanitizeClientUser(u) {
+  if (!u) return null;
+  const rawEmail = u.email ? String(u.email).trim() : '';
+  const isDummyEmail = !rawEmail || 
+    rawEmail.toLowerCase().includes('@valuelifeessentials.com') || 
+    rawEmail.toLowerCase().includes('@temporary.com') || 
+    rawEmail.toLowerCase().includes('@mobile.');
+  const rawName = u.name ? String(u.name).trim() : '';
+  const isDummyName = !rawName || 
+    rawName.toLowerCase().startsWith('customer ') || 
+    rawName.toLowerCase().startsWith('customer_');
+
+  return {
+    ...u,
+    name: isDummyName ? '' : rawName,
+    email: isDummyEmail ? '' : rawEmail
+  };
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -10,7 +29,8 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const token = localStorage.getItem('customer_token');
-      const u = JSON.parse(localStorage.getItem('customerUser'));
+      const rawUser = JSON.parse(localStorage.getItem('customerUser'));
+      const u = sanitizeClientUser(rawUser);
       if (token && u && u.id) {
         return { ...u, token };
       }
@@ -27,7 +47,8 @@ export function AuthProvider({ children }) {
 
   const [customerForm, setCustomerForm] = useState(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('customerUser'));
+      const rawUser = JSON.parse(localStorage.getItem('customerUser'));
+      const u = sanitizeClientUser(rawUser);
       const savedAddr = localStorage.getItem('user_last_shipping_address') || '';
       return {
         name: u?.name || '',
@@ -46,20 +67,21 @@ export function AuthProvider({ children }) {
   // Sync customerForm whenever currentUser updates and acquire token at most once per user session
   useEffect(() => {
     if (currentUser) {
+      const sanitized = sanitizeClientUser(currentUser);
       setCustomerForm(prev => {
         if (
-          prev.name === (currentUser.name || '') &&
-          prev.phone === (currentUser.phone || '') &&
-          prev.email === (currentUser.email || '') &&
-          prev.address === (currentUser.address || '')
+          prev.name === (sanitized.name || '') &&
+          prev.phone === (sanitized.phone || '') &&
+          prev.email === (sanitized.email || '') &&
+          prev.address === (sanitized.address || '')
         ) {
           return prev;
         }
         return {
-          name: currentUser.name || prev?.name || '',
-          phone: currentUser.phone || prev?.phone || '',
-          email: currentUser.email || prev?.email || '',
-          address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+          name: sanitized.name || prev?.name || '',
+          phone: sanitized.phone || prev?.phone || '',
+          email: sanitized.email || prev?.email || '',
+          address: sanitized.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
           remark: prev?.remark || ''
         };
       });
@@ -82,20 +104,22 @@ export function AuthProvider({ children }) {
             .then(res => res.ok ? res.json() : null)
             .then(data => {
               if (data && data.token && data.user) {
+                const cleanDataUser = sanitizeClientUser(data.user);
                 setCurrentUser(prev => {
                   if (!prev) return null;
                   const updated = {
                     ...prev,
                     token: data.token,
-                    name: data.user.name || prev.name,
-                    phone: data.user.phone || prev.phone,
-                    address: data.user.address || prev.address,
-                    city: data.user.city || prev.city,
-                    state: data.user.state || prev.state,
-                    pincode: data.user.pincode || prev.pincode,
-                    gstin_number: data.user.gstin_number || prev.gstin_number,
-                    business_name: data.user.business_name || prev.business_name,
-                    addresses: data.user.addresses || prev.addresses
+                    name: cleanDataUser.name || prev.name,
+                    email: cleanDataUser.email || prev.email,
+                    phone: cleanDataUser.phone || prev.phone,
+                    address: cleanDataUser.address || prev.address,
+                    city: cleanDataUser.city || prev.city,
+                    state: cleanDataUser.state || prev.state,
+                    pincode: cleanDataUser.pincode || prev.pincode,
+                    gstin_number: cleanDataUser.gstin_number || prev.gstin_number,
+                    business_name: cleanDataUser.business_name || prev.business_name,
+                    addresses: cleanDataUser.addresses || prev.addresses
                   };
                   try {
                     localStorage.setItem('customerUser', JSON.stringify(updated));
@@ -112,8 +136,9 @@ export function AuthProvider({ children }) {
   }, [currentUser?.id, currentUser?.token, currentUser?.email, currentUser?.phone, currentUser?.name]);
 
   const login = useCallback((userData) => {
-    const token = userData.token || localStorage.getItem('customer_token');
-    const enriched = { ...userData, token: token || null };
+    const cleanUser = sanitizeClientUser(userData);
+    const token = cleanUser.token || localStorage.getItem('customer_token');
+    const enriched = { ...cleanUser, token: token || null };
     setCurrentUser(enriched);
     try {
       localStorage.setItem('customerUser', JSON.stringify(enriched));
@@ -121,15 +146,15 @@ export function AuthProvider({ children }) {
     } catch (e) {}
 
     setCustomerForm(prev => ({
-      name: userData.name || prev?.name || '',
-      phone: userData.phone || prev?.phone || '',
-      email: userData.email || prev?.email || '',
-      address: userData.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
+      name: enriched.name || prev?.name || '',
+      phone: enriched.phone || prev?.phone || '',
+      email: enriched.email || prev?.email || '',
+      address: enriched.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
       remark: prev?.remark || ''
     }));
 
     setIsAuthOpen(false);
-    showToast('success', 'Signed In', `Welcome back, ${userData.name || userData.phone || 'Customer'}!`);
+    showToast('success', 'Signed In', `Welcome back${enriched.name ? `, ${enriched.name}` : ''}!`);
   }, [showToast]);
 
   const logout = useCallback(() => {
@@ -144,7 +169,8 @@ export function AuthProvider({ children }) {
 
   const updateUser = useCallback((updatedData) => {
     setCurrentUser(prev => {
-      const merged = { ...prev, ...updatedData };
+      const sanitized = sanitizeClientUser(updatedData);
+      const merged = { ...prev, ...sanitized };
       try {
         localStorage.setItem('customerUser', JSON.stringify(merged));
       } catch (e) {}

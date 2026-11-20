@@ -32,10 +32,15 @@ export function CheckoutProvider({ children }) {
       return;
     }
 
+    const rawEmail = currentUser.email || '';
+    const cleanEmail = (!rawEmail || rawEmail.includes('@valuelifeessentials.com') || rawEmail.includes('@temporary.com')) ? '' : rawEmail;
+    const rawName = currentUser.name || '';
+    const cleanName = (!rawName || rawName.startsWith('Customer ')) ? '' : rawName;
+
     setCustomerForm(prev => ({
-      name: currentUser.name || prev?.name || '',
+      name: cleanName || prev?.name || '',
       phone: currentUser.phone || prev?.phone || '',
-      email: currentUser.email || prev?.email || '',
+      email: cleanEmail || prev?.email || '',
       address: currentUser.address || localStorage.getItem('user_last_shipping_address') || prev?.address || '',
       remark: prev?.remark || ''
     }));
@@ -75,8 +80,12 @@ export function CheckoutProvider({ children }) {
         },
         body: JSON.stringify({
           user_id: currentUser.id,
-          customer_name: currentUser.name || customerForm.name || 'Customer',
-          customer_email: currentUser.email || customerForm.email,
+          customer_name: (customerForm.name && !customerForm.name.startsWith('Customer ')) 
+            ? customerForm.name 
+            : (currentUser.name && !currentUser.name.startsWith('Customer ') ? currentUser.name : (finalPhone ? `User ${finalPhone.slice(-4)}` : 'Customer')),
+          customer_email: (customerForm.email && !customerForm.email.includes('@valuelifeessentials.com')) 
+            ? customerForm.email 
+            : (currentUser.email && !currentUser.email.includes('@valuelifeessentials.com') ? currentUser.email : ''),
           customer_phone: finalPhone,
           shipping_address: customerForm.address,
           order_notes: customerForm.remark || '',

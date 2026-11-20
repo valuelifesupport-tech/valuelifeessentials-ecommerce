@@ -500,10 +500,10 @@ export default function CustomerAuthModal({
             </div>
             <div>
               <h3 className="font-extrabold text-lg text-gray-900 font-['Outfit']">
-                {currentUser ? `My Account (${currentUser.name})` : 'Customer Portal'}
+                {currentUser ? (currentUser.name ? `My Account (${currentUser.name})` : 'My Account') : 'Sign In or Register'}
               </h3>
               <p className="text-[11px] text-gray-500 font-medium">
-                {currentUser ? 'Manage your orders, profile, and delivery details' : 'Login or Create an Account for Fast Checkout'}
+                {currentUser ? 'Manage your orders, profile, and delivery details' : 'Get access to your Orders, Wishlist & Fast Checkout'}
               </p>
             </div>
           </div>

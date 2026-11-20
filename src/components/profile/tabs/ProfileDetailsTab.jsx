@@ -342,21 +342,15 @@ export default function ProfileDetailsTab({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block text-gray-700 font-extrabold mb-1">Full Name *</label>
+            <label className="block text-gray-700 font-extrabold mb-1">Full Name</label>
             <input 
-              type="text" required
+              type="text"
               placeholder="Enter your full name"
-              value={profileForm.name}
+              value={(profileForm.name && !profileForm.name.startsWith('Customer ')) ? profileForm.name : ''}
               onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all text-sm"
               data-reticle-target="user-profile-name-input"
             />
-            {profileForm.name && profileForm.name.startsWith('Customer ') && (
-              <p className="text-[11px] text-amber-600 font-medium mt-1.5 flex items-center gap-1">
-                <span>✏️</span>
-                <span>Type your real name above and click <b>"Save Personal Details"</b>.</span>
-              </p>
-            )}
           </div>
 
           <div>
@@ -364,7 +358,7 @@ export default function ProfileDetailsTab({
             <input 
               type="text" required maxLength={10}
               placeholder="Enter 10-digit mobile number"
-              value={profileForm.phone}
+              value={profileForm.phone || ''}
               onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/\D/g, '') })}
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all font-mono text-sm"
               data-reticle-target="user-profile-phone-input"
@@ -373,28 +367,17 @@ export default function ProfileDetailsTab({
 
           <div className="sm:col-span-2">
             <label className="block text-gray-700 font-extrabold mb-1 flex items-center justify-between">
-              <span>Email Address</span>
-              {profileForm.email && profileForm.email.includes('@valuelifeessentials.com') ? (
-                <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                  Temporary OTP Email (Update Below)
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-400 font-normal">Registered Account Email</span>
-              )}
+              <span>Email Address (Optional)</span>
+              <span className="text-[10px] text-gray-400 font-normal">For order tracking & invoice updates</span>
             </label>
             <input 
               type="email"
-              placeholder="Enter your personal email address (e.g. yourname@gmail.com)"
-              value={profileForm.email}
+              placeholder="Enter your email address (Optional)"
+              value={(profileForm.email && !profileForm.email.includes('@valuelifeessentials.com')) ? profileForm.email : ''}
               onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-[#3b6e14] transition-all text-sm"
               data-reticle-target="user-profile-email-input"
             />
-            {profileForm.email && profileForm.email.includes('@valuelifeessentials.com') && (
-              <p className="text-[11px] text-gray-500 mt-1.5">
-                💡 Enter your personal Gmail/Email so order receipts, invoices, and shipping updates reach your inbox.
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -589,10 +572,25 @@ export default function ProfileDetailsTab({
 
         {/* LIST OF SAVED ADDRESSES */}
         {addresses.length === 0 ? (
-          <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 space-y-2">
-            <MapPin size={32} className="mx-auto text-gray-400" />
-            <p className="text-xs font-bold text-gray-700">No delivery addresses saved yet.</p>
-            <p className="text-[11px] text-gray-500">Click &ldquo;+ Add New Address&rdquo; above to save your home or work delivery address.</p>
+          <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 space-y-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#3b6e14] flex items-center justify-center mx-auto">
+              <MapPin size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-800">No delivery addresses saved yet</p>
+              <p className="text-xs text-gray-500 mt-1">Add your home or work address for quick and easy 1-click checkout.</p>
+            </div>
+            {!isEditingAddress && (
+              <button
+                type="button"
+                onClick={handleOpenAddAddress}
+                className="inline-flex items-center gap-1.5 bg-[#3b6e14] hover:bg-[#2d560f] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
+                data-reticle-target="empty-add-address-btn"
+              >
+                <Plus size={16} />
+                <span>+ Add Delivery Address</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

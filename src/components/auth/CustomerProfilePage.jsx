@@ -69,11 +69,16 @@ export default function CustomerProfilePage({
     if (currentUser) {
       let savedAddr = '';
       try { savedAddr = localStorage.getItem('user_last_shipping_address') || ''; } catch (e) {}
+      const rawEmail = currentUser.email || '';
+      const cleanEmail = (!rawEmail || rawEmail.includes('@valuelifeessentials.com') || rawEmail.includes('@temporary.com')) ? '' : rawEmail;
+      const rawName = currentUser.name || '';
+      const cleanName = (!rawName || rawName.startsWith('Customer ')) ? '' : rawName;
+
       setProfileForm(prev => ({
         ...prev,
-        name: currentUser.name || prev.name || '',
+        name: cleanName || prev.name || '',
         phone: currentUser.phone || prev.phone || '',
-        email: currentUser.email || prev.email || '',
+        email: cleanEmail || prev.email || '',
         address: currentUser.address || prev.address || savedAddr || '',
         city: currentUser.city || prev.city || '',
         state: currentUser.state || prev.state || 'Madhya Pradesh',
@@ -193,9 +198,14 @@ export default function CustomerProfilePage({
           });
         }
 
+        const rawEmail = data.email || currentUser?.email || '';
+        const cleanEmail = (!rawEmail || rawEmail.includes('@valuelifeessentials.com') || rawEmail.includes('@temporary.com')) ? '' : rawEmail;
+        const rawName = data.name || currentUser?.name || '';
+        const cleanName = (!rawName || rawName.startsWith('Customer ')) ? '' : rawName;
+
         setProfileForm(prev => ({
-          name: data.name || currentUser?.name || prev.name || '',
-          email: data.email || currentUser?.email || prev.email || '',
+          name: cleanName || prev.name || '',
+          email: cleanEmail || prev.email || '',
           phone: data.phone || currentUser?.phone || prev.phone || '',
           address: data.address || currentUser?.address || prev.address || '',
           city: data.city || currentUser?.city || prev.city || '',
@@ -455,8 +465,8 @@ export default function CustomerProfilePage({
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center space-y-4" data-reticle-target="user-profile-login-required">
         <div className="text-5xl">🌱</div>
-        <h2 className="text-2xl font-extrabold text-gray-900 font-['Outfit']">Customer Portal Access Required</h2>
-        <p className="text-gray-600 text-sm max-w-md">Please sign in to view your orders, live shipment tracking, saved addresses, and profile settings.</p>
+        <h2 className="text-2xl font-extrabold text-gray-900 font-['Outfit']">Please Sign In to View Your Account</h2>
+        <p className="text-gray-600 text-sm max-w-md">Sign in or create an account to view your orders, live shipment tracking, saved addresses, and profile details.</p>
         <button 
           onClick={onGoHome}
           className="bg-[#3b6e14] hover:bg-[#2d560f] text-white font-bold px-6 py-3 rounded-xl shadow-md transition-colors text-sm cursor-pointer"
@@ -481,7 +491,7 @@ export default function CustomerProfilePage({
           >
             <ArrowLeft size={16} /> Return to Shop
           </button>
-          <span className="text-xs font-bold text-gray-400 font-mono">My Account Hub</span>
+          <span className="text-xs font-bold text-gray-400 font-medium">My Account</span>
         </div>
 
         {/* CUSTOMER HEADER PROFILE BANNER */}
